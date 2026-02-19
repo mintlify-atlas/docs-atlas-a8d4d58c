@@ -1,0 +1,407 @@
+{
+  "projectType": "framework",
+  "projectName": "Expo",
+  "projectDescription": "An open-source framework for making universal native apps with React that run on Android, iOS, and the web.",
+  "theme": "aspen",
+  "primaryColor": "#4630EB",
+  "lightColor": "#5E5CE6",
+  "darkColor": "#3321D4",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Get Started",
+        "groups": [
+          {
+            "group": "Introduction",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "core-concepts/architecture",
+              "core-concepts/expo-modules",
+              "core-concepts/development-workflow",
+              "core-concepts/expo-go"
+            ]
+          },
+          {
+            "group": "Creating Your First App",
+            "pages": [
+              "tutorial/create-project",
+              "tutorial/add-navigation",
+              "tutorial/build-and-deploy"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "cli/overview",
+              "cli/installation"
+            ]
+          },
+          {
+            "group": "Commands",
+            "pages": [
+              "cli/commands/start",
+              "cli/commands/run",
+              "cli/commands/prebuild",
+              "cli/commands/install",
+              "cli/commands/config",
+              "cli/commands/export",
+              "cli/commands/login",
+              "cli/commands/whoami"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "cli/configuration/app-config",
+              "cli/configuration/metro-config",
+              "cli/configuration/environment-variables"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Expo Router",
+        "groups": [
+          {
+            "group": "Introduction",
+            "pages": [
+              "router/introduction",
+              "router/installation",
+              "router/quick-start"
+            ]
+          },
+          {
+            "group": "Routing Fundamentals",
+            "pages": [
+              "router/file-based-routing",
+              "router/navigation",
+              "router/dynamic-routes",
+              "router/layouts",
+              "router/groups"
+            ]
+          },
+          {
+            "group": "Advanced Routing",
+            "pages": [
+              "router/deep-linking",
+              "router/typed-routes",
+              "router/api-routes",
+              "router/server-rendering"
+            ]
+          },
+          {
+            "group": "Navigation UI",
+            "pages": [
+              "router/stack-navigation",
+              "router/tab-navigation",
+              "router/drawer-navigation",
+              "router/native-tabs"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "SDK Modules",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "sdk/overview",
+              "sdk/modules-core"
+            ]
+          },
+          {
+            "group": "Core Modules",
+            "pages": [
+              "sdk/constants",
+              "sdk/asset",
+              "sdk/file-system",
+              "sdk/font",
+              "sdk/keep-awake",
+              "sdk/splash-screen",
+              "sdk/status-bar",
+              "sdk/updates"
+            ]
+          },
+          {
+            "group": "UI Components",
+            "pages": [
+              "sdk/blur",
+              "sdk/camera",
+              "sdk/image",
+              "sdk/video",
+              "sdk/symbols",
+              "sdk/checkbox",
+              "sdk/glass-effect"
+            ]
+          },
+          {
+            "group": "Device APIs",
+            "pages": [
+              "sdk/device",
+              "sdk/battery",
+              "sdk/cellular",
+              "sdk/brightness",
+              "sdk/sensors",
+              "sdk/haptics",
+              "sdk/screen-orientation",
+              "sdk/system-ui"
+            ]
+          },
+          {
+            "group": "Media & Storage",
+            "pages": [
+              "sdk/audio",
+              "sdk/document-picker",
+              "sdk/image-picker",
+              "sdk/media-library",
+              "sdk/sharing",
+              "sdk/sqlite",
+              "sdk/secure-store"
+            ]
+          },
+          {
+            "group": "Authentication & Security",
+            "pages": [
+              "sdk/auth-session",
+              "sdk/apple-authentication",
+              "sdk/local-authentication",
+              "sdk/crypto",
+              "sdk/app-integrity"
+            ]
+          },
+          {
+            "group": "Notifications & Background",
+            "pages": [
+              "sdk/notifications",
+              "sdk/background-fetch",
+              "sdk/background-task",
+              "sdk/task-manager"
+            ]
+          },
+          {
+            "group": "Location & Maps",
+            "pages": [
+              "sdk/location",
+              "sdk/maps"
+            ]
+          },
+          {
+            "group": "Contacts & Calendar",
+            "pages": [
+              "sdk/contacts",
+              "sdk/calendar"
+            ]
+          },
+          {
+            "group": "Web & Network",
+            "pages": [
+              "sdk/web-browser",
+              "sdk/linking",
+              "sdk/network",
+              "sdk/clipboard"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Config Plugins",
+        "groups": [
+          {
+            "group": "Introduction",
+            "pages": [
+              "config-plugins/introduction",
+            "config-plugins/how-they-work"
+            ]
+          },
+          {
+            "group": "Building Plugins",
+            "pages": [
+              "config-plugins/creating-plugins",
+              "config-plugins/plugin-api",
+              "config-plugins/modifying-native-projects",
+              "config-plugins/testing-plugins"
+            ]
+          },
+          {
+            "group": "Common Patterns",
+            "pages": [
+              "config-plugins/ios-entitlements",
+              "config-plugins/android-permissions",
+              "config-plugins/assets-and-resources",
+              "config-plugins/build-properties"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Development",
+        "groups": [
+          {
+            "group": "Development Builds",
+            "pages": [
+              "development/introduction",
+              "development/creating-builds",
+              "development/installation"
+            ]
+          },
+          {
+            "group": "Debugging",
+            "pages": [
+              "development/debugging",
+              "development/devtools",
+              "development/inspector",
+              "development/errors"
+            ]
+          },
+          {
+            "group": "Testing",
+            "pages": [
+              "development/unit-testing",
+              "development/e2e-testing",
+              "development/testing-router"
+            ]
+          },
+          {
+            "group": "Native Development",
+            "pages": [
+              "development/native-modules",
+              "development/prebuild",
+              "development/build-properties",
+              "development/monorepos"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Deployment",
+        "groups": [
+          {
+            "group": "Building",
+            "pages": [
+              "deployment/building-standalone",
+              "deployment/app-signing",
+              "deployment/build-configuration"
+            ]
+          },
+          {
+            "group": "Distribution",
+            "pages": [
+              "deployment/app-stores",
+              "deployment/internal-distribution",
+              "deployment/over-the-air-updates"
+            ]
+          },
+          {
+            "group": "Web Deployment",
+            "pages": [
+              "deployment/static-export",
+              "deployment/hosting-providers"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Platform Features",
+            "pages": [
+              "guides/push-notifications",
+              "guides/deep-linking",
+              "guides/splash-screens",
+              "guides/app-icons",
+              "guides/permissions"
+            ]
+          },
+          {
+            "group": "Advanced Topics",
+            "pages": [
+              "guides/monorepos",
+              "guides/custom-native-code",
+              "guides/migration",
+              "guides/typescript",
+              "guides/environment-variables"
+            ]
+          },
+          {
+            "group": "Optimization",
+            "pages": [
+              "guides/performance",
+              "guides/bundle-size",
+              "guides/assets"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "groups": [
+          {
+            "group": "API Reference",
+            "pages": [
+              "reference/expo-package",
+              "reference/expo-modules-core",
+              "reference/config-schema"
+            ]
+          },
+          {
+            "group": "Tools",
+            "pages": [
+              "reference/cli-reference",
+              "reference/metro-config",
+              "reference/babel-preset"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "reference/changelog",
+              "reference/faq",
+              "reference/troubleshooting",
+              "reference/community"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "File-based routing with Expo Router",
+    "Universal apps for iOS, Android, and web",
+    "100+ native modules and APIs",
+    "Hot reloading and fast refresh",
+    "Config plugins for native customization",
+    "TypeScript support out of the box",
+    "Over-the-air updates",
+    "Development builds with Expo Go"
+  ],
+  "publicApiSurface": [
+    "expo start - Start development server",
+    "expo run:ios - Build and run on iOS",
+    "expo run:android - Build and run on Android",
+    "expo prebuild - Generate native projects",
+    "expo install - Install compatible packages",
+    "expo-router - File-based navigation",
+    "expo-modules-core - Core module API",
+    "Config Plugins API - Native project customization",
+    "@expo/cli - Command-line interface",
+    "Expo SDK modules (100+ packages)",
+    "Metro bundler integration",
+    "TypeScript generation utilities",
+    "expo export - Production bundling",
+    "expo config - Configuration management"
+  ]
+}
