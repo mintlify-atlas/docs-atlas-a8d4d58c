@@ -1,0 +1,489 @@
+---
+title: expo config
+description: View and debug your app's resolved configuration.
+---
+
+The `expo config` command displays your project's resolved Expo configuration, showing how app.json, app.config.js, and environment variables combine into the final configuration used by Expo.
+
+## Usage
+
+```bash
+npx expo config [directory] [options]
+```
+
+## Arguments
+
+<ParamField path="directory" type="string">
+  Directory of the Expo project. Defaults to the current working directory.
+</ParamField>
+
+## Options
+
+<ParamField path="--type" type="string">
+  Type of configuration to show. Alias: `-t`
+  
+  Options:
+  - `public` - Public configuration exposed to JavaScript code
+  - `prebuild` - Configuration used during prebuild
+  - `introspect` - Full configuration with all fields (default)
+</ParamField>
+
+<ParamField path="--full" type="boolean">
+  Include all project config data, including defaults and computed values.
+</ParamField>
+
+<ParamField path="--json" type="boolean">
+  Output configuration in JSON format. Useful for scripting and automation.
+</ParamField>
+
+## What It Shows
+
+The `expo config` command displays:
+
+- Configuration from app.json or app.config.js
+- Applied config plugins and their modifications
+- Environment-specific values
+- Computed default values
+- Platform-specific settings
+
+## Examples
+
+### View Full Configuration
+
+Show the complete resolved configuration:
+
+```bash
+npx expo config
+```
+
+Output example:
+```json
+{
+  "name": "My App",
+  "slug": "my-app",
+  "version": "1.0.0",
+  "orientation": "portrait",
+  "icon": "./assets/icon.png",
+  "splash": {
+    "image": "./assets/splash.png",
+    "resizeMode": "contain",
+    "backgroundColor": "#ffffff"
+  },
+  "ios": {
+    "bundleIdentifier": "com.mycompany.myapp",
+    "buildNumber": "1"
+  },
+  "android": {
+    "package": "com.mycompany.myapp",
+    "versionCode": 1
+  }
+}
+```
+
+### JSON Output
+
+Get machine-readable JSON:
+
+```bash
+npx expo config --json
+```
+
+Perfect for:
+- CI/CD scripts
+- Parsing with `jq` or other tools
+- Automation workflows
+
+### Public Configuration
+
+Show only configuration exposed to your JavaScript code:
+
+```bash
+npx expo config --type public
+```
+
+This is the configuration available via:
+```javascript
+import Constants from 'expo-constants';
+console.log(Constants.expoConfig);
+```
+
+### Prebuild Configuration
+
+Show configuration used during `expo prebuild`:
+
+```bash
+npx expo config --type prebuild
+```
+
+Includes native configuration and config plugin results.
+
+### Full Details
+
+Show all configuration including defaults:
+
+```bash
+npx expo config --full
+```
+
+This displays:
+- Explicit configuration from your config file
+- Default values applied by Expo
+- Computed values based on other settings
+- All plugin modifications
+
+### Specific Project Directory
+
+View config for a specific project:
+
+```bash
+npx expo config ./my-app
+```
+
+## Configuration Types
+
+### Introspect (Default)
+
+Shows the complete configuration after:
+- Reading app.json or app.config.js
+- Applying config plugins
+- Merging environment variables
+- Computing dynamic values
+
+### Public
+
+Shows only values exposed to JavaScript runtime:
+- Available in `expo-constants`
+- Embedded in app bundles
+- Accessible at runtime
+- Excludes secrets and build-time values
+
+### Prebuild
+
+Shows configuration used when generating native projects:
+- Native identifiers (bundle ID, package name)
+- Config plugin results
+- Platform-specific settings
+- Build-time configuration
+
+## Common Use Cases
+
+### Debugging Configuration Issues
+
+Check what config is actually being used:
+
+```bash
+npx expo config --full
+```
+
+Look for:
+- Unexpected default values
+- Missing configuration
+- Plugin modifications
+- Environment variable substitution
+
+### Verifying Environment Variables
+
+Check if environment variables are applied:
+
+```bash
+EXPO_PUBLIC_API_URL=https://api.example.com npx expo config --json | grep API_URL
+```
+
+### CI/CD Validation
+
+Validate configuration in CI:
+
+```bash
+npx expo config --json > config-output.json
+```
+
+Parse and validate specific fields:
+
+```bash
+npx expo config --json | jq '.ios.bundleIdentifier'
+```
+
+### Comparing Environments
+
+Compare development and production configs:
+
+```bash
+ENV=development npx expo config --json > dev-config.json
+ENV=production npx expo config --json > prod-config.json
+diff dev-config.json prod-config.json
+```
+
+### Checking Plugin Effects
+
+See what config plugins have modified:
+
+```bash
+npx expo config --type prebuild
+```
+
+Look for fields modified by plugins like:
+- Permissions and entitlements
+- App capabilities
+- Build settings
+- Manifest entries
+
+## Configuration Files
+
+### app.json
+
+Static JSON configuration:
+
+```json
+{
+  "expo": {
+    "name": "My App",
+    "slug": "my-app",
+    "version": "1.0.0",
+    "ios": {
+      "bundleIdentifier": "com.mycompany.myapp"
+    },
+    "android": {
+      "package": "com.mycompany.myapp"
+    }
+  }
+}
+```
+
+### app.config.js
+
+Dynamic JavaScript configuration:
+
+```javascript
+export default {
+  name: "My App",
+  slug: "my-app",
+  version: process.env.APP_VERSION || "1.0.0",
+  ios: {
+    bundleIdentifier: "com.mycompany.myapp"
+  },
+  android: {
+    package: "com.mycompany.myapp"
+  },
+  extra: {
+    apiUrl: process.env.API_URL
+  }
+};
+```
+
+### app.config.ts
+
+TypeScript configuration with type checking:
+
+```typescript
+import { ExpoConfig } from 'expo/config';
+
+const config: ExpoConfig = {
+  name: "My App",
+  slug: "my-app",
+  version: "1.0.0",
+  ios: {
+    bundleIdentifier: "com.mycompany.myapp"
+  },
+  android: {
+    package: "com.mycompany.myapp"
+  }
+};
+
+export default config;
+```
+
+## Environment Variables
+
+### Build-Time Variables
+
+Available during configuration:
+
+```javascript
+export default {
+  name: process.env.APP_NAME,
+  extra: {
+    apiUrl: process.env.API_URL
+  }
+};
+```
+
+Check resolved values:
+
+```bash
+APP_NAME="My App" API_URL="https://api.example.com" npx expo config
+```
+
+### Public Variables
+
+Variables prefixed with `EXPO_PUBLIC_` are available at runtime:
+
+```javascript
+// app.config.js
+export default {
+  extra: {
+    apiUrl: process.env.EXPO_PUBLIC_API_URL
+  }
+};
+```
+
+Access in code:
+
+```javascript
+import Constants from 'expo-constants';
+const apiUrl = Constants.expoConfig.extra.apiUrl;
+```
+
+## Parsing Output
+
+### With jq
+
+Extract specific fields:
+
+```bash
+# Get app name
+npx expo config --json | jq -r '.name'
+
+# Get iOS bundle identifier
+npx expo config --json | jq -r '.ios.bundleIdentifier'
+
+# Get all environment variables
+npx expo config --json | jq '.extra'
+```
+
+### With grep
+
+Search for specific values:
+
+```bash
+npx expo config | grep bundleIdentifier
+npx expo config | grep -A 5 "ios"
+```
+
+### In Scripts
+
+Use in shell scripts:
+
+```bash
+#!/bin/bash
+CONFIG=$(npx expo config --json)
+NAME=$(echo $CONFIG | jq -r '.name')
+VERSION=$(echo $CONFIG | jq -r '.version')
+
+echo "Building $NAME v$VERSION"
+```
+
+## Troubleshooting
+
+### Config File Not Found
+
+If `expo config` can't find your config:
+
+```
+Error: No app.json or app.config.js found
+```
+
+Solutions:
+- Ensure you're in the project directory
+- Create app.json or app.config.js
+- Specify directory: `npx expo config ./path/to/project`
+
+### Invalid Configuration
+
+If config is malformed:
+
+```
+Error: Invalid Expo config
+```
+
+Check:
+- JSON syntax in app.json
+- JavaScript syntax in app.config.js
+- Required fields (name, slug)
+- Type errors in app.config.ts
+
+### Environment Variables Not Applied
+
+If environment variables aren't showing:
+
+```bash
+# Ensure variables are set before command
+API_URL=https://api.example.com npx expo config
+```
+
+For `.env` files, they're loaded automatically when running Expo commands.
+
+### Plugin Errors
+
+If config plugins fail:
+
+```
+Error: Config plugin failed
+```
+
+Check:
+- Plugin is installed: `npm install plugin-name`
+- Plugin syntax in app.json
+- Plugin compatibility with Expo SDK version
+
+## Configuration Schema
+
+The configuration follows a strict schema. To see all available fields:
+
+- [Expo Config Reference](https://docs.expo.dev/versions/latest/config/app/)
+- TypeScript types: `expo/config` package
+- JSON schema: Available via Expo API
+
+## Best Practices
+
+### Version Control
+
+Commit your configuration:
+```bash
+git add app.json app.config.js
+git commit -m "Update app configuration"
+```
+
+### Environment-Specific Configs
+
+Use environment variables for differences:
+
+```javascript
+const IS_PROD = process.env.ENV === 'production';
+
+export default {
+  name: IS_PROD ? 'My App' : 'My App (Dev)',
+  slug: 'my-app',
+  extra: {
+    apiUrl: IS_PROD 
+      ? 'https://api.example.com'
+      : 'https://dev.api.example.com'
+  }
+};
+```
+
+### Validate in CI
+
+Add validation to your CI pipeline:
+
+```yaml
+- name: Validate config
+  run: |
+    npx expo config --json > /dev/null || exit 1
+```
+
+### Document Custom Fields
+
+Add comments to explain custom configuration:
+
+```javascript
+export default {
+  name: "My App",
+  // Custom field for internal tools
+  extra: {
+    internalId: "app-123",
+    featureFlags: {
+      newFeature: true
+    }
+  }
+};
+```

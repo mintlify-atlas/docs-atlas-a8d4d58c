@@ -1,0 +1,550 @@
+---
+title: Element Inspector
+description: Visually inspect and debug UI elements with the Expo element inspector.
+---
+
+The element inspector is a visual debugging tool that lets you tap any UI element in your app to inspect its properties, styles, and component hierarchy.
+
+## Accessing the Inspector
+
+### From the Dev Menu
+
+<Steps>
+
+<Step title="Open dev menu">
+
+- **iOS**: Shake device or press `Cmd+D` in simulator
+- **Android**: Shake device or press `Cmd+M` / `Ctrl+M` in emulator
+
+</Step>
+
+<Step title="Select 'Show Element Inspector'">
+
+The inspector overlay appears on your app.
+
+</Step>
+
+</Steps>
+
+### Programmatically
+
+```typescript
+import { DevSettings } from 'react-native';
+
+// Toggle inspector
+DevSettings.toggleElementInspector();
+
+// Enable inspector
+if (__DEV__) {
+  DevSettings.toggleElementInspector();
+}
+```
+
+## Using the Inspector
+
+### Inspecting Elements
+
+<Steps>
+
+<Step title="Tap any element">
+
+Tap any visible UI element in your app.
+
+</Step>
+
+<Step title="View details">
+
+An overlay appears showing:
+- Component name
+- Element dimensions
+- Position (x, y)
+- Style properties
+- Component hierarchy
+
+</Step>
+
+<Step title="Navigate hierarchy">
+
+Tap breadcrumbs at the top to navigate up the component tree.
+
+</Step>
+
+</Steps>
+
+### Inspector Overlay
+
+The inspector shows:
+
+```
+┌────────────────────────────┐
+│ View > Pressable > Text     │  ← Breadcrumbs
+├────────────────────────────┤
+│ Text                         │  ← Component type
+│ x: 20, y: 100                │  ← Position
+│ width: 300, height: 40       │  ← Dimensions
+├────────────────────────────┤
+│ Styles:                      │
+│ • fontSize: 16              │  ← Computed styles
+│ • color: "#000000"          │
+│ • padding: 8                │
+└────────────────────────────┘
+```
+
+## Debugging Layouts
+
+### Layout Boundaries
+
+The inspector highlights element boundaries with colored borders:
+
+```typescript title="app/components/Card.tsx"
+import { View, Text, StyleSheet } from 'react-native';
+
+export function Card({ title, content }: Props) {
+  return (
+    <View style={styles.container}> {/* Blue border in inspector */}
+      <Text style={styles.title}>{title}</Text> {/* Red border */}
+      <Text style={styles.content}>{content}</Text> {/* Red border */}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    // In inspector shows:
+    // padding: 16
+    // backgroundColor: "rgb(255, 255, 255)"
+    // borderRadius: 8
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  content: {
+    fontSize: 14,
+    color: '#666',
+  },
+});
+```
+
+### Flexbox Debugging
+
+Inspect flex layout properties:
+
+```typescript title="app/components/Row.tsx"
+import { View, StyleSheet } from 'react-native';
+
+export function Row({ children }: Props) {
+  return <View style={styles.row}>{children}</View>;
+}
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+    // Inspector shows:
+    // flexDirection: "row"
+    // justifyContent: "space-between"
+    // alignItems: "center"
+    // gap: 12
+  },
+});
+```
+
+### Measuring Dimensions
+
+```typescript
+import { useRef, useEffect } from 'react';
+import { View, findNodeHandle } from 'react-native';
+
+export function MeasuredView() {
+  const ref = useRef<View>(null);
+  
+  useEffect(() => {
+    const node = findNodeHandle(ref.current);
+    
+    ref.current?.measure((x, y, width, height, pageX, pageY) => {
+      console.log('Element measurements:', {
+        x, y, width, height, pageX, pageY
+      });
+      // Same values shown in inspector
+    });
+  }, []);
+  
+  return <View ref={ref} />;
+}
+```
+
+## Style Inspection
+
+### Computed Styles
+
+The inspector shows final computed values:
+
+```typescript
+const styles = StyleSheet.create({
+  text: {
+    color: '#ff0000',        // Shows: "rgb(255, 0, 0)"
+    fontSize: 16,            // Shows: 16
+    padding: 8,              // Shows: 8
+    paddingTop: 12,          // Shows: 12 (overrides padding)
+    margin: '5%',            // Shows: calculated pixel value
+    flex: 1,                 // Shows: 1
+  },
+});
+```
+
+### Style Priority
+
+See which styles are applied when multiple sources exist:
+
+```typescript
+import { Text, StyleSheet } from 'react-native';
+
+// Inspector shows final computed styles
+<Text
+  style={[
+    styles.base,        // Applied first
+    styles.primary,     // Overrides base
+    props.style,        // Overrides primary
+    { color: 'blue' }   // Final override - shown in inspector
+  ]}
+>
+  Hello
+</Text>
+```
+
+### Platform-Specific Styles
+
+```typescript
+import { Platform, StyleSheet } from 'react-native';
+
+const styles = StyleSheet.create({
+  text: {
+    ...Platform.select({
+      ios: {
+        fontFamily: 'System',
+        fontSize: 16,
+      },
+      android: {
+        fontFamily: 'Roboto',
+        fontSize: 14,
+      },
+    }),
+  },
+});
+
+// Inspector shows platform-specific values:
+// iOS: fontFamily: "System", fontSize: 16
+// Android: fontFamily: "Roboto", fontSize: 14
+```
+
+## Component Hierarchy
+
+### Navigation
+
+The breadcrumb trail shows the component tree:
+
+```typescript
+// Component structure:
+<Screen>
+  <ScrollView>
+    <View style={styles.container}>
+      <Card>
+        <Text>Hello</Text>  {/* Tap this */}
+      </Card>
+    </View>
+  </ScrollView>
+</Screen>
+
+// Inspector breadcrumbs:
+Screen > ScrollView > View > Card > Text
+//                                    ↑ Currently selected
+
+// Tap "Card" to inspect the Card component
+// Tap "View" to inspect the container
+```
+
+### Finding Components
+
+```typescript
+import { View, Text } from 'react-native';
+
+// Add testID for easier identification
+<View testID="user-profile-card">
+  <Text testID="user-name">John Doe</Text>
+  <Text testID="user-email">john@example.com</Text>
+</View>
+
+// Inspector shows:
+// View (testID: "user-profile-card")
+// Text (testID: "user-name")
+```
+
+## Advanced Inspection
+
+### Custom Inspector Integration
+
+Extend inspector functionality:
+
+```typescript title="app/components/Inspectable.tsx"
+import { View } from 'react-native';
+
+export function Inspectable({ 
+  children,
+  inspectorData 
+}: {
+  children: React.ReactNode;
+  inspectorData?: Record<string, any>;
+}) {
+  if (__DEV__ && inspectorData) {
+    // Attach custom data for inspector
+    return (
+      <View 
+        {...inspectorData}
+        accessibilityLabel={JSON.stringify(inspectorData)}
+      >
+        {children}
+      </View>
+    );
+  }
+  
+  return <>{children}</>;
+}
+
+// Usage:
+<Inspectable inspectorData={{ userId: 123, role: 'admin' }}>
+  <UserProfile />
+</Inspectable>
+```
+
+### Performance Monitoring
+
+Combine with performance monitor:
+
+```typescript
+import { View } from 'react-native';
+import { DevSettings } from 'react-native';
+
+export function PerformanceInspector({ children }: Props) {
+  useEffect(() => {
+    if (__DEV__) {
+      // Enable both inspector and performance monitor
+      DevSettings.toggleElementInspector();
+      // Shows FPS alongside element inspection
+    }
+  }, []);
+  
+  return <View>{children}</View>;
+}
+```
+
+### Snapshot Testing
+
+Capture inspector state for testing:
+
+```typescript
+import { View, findNodeHandle } from 'react-native';
+
+function captureElementData(ref: React.RefObject<View>) {
+  return new Promise((resolve) => {
+    ref.current?.measure((x, y, width, height, pageX, pageY) => {
+      ref.current?.measureLayout(
+        findNodeHandle(ref.current)!,
+        (left, top) => {
+          resolve({
+            position: { x, y, pageX, pageY },
+            dimensions: { width, height },
+            layout: { left, top },
+          });
+        },
+        () => resolve(null)
+      );
+    });
+  });
+}
+```
+
+## E2E Testing Integration
+
+The inspector's element detection is similar to E2E test selectors.
+
+### With Maestro
+
+```yaml title="e2e/inspector-test.yaml"
+appId: com.example.app
+---
+# Tap element that inspector would highlight
+- tapOn:
+    id: "user-profile-card"
+
+# Assert on properties inspector would show
+- assertVisible:
+    text: "John Doe"
+    
+# Verify dimensions (similar to inspector)
+- extendedWaitUntil:
+    visible:
+      id: "user-avatar"
+    timeout: 5000
+```
+
+### With Detox
+
+```typescript title="e2e/inspector.test.ts"
+describe('Element Inspector', () => {
+  it('should match inspector properties', async () => {
+    // Find element by testID (same as inspector)
+    const element = element(by.id('user-profile-card'));
+    
+    // Verify visible (inspector shows visible elements)
+    await expect(element).toBeVisible();
+    
+    // Get attributes (similar to inspector data)
+    const attributes = await element.getAttributes();
+    expect(attributes.text).toBe('John Doe');
+  });
+});
+```
+
+## Troubleshooting
+
+### Inspector Not Showing
+
+```typescript
+// Check if inspector is enabled
+import { DevSettings } from 'react-native';
+
+if (__DEV__) {
+  // Force enable
+  DevSettings.toggleElementInspector();
+}
+```
+
+### Can't Tap Elements
+
+Ensure elements are tappable:
+
+```typescript
+// Bad: pointerEvents blocks interaction
+<View pointerEvents="none">
+  <Text>Can't inspect me!</Text>
+</View>
+
+// Good: Allow interaction
+<View pointerEvents="auto">
+  <Text>Inspect me!</Text>
+</View>
+```
+
+### Missing Style Information
+
+Some styles may not appear:
+
+```typescript
+// Inline styles are always shown
+<View style={{ padding: 16 }} />
+
+// StyleSheet styles are shown
+<View style={styles.container} />
+
+// Runtime-computed styles may not show
+<View style={{ padding: computePadding() }} />
+```
+
+### Inspector Blocks Interaction
+
+Disable inspector when done:
+
+```typescript
+import { DevSettings } from 'react-native';
+
+// Toggle off
+DevSettings.toggleElementInspector();
+```
+
+## Best Practices
+
+### 1. Use testID for Identification
+
+```typescript
+// Good: Easy to identify in inspector
+<View testID="user-list-item-1">
+  <Text testID="user-name">John</Text>
+</View>
+
+// Bad: Hard to identify
+<View>
+  <Text>John</Text>
+</View>
+```
+
+### 2. Meaningful Component Names
+
+```typescript
+// Good: Shows as "UserProfile" in inspector
+export function UserProfile() {
+  return <View />;
+}
+
+// Bad: Shows as "Anonymous" in inspector
+export default () => <View />;
+```
+
+### 3. Avoid Deeply Nested Styles
+
+```typescript
+// Good: Flat, clear style hierarchy
+const styles = StyleSheet.create({
+  container: { padding: 16 },
+  title: { fontSize: 20 },
+});
+
+// Bad: Hard to trace in inspector
+const getStyles = () => ({
+  container: {
+    ...baseStyles.container,
+    ...Platform.select({ ios: iosStyles }),
+  },
+});
+```
+
+### 4. Document Complex Layouts
+
+```typescript
+/**
+ * UserCard Component
+ * 
+ * Layout structure (for inspector reference):
+ * - Container (flexDirection: row)
+ *   - Avatar (width: 50, height: 50)
+ *   - Content (flex: 1)
+ *     - Name (fontSize: 16, fontWeight: bold)
+ *     - Email (fontSize: 14, color: gray)
+ */
+export function UserCard({ user }: Props) {
+  // Implementation
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="DevTools" icon="wrench" href="/development/devtools">
+    Explore Expo DevTools features
+  </Card>
+  <Card title="Debugging" icon="bug" href="/development/debugging">
+    Learn debugging techniques
+  </Card>
+  <Card title="E2E Testing" icon="flask" href="/development/e2e-testing">
+    Set up end-to-end tests
+  </Card>
+  <Card title="Performance" icon="gauge" href="/development/debugging#performance-debugging">
+    Monitor performance
+  </Card>
+</CardGroup>

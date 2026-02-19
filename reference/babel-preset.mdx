@@ -1,0 +1,656 @@
+---
+title: babel-preset-expo Reference
+description: Complete reference for babel-preset-expo configuration and features.
+---
+
+The `babel-preset-expo` preset is the default Babel preset for Expo projects. It extends React Native's Babel preset with additional features for web support, tree shaking, bundle splitting, and more.
+
+## Installation
+
+```bash
+npm install babel-preset-expo
+```
+
+<Note>
+  This preset is automatically installed with the `expo` package.
+</Note>
+
+## Basic Usage
+
+In your `babel.config.js`:
+
+```js
+module.exports = function (api) {
+  api.cache(true);
+  return {
+    presets: ['babel-preset-expo'],
+  };
+};
+```
+
+## Features
+
+The preset provides:
+
+- **React Native support** - Extends `@react-native/babel-preset`
+- **Web support** - Transforms for React Native Web
+- **TypeScript** - Full TypeScript support
+- **Flow** - Flow type stripping
+- **Decorators** - Class and property decorators
+- **React Compiler** - Automatic React optimization
+- **Reanimated** - Worklets transformation
+- **Tree shaking** - Dead code elimination
+- **Bundle splitting** - Code splitting support
+- **Server Components** - React Server Components
+- **Hermes** - Hermes-specific optimizations
+
+## Configuration Options
+
+### jsxRuntime
+
+<ParamField path="jsxRuntime" type="string" default="automatic">
+  JSX transformation mode.
+  - `automatic` - New JSX transform (no React import needed)
+  - `classic` - Classic JSX transform (requires React import)
+</ParamField>
+
+```js
+module.exports = {
+  presets: [
+    [
+      'babel-preset-expo',
+      {
+        jsxRuntime: 'automatic',
+      },
+    ],
+  ],
+};
+```
+
+**Automatic JSX:**
+
+```tsx
+// No need to import React
+export function App() {
+  return <View><Text>Hello</Text></View>;
+}
+```
+
+**Classic JSX:**
+
+```tsx
+import React from 'react';
+
+export function App() {
+  return <View><Text>Hello</Text></View>;
+}
+```
+
+### jsxImportSource
+
+<ParamField path="jsxImportSource" type="string" default="react">
+  Specifies the import source for JSX functions when using automatic runtime.
+</ParamField>
+
+```js
+module.exports = {
+  presets: [
+    [
+      'babel-preset-expo',
+      {
+        jsxRuntime: 'automatic',
+        jsxImportSource: 'react',
+      },
+    ],
+  ],
+};
+```
+
+Useful for custom JSX implementations like Preact:
+
+```js
+jsxImportSource: 'preact'
+```
+
+### lazyImports
+
+<ParamField path="lazyImports" type="boolean | function | array" default="null">
+  Changes Babel's compiled imports to be lazily evaluated.
+  - `null` - React Native preset handles it
+  - `false` - No lazy imports
+  - `true` - Lazy load all imports except local and side-effect modules
+  - `Array<string>` - Specific modules to lazy load
+  - `(string) => boolean` - Custom function
+</ParamField>
+
+<Note>
+  Only affects native platforms. Web imports are not transformed to preserve tree shaking.
+</Note>
+
+```js
+module.exports = {
+  presets: [
+    [
+      'babel-preset-expo',
+      {
+        lazyImports: true,
+      },
+    ],
+  ],
+};
+```
+
+**Custom function:**
+
+```js
+lazyImports: (modulePath) => {
+  // Lazy load everything except these
+  const excludeList = ['react', 'react-native'];
+  return !excludeList.includes(modulePath);
+}
+```
+
+**Blacklist example:**
+
+```js
+const lazyImportsBlacklist = require('babel-preset-expo/lazy-imports-blacklist');
+
+module.exports = {
+  presets: [
+    [
+      'babel-preset-expo',
+      {
+        lazyImports: (modulePath) => {
+          return !lazyImportsBlacklist.has(modulePath);
+        },
+      },
+    ],
+  ],
+};
+```
+
+### disableImportExportTransform
+
+<ParamField path="disableImportExportTransform" type="boolean">
+  Disable transformation of import/export to `module.exports`.
+</ParamField>
+
+<Warning>
+  Don't set this manually. It's automatically configured by Metro via `caller.supportsStaticESM`.
+</Warning>
+
+```js
+// metro.config.js
+config.transformer.getTransformOptions = async () => ({
+  transform: {
+    experimentalImportSupport: true, // This sets disableImportExportTransform
+  },
+});
+```
+
+### unstable_transformProfile
+
+<ParamField path="unstable_transformProfile" type="string">
+  JavaScript engine profile for optimizations.
+  - `default` - Standard optimizations
+  - `hermes-stable` - Hermes optimizations
+  - `hermes-canary` - Latest Hermes features
+</ParamField>
+
+<Note>
+  Automatically set based on `jsEngine` in app.json (SDK 50+).
+</Note>
+
+```js
+module.exports = {
+  presets: [
+    [
+      'babel-preset-expo',
+      {
+        unstable_transformProfile: 'hermes-stable',
+      },
+    ],
+  ],
+};
+```
+
+### react-compiler
+
+<ParamField path="react-compiler" type="boolean | object" default="false">
+  Configuration for React Compiler (automatic React optimization).
+</ParamField>
+
+<Note>
+  Requires `experiments.reactCompiler: true` in app.json (SDK 51+).
+</Note>
+
+```js
+module.exports = {
+  presets: [
+    [
+      'babel-preset-expo',
+      {
+        'react-compiler': {
+          sources: (filename) => {
+            // Only compile files in src/
+            return filename.includes('src/');
+          },
+        },
+      },
+    ],
+  ],
+};
+```
+
+**Enable for all files:**
+
+```js
+'react-compiler': true
+```
+
+**Disable:**
+
+```js
+'react-compiler': false
+```
+
+### reanimated
+
+<ParamField path="reanimated" type="boolean" default="true">
+  Enable/disable react-native-reanimated plugin.
+</ParamField>
+
+```js
+module.exports = {
+  presets: [
+    [
+      'babel-preset-expo',
+      {
+        reanimated: false, // Disable if not using reanimated
+      },
+    ],
+  ],
+};
+```
+
+<Note>
+  Only active when `react-native-reanimated` is installed.
+</Note>
+
+### worklets
+
+<ParamField path="worklets" type="boolean" default="true">
+  Enable/disable react-native-worklets plugin.
+</ParamField>
+
+```js
+module.exports = {
+  presets: [
+    [
+      'babel-preset-expo',
+      {
+        worklets: true,
+      },
+    ],
+  ],
+};
+```
+
+<Note>
+  Only active when using standalone `react-native-worklets` or `react-native-reanimated` v4+.
+</Note>
+
+### enableBabelRuntime
+
+<ParamField path="enableBabelRuntime" type="boolean">
+  Enable `@babel/plugin-transform-runtime` for helper reuse.
+</ParamField>
+
+Passed to `@react-native/babel-preset`.
+
+### disableFlowStripTypesTransform
+
+<ParamField path="disableFlowStripTypesTransform" type="boolean">
+  Disable Flow type stripping.
+</ParamField>
+
+Passed to `@react-native/babel-preset`.
+
+## Platform-Specific Options
+
+Apply different configurations per platform:
+
+```js
+module.exports = {
+  presets: [
+    [
+      'babel-preset-expo',
+      {
+        // Default for all platforms
+        jsxRuntime: 'automatic',
+        
+        // Native-specific (iOS + Android)
+        native: {
+          lazyImports: true,
+        },
+        
+        // Web-specific
+        web: {
+          disableImportExportTransform: true,
+        },
+      },
+    ],
+  ],
+};
+```
+
+<Note>
+  Platform-specific options override top-level options.
+</Note>
+
+### minifyTypeofWindow
+
+<ParamField path="minifyTypeofWindow" type="boolean">
+  Transform `typeof window` checks for better dead code elimination.
+</ParamField>
+
+```js
+module.exports = {
+  presets: [
+    [
+      'babel-preset-expo',
+      {
+        native: {
+          // Transform: typeof window === 'object' -> false (on native)
+          minifyTypeofWindow: true,
+        },
+      },
+    ],
+  ],
+};
+```
+
+**Default behavior:**
+
+- `true` for server environments
+- `false` for client environments (to support polyfills)
+
+## Included Plugins
+
+The preset includes these Babel plugins:
+
+### Always Active
+
+- `@babel/plugin-syntax-export-default-from`
+- `@babel/plugin-proposal-export-default-from`
+- `@babel/plugin-transform-export-namespace-from`
+- `@babel/plugin-transform-class-static-block`
+- `@babel/plugin-transform-private-methods`
+- `@babel/plugin-transform-private-property-in-object`
+- `@babel/plugin-transform-flow-strip-types`
+- `@babel/plugin-proposal-decorators`
+
+### Conditional
+
+- `babel-plugin-react-compiler` (when configured)
+- `react-native-reanimated/plugin` (when installed)
+- `react-native-worklets/plugin` (when installed)
+- `babel-plugin-react-native-web` (web only)
+- `@babel/plugin-transform-runtime` (when enabled)
+- `@babel/plugin-transform-modules-commonjs` (native only)
+
+## TypeScript Support
+
+The preset includes `@babel/preset-typescript`:
+
+```tsx
+// Works out of the box
+interface Props {
+  name: string;
+}
+
+export function Greeting({ name }: Props) {
+  return <Text>Hello {name}</Text>;
+}
+```
+
+**TypeScript configuration:**
+
+```json
+// tsconfig.json
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true
+  }
+}
+```
+
+## Flow Support
+
+Flow types are automatically stripped:
+
+```js
+// @flow
+function add(a: number, b: number): number {
+  return a + b;
+}
+```
+
+## Decorators
+
+Legacy and modern decorators are supported:
+
+```ts
+function logged(target: any, key: string, descriptor: PropertyDescriptor) {
+  const original = descriptor.value;
+  descriptor.value = function(...args: any[]) {
+    console.log(`Calling ${key} with`, args);
+    return original.apply(this, args);
+  };
+  return descriptor;
+}
+
+class MyClass {
+  @logged
+  myMethod() {
+    // ...
+  }
+}
+```
+
+## React Native Web
+
+Automatic aliasing for React Native Web (web platform):
+
+```tsx
+import { View, Text } from 'react-native';
+// On web, automatically uses react-native-web
+```
+
+## Environment Variables
+
+Access environment variables in your code:
+
+```tsx
+const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+```
+
+<Note>
+  Only variables prefixed with `EXPO_PUBLIC_` are available in your app.
+</Note>
+
+## Server Components
+
+Support for React Server Components:
+
+```tsx
+// app/page.tsx
+export default async function Page() {
+  const data = await fetchData();
+  return <View>{data}</View>;
+}
+```
+
+## Bundle Splitting
+
+Dynamic imports for code splitting:
+
+```tsx
+const Component = React.lazy(() => import('./Component'));
+
+function App() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <Component />
+    </Suspense>
+  );
+}
+```
+
+## Hermes Compilation
+
+Automatic optimizations for Hermes:
+
+- Optimized numeric operations
+- Efficient string concatenation
+- Better memory usage
+
+Set in app.json:
+
+```json
+{
+  "expo": {
+    "jsEngine": "hermes"
+  }
+}
+```
+
+## Debugging
+
+### View Transformed Code
+
+Use Babel's CLI to see transformed output:
+
+```bash
+npx babel src/App.tsx --presets babel-preset-expo
+```
+
+### Cache Issues
+
+Clear Babel cache:
+
+```bash
+rm -rf node_modules/.cache/babel-loader
+npx expo start --clear
+```
+
+## Common Patterns
+
+### Custom Plugins
+
+Add your own Babel plugins:
+
+```js
+module.exports = {
+  presets: ['babel-preset-expo'],
+  plugins: [
+    ['module-resolver', {
+      alias: {
+        '@components': './src/components',
+        '@utils': './src/utils',
+      },
+    }],
+  ],
+};
+```
+
+<Warning>
+  Always place `react-native-reanimated/plugin` last in the plugins array.
+</Warning>
+
+### Optimized Production Build
+
+```js
+module.exports = function(api) {
+  const isProduction = api.env('production');
+  
+  return {
+    presets: [
+      [
+        'babel-preset-expo',
+        {
+          native: {
+            lazyImports: isProduction,
+          },
+        },
+      ],
+    ],
+    plugins: isProduction ? [
+      ['transform-remove-console', { exclude: ['error', 'warn'] }],
+    ] : [],
+  };
+};
+```
+
+## Comparison with React Native Preset
+
+`babel-preset-expo` extends `@react-native/babel-preset` with:
+
+- ✅ Web support via react-native-web
+- ✅ Tree shaking on web
+- ✅ Bundle splitting
+- ✅ React Server Components
+- ✅ Expo DOM components
+- ✅ Better dead code elimination
+- ✅ Environment variable support
+- ✅ React Compiler integration
+
+## Troubleshooting
+
+### Syntax Errors
+
+If you see syntax errors, ensure the preset is first:
+
+```js
+module.exports = {
+  presets: ['babel-preset-expo'], // Must be first
+  plugins: [/* ... */],
+};
+```
+
+### Reanimated Plugin Order
+
+Reanimated plugin must be last:
+
+```js
+module.exports = {
+  presets: ['babel-preset-expo'],
+  plugins: [
+    // Other plugins...
+    'react-native-reanimated/plugin', // MUST BE LAST
+  ],
+};
+```
+
+### Type Stripping Issues
+
+If TypeScript types aren't being removed:
+
+```bash
+# Clear cache and restart
+rm -rf node_modules/.cache
+npx expo start --clear
+```
+
+## Source Code
+
+View the source code on GitHub:
+[babel-preset-expo](https://github.com/expo/expo/tree/main/packages/babel-preset-expo)
+
+## Related Documentation
+
+- [Metro Configuration](/reference/metro-config)
+- [TypeScript](https://docs.expo.dev/guides/typescript/)
+- [Environment Variables](https://docs.expo.dev/guides/environment-variables/)
+- [React Native Reanimated](https://docs.swmansion.com/react-native-reanimated/)

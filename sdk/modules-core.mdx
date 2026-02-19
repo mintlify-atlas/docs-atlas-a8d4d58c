@@ -1,0 +1,405 @@
+---
+title: expo-modules-core
+description: The core architecture for building Expo modules with Swift, Kotlin, and JavaScript
+---
+
+# expo-modules-core
+
+**Version:** 55.0.9
+
+The core of Expo Modules architecture. This package provides the foundational APIs and infrastructure for creating native modules that work seamlessly with React Native and Expo.
+
+## Overview
+
+`expo-modules-core` enables developers to write native modules in Swift (iOS) and Kotlin (Android) with a modern, declarative API. It eliminates boilerplate code and provides automatic type conversion, event handling, and view management.
+
+## Installation
+
+```bash
+npx expo install expo-modules-core
+```
+
+In bare React Native projects:
+
+```bash
+npx install-expo-modules@latest
+```
+
+## Key Features
+
+- **Modern Native APIs**: Write modules in Swift and Kotlin
+- **Type Safety**: Automatic type conversion between JavaScript and native
+- **View Components**: Easy creation of native UI components
+- **Event Handling**: Built-in event emitter system
+- **Shared Objects**: Pass complex objects between JS and native
+- **Auto-Linking**: Automatic module discovery and registration
+
+## Module API Architecture
+
+The module API provides a declarative way to define native functionality:
+
+### iOS (Swift)
+
+```swift
+import ExpoModulesCore
+
+public class MyModule: Module {
+  public func definition() -> ModuleDefinition {
+    Name("MyModule")
+    
+    Constants([
+      "PI": Double.pi
+    ])
+    
+    Function("hello") { (name: String) -> String in
+      return "Hello \(name)!"
+    }
+    
+    AsyncFunction("fetchData") { (url: String) -> [String: Any] in
+      // Async operations
+      return ["data": "example"]
+    }
+    
+    Events("onChange")
+    
+    OnCreate {
+      // Module initialization
+    }
+  }
+}
+```
+
+### Android (Kotlin)
+
+```kotlin
+import expo.modules.kotlin.modules.Module
+import expo.modules.kotlin.modules.ModuleDefinition
+
+class MyModule : Module() {
+  override fun definition() = ModuleDefinition {
+    Name("MyModule")
+    
+    Constants(mapOf(
+      "PI" to Math.PI
+    ))
+    
+    Function("hello") { name: String ->
+      "Hello $name!"
+    }
+    
+    AsyncFunction("fetchData") { url: String ->
+      // Async operations
+      mapOf("data" to "example")
+    }
+    
+    Events("onChange")
+    
+    OnCreate {
+      // Module initialization
+    }
+  }
+}
+```
+
+### JavaScript Usage
+
+```typescript
+import { NativeModules } from 'react-native';
+
+const { MyModule } = NativeModules;
+
+// Call synchronous function
+const greeting = MyModule.hello('World');
+
+// Call async function
+const data = await MyModule.fetchData('https://api.example.com');
+
+// Access constants
+const pi = MyModule.PI;
+```
+
+## Creating Native View Components
+
+### iOS View (Swift)
+
+```swift
+import ExpoModulesCore
+import UIKit
+
+public class MyView: ExpoView {
+  let label = UILabel()
+  
+  required init(appContext: AppContext? = nil) {
+    super.init(appContext: appContext)
+    addSubview(label)
+  }
+}
+
+public class MyViewModule: Module {
+  public func definition() -> ModuleDefinition {
+    Name("MyView")
+    
+    View(MyView.self) {
+      Prop("text") { (view: MyView, text: String) in
+        view.label.text = text
+      }
+      
+      Events("onPress")
+    }
+  }
+}
+```
+
+### Android View (Kotlin)
+
+```kotlin
+import android.content.Context
+import android.widget.TextView
+import expo.modules.kotlin.views.ExpoView
+
+class MyView(context: Context) : ExpoView(context) {
+  val textView = TextView(context).also {
+    addView(it)
+  }
+}
+
+class MyViewModule : Module() {
+  override fun definition() = ModuleDefinition {
+    Name("MyView")
+    
+    View(MyView::class) {
+      Prop("text") { view: MyView, text: String ->
+        view.textView.text = text
+      }
+      
+      Events("onPress")
+    }
+  }
+}
+```
+
+### React Component
+
+```tsx
+import { requireNativeViewManager } from 'expo-modules-core';
+import React from 'react';
+import { ViewProps } from 'react-native';
+
+const NativeView = requireNativeViewManager('MyView');
+
+interface MyViewProps extends ViewProps {
+  text?: string;
+  onPress?: () => void;
+}
+
+export function MyView(props: MyViewProps) {
+  return <NativeView {...props} />;
+}
+```
+
+## Event Handling
+
+### Native Event Emission
+
+**iOS:**
+```swift
+AsyncFunction("startListening") {
+  sendEvent("onChange", ["status": "active"])
+}
+```
+
+**Android:**
+```kotlin
+AsyncFunction("startListening") {
+  sendEvent("onChange", mapOf("status" to "active"))
+}
+```
+
+### JavaScript Event Subscription
+
+```typescript
+import { EventEmitter } from 'expo-modules-core';
+import { NativeModules } from 'react-native';
+
+const emitter = new EventEmitter(NativeModules.MyModule);
+
+const subscription = emitter.addListener('onChange', (event) => {
+  console.log('Status:', event.status);
+});
+
+// Clean up
+subscription.remove();
+```
+
+## Shared Objects
+
+Shared Objects allow passing complex, stateful objects between JavaScript and native code:
+
+### Native Implementation (Swift)
+
+```swift
+class DataProcessor: SharedObject {
+  var data: [String: Any] = [:]
+  
+  func process() -> String {
+    return "Processed"
+  }
+}
+
+public class ProcessorModule: Module {
+  public func definition() -> ModuleDefinition {
+    Name("Processor")
+    
+    Class(DataProcessor.self) {
+      Constructor { () -> DataProcessor in
+        return DataProcessor()
+      }
+      
+      Function("process") { (processor: DataProcessor) -> String in
+        return processor.process()
+      }
+    }
+  }
+}
+```
+
+### JavaScript Usage
+
+```typescript
+const processor = new ProcessorModule.DataProcessor();
+const result = ProcessorModule.process(processor);
+```
+
+## Type Conversions
+
+Automatic type conversion between JavaScript and native:
+
+| JavaScript | Swift | Kotlin |
+|------------|-------|--------|
+| `string` | `String` | `String` |
+| `number` | `Double`, `Int` | `Double`, `Int` |
+| `boolean` | `Bool` | `Boolean` |
+| `object` | `[String: Any]` | `Map<String, Any>` |
+| `array` | `[Any]` | `List<Any>` |
+| `null` | `nil` | `null` |
+| `Promise` | `Promise` | `Promise` |
+
+## Lifecycle Methods
+
+```swift
+public func definition() -> ModuleDefinition {
+  OnCreate {
+    // Module created
+  }
+  
+  OnDestroy {
+    // Module destroyed
+  }
+  
+  OnAppEntersForeground {
+    // App resumed
+  }
+  
+  OnAppEntersBackground {
+    // App backgrounded
+  }
+}
+```
+
+## Error Handling
+
+### Throwing Errors (Swift)
+
+```swift
+AsyncFunction("validateInput") { (input: String) throws -> Bool in
+  if input.isEmpty {
+    throw Exception(name: "InvalidInput", description: "Input cannot be empty")
+  }
+  return true
+}
+```
+
+### Catching Errors (JavaScript)
+
+```typescript
+try {
+  await MyModule.validateInput('');
+} catch (error) {
+  console.error(error.code); // "InvalidInput"
+  console.error(error.message); // "Input cannot be empty"
+}
+```
+
+## Creating Custom Modules
+
+### 1. Create Module Package
+
+```bash
+npx create-expo-module my-module
+cd my-module
+```
+
+### 2. Implement Native Code
+
+Edit `ios/MyModule.swift` and `android/src/main/java/expo/modules/mymodule/MyModule.kt`
+
+### 3. Export JavaScript API
+
+Create `src/index.ts`:
+
+```typescript
+import { NativeModules } from 'react-native';
+
+const MyModule = NativeModules.MyModule;
+
+export function hello(name: string): string {
+  return MyModule.hello(name);
+}
+```
+
+### 4. Test & Publish
+
+```bash
+npm test
+npm publish
+```
+
+## API Reference
+
+### Module Definition
+
+<ParamField path="Name" type="string" required>
+  The name of the module as it appears in JavaScript
+</ParamField>
+
+<ParamField path="Constants" type="object">
+  Static values exported to JavaScript
+</ParamField>
+
+<ParamField path="Function" type="function">
+  Synchronous function callable from JavaScript
+</ParamField>
+
+<ParamField path="AsyncFunction" type="function">
+  Asynchronous function that returns a Promise
+</ParamField>
+
+<ParamField path="Events" type="string[]">
+  List of event names this module can emit
+</ParamField>
+
+### View Definition
+
+<ParamField path="Prop" type="property">
+  Defines a prop that can be set from React
+</ParamField>
+
+<ParamField path="Events" type="string[]">
+  Events that the view can emit
+</ParamField>
+
+## Resources
+
+- [Module API Reference](https://docs.expo.dev/modules/module-api/)
+- [Creating Native Modules](https://docs.expo.dev/modules/overview/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-modules-core)

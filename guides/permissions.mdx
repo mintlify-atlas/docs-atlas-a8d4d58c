@@ -1,0 +1,632 @@
+---
+title: "Permissions"
+description: "Request and manage runtime permissions for iOS and Android in your Expo app"
+---
+
+## Overview
+
+Modern mobile apps require explicit user permission to access sensitive features like camera, location, and notifications. This guide shows you how to properly request and handle permissions across platforms.
+
+## Permission Types
+
+Common permissions in Expo apps:
+
+- **Camera**: Take photos and videos
+- **Microphone**: Record audio
+- **Location**: Access device location
+- **Notifications**: Send push notifications
+- **Photos/Media Library**: Access saved photos
+- **Contacts**: Access user contacts
+- **Calendar**: Access calendar events
+- **Reminders**: Access iOS reminders
+
+## Installation
+
+Most Expo SDK packages include their own permission methods:
+
+```bash
+npx expo install expo-camera expo-location expo-notifications expo-media-library
+```
+
+## Requesting Permissions
+
+### Basic pattern
+
+All Expo permission APIs follow a similar pattern:
+
+```typescript
+import * as Camera from 'expo-camera';
+
+async function requestCameraPermission() {
+  // Check current status
+  const { status: existingStatus } = await Camera.getCameraPermissionsAsync();
+  
+  let finalStatus = existingStatus;
+  
+  // Request if not already granted
+  if (existingStatus !== 'granted') {
+    const { status } = await Camera.requestCameraPermissionsAsync();
+    finalStatus = status;
+  }
+  
+  // Handle the result
+  if (finalStatus !== 'granted') {
+    alert('Camera permission is required to take photos');
+    return false;
+  }
+  
+  return true;
+}
+```
+
+### Permission hook
+
+Create a reusable hook for any permission:
+
+```typescript hooks/usePermission.ts
+import { useState, useEffect } from 'react';
+import { PermissionResponse } from 'expo-modules-core';
+
+type PermissionHook = {
+  getAsync: () => Promise<PermissionResponse>;
+  requestAsync: () => Promise<PermissionResponse>;
+};
+
+export function usePermission(permission: PermissionHook) {
+  const [status, setStatus] = useState<PermissionResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const result = await permission.getAsync();
+      setStatus(result);
+      setLoading(false);
+    })();
+  }, []);
+
+  const request = async () => {
+    setLoading(true);
+    const result = await permission.requestAsync();
+    setStatus(result);
+    setLoading(false);
+    return result;
+  };
+
+  return {
+    status: status?.status,
+    granted: status?.status === 'granted',
+    canAskAgain: status?.canAskAgain,
+    loading,
+    request,
+  };
+}
+```
+
+Usage:
+
+```typescript components/CameraButton.tsx
+import * as Camera from 'expo-camera';
+import { usePermission } from '../hooks/usePermission';
+
+export function CameraButton() {
+  const camera = usePermission(Camera.useCameraPermissions());
+
+  const handlePress = async () => {
+    if (!camera.granted) {
+      const result = await camera.request();
+      if (!result.granted) {
+        alert('Camera permission is required');
+        return;
+      }
+    }
+    
+    // Open camera
+    openCamera();
+  };
+
+  return (
+    <Button 
+      onPress={handlePress}
+      title={camera.granted ? 'Take Photo' : 'Allow Camera Access'}
+    />
+  );
+}
+```
+
+## Common Permissions
+
+<Tabs>
+  <Tab title="Camera">
+    ```typescript
+    import * as Camera from 'expo-camera';
+
+    async function takePicture() {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        alert('Sorry, we need camera permissions to take photos!');
+        return;
+      }
+      
+      // Use camera
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 1,
+      });
+    }
+    ```
+  </Tab>
+
+  <Tab title="Location">
+    ```typescript
+    import * as Location from 'expo-location';
+
+    async function getLocation() {
+      // Request foreground permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      
+      if (status !== 'granted') {
+        alert('Permission to access location was denied');
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      console.log(location);
+    }
+
+    // For background location (iOS/Android 10+)
+    async function requestBackgroundLocation() {
+      const { status: foregroundStatus } = 
+        await Location.requestForegroundPermissionsAsync();
+      
+      if (foregroundStatus === 'granted') {
+        const { status: backgroundStatus } = 
+          await Location.requestBackgroundPermissionsAsync();
+        
+        return backgroundStatus === 'granted';
+      }
+      
+      return false;
+    }
+    ```
+  </Tab>
+
+  <Tab title="Media Library">
+    ```typescript
+    import * as MediaLibrary from 'expo-media-library';
+
+    async function savePhoto(uri: string) {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      
+      if (status !== 'granted') {
+        alert('Permission to access media library is required');
+        return;
+      }
+
+      await MediaLibrary.saveToLibraryAsync(uri);
+      alert('Photo saved!');
+    }
+
+    async function getPhotos() {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      
+      if (status === 'granted') {
+        const { assets } = await MediaLibrary.getAssetsAsync({
+          first: 20,
+          mediaType: 'photo',
+        });
+        
+        return assets;
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Notifications">
+    ```typescript
+    import * as Notifications from 'expo-notifications';
+
+    async function registerForPushNotifications() {
+      const { status: existingStatus } = 
+        await Notifications.getPermissionsAsync();
+      
+      let finalStatus = existingStatus;
+      
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      
+      if (finalStatus !== 'granted') {
+        alert('Failed to get push notification permissions');
+        return;
+      }
+      
+      const token = await Notifications.getExpoPushTokenAsync();
+      return token.data;
+    }
+    ```
+  </Tab>
+
+  <Tab title="Contacts">
+    ```typescript
+    import * as Contacts from 'expo-contacts';
+
+    async function getContacts() {
+      const { status } = await Contacts.requestPermissionsAsync();
+      
+      if (status !== 'granted') {
+        alert('Permission to access contacts was denied');
+        return;
+      }
+
+      const { data } = await Contacts.getContactsAsync({
+        fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Emails],
+      });
+      
+      return data;
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Permission States
+
+### Understanding permission status
+
+```typescript
+type PermissionStatus = 
+  | 'undetermined'  // Not yet asked
+  | 'denied'        // User denied
+  | 'granted'       // User granted
+  | 'restricted';   // OS restriction (iOS)
+```
+
+### Handling different states
+
+```typescript
+async function handlePermission() {
+  const { status, canAskAgain } = await Location.getForegroundPermissionsAsync();
+
+  switch (status) {
+    case 'granted':
+      // Permission granted, proceed
+      return true;
+      
+    case 'undetermined':
+      // First time, ask for permission
+      const result = await Location.requestForegroundPermissionsAsync();
+      return result.status === 'granted';
+      
+    case 'denied':
+      if (canAskAgain) {
+        // Can ask again
+        const result = await Location.requestForegroundPermissionsAsync();
+        return result.status === 'granted';
+      } else {
+        // User selected "Don't ask again", direct to settings
+        Alert.alert(
+          'Permission Required',
+          'Please enable location access in Settings',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ]
+        );
+        return false;
+      }
+      
+    case 'restricted':
+      // OS restriction (parental controls, etc.)
+      Alert.alert(
+        'Access Restricted',
+        'Location access is restricted on this device'
+      );
+      return false;
+  }
+}
+```
+
+## Platform Differences
+
+<Tabs>
+  <Tab title="iOS">
+    ### iOS-specific considerations
+
+    **Permission descriptions required:**
+    
+    Add usage descriptions in `app.json`:
+
+    ```json app.json
+    {
+      "expo": {
+        "ios": {
+          "infoPlist": {
+            "NSCameraUsageDescription": "This app uses the camera to take photos for your profile.",
+            "NSMicrophoneUsageDescription": "This app uses the microphone to record videos.",
+            "NSLocationWhenInUseUsageDescription": "This app uses your location to show nearby places.",
+            "NSLocationAlwaysAndWhenInUseUsageDescription": "This app uses your location to track your runs.",
+            "NSPhotoLibraryUsageDescription": "This app accesses your photos to let you share them.",
+            "NSPhotoLibraryAddUsageDescription": "This app saves photos to your library.",
+            "NSCalendarsUsageDescription": "This app needs access to your calendar.",
+            "NSRemindersUsageDescription": "This app needs access to your reminders.",
+            "NSContactsUsageDescription": "This app needs access to your contacts."
+          }
+        }
+      }
+    }
+    ```
+
+    <Warning>
+      Your app will crash if you request a permission without the corresponding usage description.
+    </Warning>
+
+    **Permission timing:**
+    - iOS only allows asking twice
+    - After second denial, must use Settings
+    - "Don't Allow" vs "Ask Next Time"
+
+    **Location precision (iOS 14+):**
+    ```typescript
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    
+    // Check if precise location is enabled
+    const accuracy = await Location.getProviderStatusAsync();
+    console.log(accuracy.locationServicesEnabled);
+    ```
+  </Tab>
+
+  <Tab title="Android">
+    ### Android-specific considerations
+
+    **Permission declarations:**
+
+    Add permissions in `app.json`:
+
+    ```json app.json
+    {
+      "expo": {
+        "android": {
+          "permissions": [
+            "CAMERA",
+            "RECORD_AUDIO",
+            "ACCESS_FINE_LOCATION",
+            "ACCESS_COARSE_LOCATION",
+            "READ_EXTERNAL_STORAGE",
+            "WRITE_EXTERNAL_STORAGE",
+            "READ_CONTACTS",
+            "READ_CALENDAR",
+            "WRITE_CALENDAR"
+          ]
+        }
+      }
+    }
+    ```
+
+    **Android 10+ scoped storage:**
+    ```json app.json
+    {
+      "expo": {
+        "android": {
+          "requestLegacyExternalStorage": true
+        }
+      }
+    }
+    ```
+
+    **Android 11+ (API 30) background location:**
+    ```typescript
+    // Must request foreground first
+    const { status: foreground } = 
+      await Location.requestForegroundPermissionsAsync();
+    
+    if (foreground === 'granted') {
+      // Then request background
+      const { status: background } = 
+        await Location.requestBackgroundPermissionsAsync();
+    }
+    ```
+
+    **Notification channels (Android 8+):**
+    ```typescript
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'Default',
+        importance: Notifications.AndroidImportance.MAX,
+      });
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Best Practices
+
+### 1. Request permissions in context
+
+```typescript
+// Bad: Request all permissions upfront
+useEffect(() => {
+  requestAllPermissions();
+}, []);
+
+// Good: Request when needed
+function handleTakePhoto() {
+  requestCameraPermission().then(granted => {
+    if (granted) openCamera();
+  });
+}
+```
+
+### 2. Explain why you need permission
+
+```typescript
+function PermissionPrompt() {
+  return (
+    <View>
+      <Text>We need access to your camera to:</Text>
+      <Text>• Take profile photos</Text>
+      <Text>• Scan QR codes</Text>
+      <Text>• Upload documents</Text>
+      <Button onPress={requestPermission} title="Allow Camera Access" />
+    </View>
+  );
+}
+```
+
+### 3. Handle all permission states
+
+```typescript
+function LocationPermissionScreen() {
+  const { status, request } = usePermission(Location.useForegroundPermissions());
+
+  if (status === 'granted') {
+    return <MapView />;
+  }
+
+  if (status === 'denied') {
+    return (
+      <View>
+        <Text>Location access was denied</Text>
+        <Button onPress={() => Linking.openSettings()} title="Open Settings" />
+      </View>
+    );
+  }
+
+  return (
+    <View>
+      <Text>We need your location to show nearby places</Text>
+      <Button onPress={request} title="Allow Location Access" />
+    </View>
+  );
+}
+```
+
+### 4. Graceful degradation
+
+```typescript
+async function shareWithContacts() {
+  const { status } = await Contacts.requestPermissionsAsync();
+  
+  if (status === 'granted') {
+    // Show contact picker
+    const contacts = await Contacts.getContactsAsync();
+    return contacts;
+  } else {
+    // Fallback: manual phone number entry
+    return showPhoneNumberInput();
+  }
+}
+```
+
+### 5. Check before requesting
+
+```typescript
+async function ensurePermission() {
+  // Check current status first
+  const { status } = await Camera.getCameraPermissionsAsync();
+  
+  if (status === 'granted') {
+    return true;
+  }
+  
+  // Only request if needed
+  const { status: newStatus } = await Camera.requestCameraPermissionsAsync();
+  return newStatus === 'granted';
+}
+```
+
+## Debugging Permissions
+
+### Log permission status
+
+```typescript
+async function debugPermissions() {
+  const camera = await Camera.getCameraPermissionsAsync();
+  const location = await Location.getForegroundPermissionsAsync();
+  const notifications = await Notifications.getPermissionsAsync();
+  
+  console.log('Permissions:', {
+    camera: camera.status,
+    location: location.status,
+    notifications: notifications.status,
+  });
+}
+```
+
+### Reset permissions (development)
+
+<Tabs>
+  <Tab title="iOS">
+    ```bash
+    # Simulator
+    xcrun simctl privacy booted reset all com.company.myapp
+    
+    # Or: Settings > General > Reset > Reset Location & Privacy
+    ```
+  </Tab>
+
+  <Tab title="Android">
+    ```bash
+    # Uninstall and reinstall
+    adb uninstall com.company.myapp
+    
+    # Or: Settings > Apps > MyApp > Permissions > Reset
+    ```
+  </Tab>
+</Tabs>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="App crashes when requesting permission">
+    **iOS:** Ensure you've added the usage description to `app.json`:
+    ```json
+    "NSCameraUsageDescription": "This app needs camera access"
+    ```
+    
+    Rebuild after adding: `npx expo prebuild --clean`
+  </Accordion>
+
+  <Accordion title="Permission denied without showing prompt">
+    - User previously denied with "Don't ask again" (Android)
+    - User denied twice already (iOS)
+    - Direct user to Settings with `Linking.openSettings()`
+  </Accordion>
+
+  <Accordion title="Permission granted but feature not working">
+    - Check for additional permissions (e.g., location + background location)
+    - Verify device settings (Location Services enabled)
+    - Check for OS restrictions (parental controls)
+  </Accordion>
+
+  <Accordion title="Permission prompt not appearing">
+    - Verify you're calling `requestAsync()` not just `getAsync()`
+    - Check permission isn't already granted or permanently denied
+    - Ensure you've declared the permission in app.json (Android)
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  Always rebuild your app after modifying permissions in app.json: `npx expo prebuild --clean`
+</Warning>
+
+## Permission Reference
+
+Quick reference for common permission methods:
+
+| Feature | Package | Get Permission | Request Permission |
+|---------|---------|----------------|-------------------|
+| Camera | expo-camera | `getCameraPermissionsAsync()` | `requestCameraPermissionsAsync()` |
+| Location | expo-location | `getForegroundPermissionsAsync()` | `requestForegroundPermissionsAsync()` |
+| Media Library | expo-media-library | `getPermissionsAsync()` | `requestPermissionsAsync()` |
+| Notifications | expo-notifications | `getPermissionsAsync()` | `requestPermissionsAsync()` |
+| Audio | expo-av | `getPermissionsAsync()` | `requestPermissionsAsync()` |
+| Contacts | expo-contacts | `getPermissionsAsync()` | `requestPermissionsAsync()` |
+| Calendar | expo-calendar | `getCalendarPermissionsAsync()` | `requestCalendarPermissionsAsync()` |
+
+## Related Resources
+
+- [Expo Permissions API](https://docs.expo.dev/versions/latest/sdk/permissions/)
+- [iOS Permission Guidelines](https://developer.apple.com/design/human-interface-guidelines/permissions)
+- [Android Permissions Guide](https://developer.android.com/guide/topics/permissions/overview)
+- [Privacy Best Practices](https://docs.expo.dev/guides/permissions/)

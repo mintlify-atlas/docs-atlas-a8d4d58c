@@ -1,0 +1,538 @@
+---
+title: Creating Development Builds
+description: Create development builds locally or in the cloud with EAS Build.
+---
+
+Development builds can be created either locally on your machine or in the cloud using EAS Build. Both methods produce the same result - a debug build with `expo-dev-client` installed.
+
+## Prerequisites
+
+<Steps>
+
+<Step title="Install expo-dev-client">
+
+```bash
+npx expo install expo-dev-client
+```
+
+This package provides the dev client UI and enhanced debugging tools.
+
+</Step>
+
+<Step title="Configure your app">
+
+Ensure your `app.json` has the required fields:
+
+```json title="app.json"
+{
+  "expo": {
+    "name": "My App",
+    "slug": "my-app",
+    "version": "1.0.0",
+    "ios": {
+      "bundleIdentifier": "com.mycompany.myapp"
+    },
+    "android": {
+      "package": "com.mycompany.myapp"
+    }
+  }
+}
+```
+
+</Step>
+
+</Steps>
+
+## Local Builds
+
+Local builds are created on your development machine using native build tools.
+
+### iOS Local Builds
+
+<Info>Requires macOS with Xcode installed</Info>
+
+```bash
+# Generate native iOS project and build
+npx expo run:ios
+
+# Build for specific simulator
+npx expo run:ios --simulator="iPhone 15 Pro"
+
+# Build for physical device
+npx expo run:ios --device
+
+# Specify configuration
+npx expo run:ios --configuration Release
+```
+
+#### Device Selection
+
+The CLI will prompt you to select a device:
+
+```bash
+› Select a simulator or device
+❯ iPhone 15 Pro (simulator)
+  iPhone 14 (simulator)
+  My iPhone (device) - connected via USB
+```
+
+#### Automatic Signing
+
+For physical devices, ensure you have a development team configured:
+
+```bash
+# Set your Apple Team ID
+export APPLE_TEAM_ID=YOUR_TEAM_ID
+
+# Or create a .env.local file
+echo "APPLE_TEAM_ID=YOUR_TEAM_ID" > .env.local
+```
+
+### Android Local Builds
+
+<Info>Requires Android Studio and Android SDK</Info>
+
+```bash
+# Generate native Android project and build
+npx expo run:android
+
+# Build for specific device/emulator
+npx expo run:android --device
+
+# Build specific variant
+npx expo run:android --variant debug
+npx expo run:android --variant release
+```
+
+#### Device Selection
+
+```bash
+› Select a device/emulator
+❯ Pixel_7_Pro_API_36 (emulator)
+  sdk_gphone64_arm64 (emulator) - running
+  SM-G998U (device) - connected via USB
+```
+
+#### Gradle Configuration
+
+Customize the build in `android/gradle.properties`:
+
+```properties title="android/gradle.properties"
+org.gradle.jvmargs=-Xmx4096m
+android.useAndroidX=true
+android.enableJetifier=true
+```
+
+### Local Build Process
+
+When you run `npx expo run:ios` or `npx expo run:android`:
+
+<Steps>
+
+<Step title="Prebuild (if needed)">
+
+If native directories don't exist, runs `npx expo prebuild`:
+
+```bash
+› Compiling app
+› Generating native code for ios
+› Installing dependencies
+```
+
+</Step>
+
+<Step title="Install dependencies">
+
+Installs native dependencies:
+- iOS: Runs `pod install`
+- Android: Syncs Gradle dependencies
+
+</Step>
+
+<Step title="Build native project">
+
+Invokes native build tools:
+- iOS: `xcodebuild` with your scheme
+- Android: `./gradlew` with specified variant
+
+</Step>
+
+<Step title="Install and launch">
+
+Installs the app on the selected device and launches it.
+
+</Step>
+
+</Steps>
+
+## Cloud Builds with EAS Build
+
+EAS Build creates your app in the cloud - no Xcode or Android Studio required.
+
+### Setup
+
+<Steps>
+
+<Step title="Install EAS CLI">
+
+```bash
+npm install -g eas-cli
+eas login
+```
+
+</Step>
+
+<Step title="Configure EAS Build">
+
+```bash
+eas build:configure
+```
+
+This creates `eas.json`:
+
+```json title="eas.json"
+{
+  "cli": {
+    "version": ">= 0.52.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleDebug"
+      }
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "ios": {
+        "resourceClass": "m-medium"
+      }
+    }
+  }
+}
+```
+
+</Step>
+
+</Steps>
+
+### Building
+
+```bash
+# Build for both platforms
+eas build --profile development
+
+# Build for specific platform
+eas build --profile development --platform ios
+eas build --profile development --platform android
+
+# Build for local installation
+eas build --profile development --platform ios --local
+```
+
+### Build Profiles
+
+Customize builds for different scenarios:
+
+<CodeGroup>
+
+```json title="Development (default)"
+{
+  "development": {
+    "developmentClient": true,
+    "distribution": "internal",
+    "ios": {
+      "simulator": true,
+      "buildConfiguration": "Debug"
+    }
+  }
+}
+```
+
+```json title="Physical Devices"
+{
+  "development-device": {
+    "extends": "development",
+    "ios": {
+      "simulator": false
+    },
+    "android": {
+      "buildType": "apk"
+    }
+  }
+}
+```
+
+```json title="Team Distribution"
+{
+  "development-team": {
+    "extends": "development",
+    "ios": {
+      "simulator": false,
+      "enterpriseProvisioning": "adhoc"
+    }
+  }
+}
+```
+
+</CodeGroup>
+
+### Resource Classes
+
+Choose the right machine size:
+
+```json title="eas.json"
+{
+  "build": {
+    "development": {
+      "ios": {
+        "resourceClass": "m-medium"  // or "m-large" for faster builds
+      },
+      "android": {
+        "resourceClass": "large"     // or "medium"
+      }
+    }
+  }
+}
+```
+
+<table>
+  <thead>
+    <tr>
+      <th>Class</th>
+      <th>CPU</th>
+      <th>RAM</th>
+      <th>Build Time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>medium</td>
+      <td>4 cores</td>
+      <td>8 GB</td>
+      <td>~10-15 min</td>
+    </tr>
+    <tr>
+      <td>large</td>
+      <td>8 cores</td>
+      <td>16 GB</td>
+      <td>~5-8 min</td>
+    </tr>
+  </tbody>
+</table>
+
+### Environment Variables
+
+Pass secrets to builds:
+
+```json title="eas.json"
+{
+  "build": {
+    "development": {
+      "env": {
+        "API_URL": "https://dev-api.example.com",
+        "SENTRY_DSN": "$SENTRY_DSN"
+      }
+    }
+  }
+}
+```
+
+Set secrets:
+
+```bash
+eas secret:create --name SENTRY_DSN --value "your-dsn-here"
+```
+
+## Configuration
+
+### Build Properties
+
+Customize native build settings with `expo-build-properties`:
+
+```bash
+npx expo install expo-build-properties
+```
+
+```json title="app.json"
+{
+  "expo": {
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "minSdkVersion": 24,
+            "buildToolsVersion": "34.0.0",
+            "kotlinVersion": "1.9.0",
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          },
+          "ios": {
+            "deploymentTarget": "13.4",
+            "useFrameworks": "static"
+          }
+        }
+      ]
+    ]
+  }
+}
+```
+
+### Custom Plugins
+
+Modify native projects with config plugins:
+
+```json title="app.json"
+{
+  "expo": {
+    "plugins": [
+      "expo-camera",
+      ["expo-image-picker", {
+        "photosPermission": "Allow $(PRODUCT_NAME) to access your photos"
+      }],
+      "./plugins/withCustomPlugin.js"
+    ]
+  }
+}
+```
+
+## Managing Builds
+
+### Build Cache
+
+Speed up builds by caching dependencies:
+
+```json title="eas.json"
+{
+  "build": {
+    "development": {
+      "cache": {
+        "paths": [
+          "node_modules",
+          "ios/Pods",
+          "android/.gradle"
+        ]
+      }
+    }
+  }
+}
+```
+
+### Clean Builds
+
+Force a clean build when needed:
+
+```bash
+# EAS Build
+eas build --profile development --clear-cache
+
+# Local builds
+npx expo run:ios --clean
+npx expo run:android --clean
+```
+
+### Viewing Builds
+
+```bash
+# List all builds
+eas build:list
+
+# Filter by profile
+eas build:list --profile development
+
+# View build details
+eas build:view <build-id>
+```
+
+## Troubleshooting
+
+### iOS Build Fails: Signing Issues
+
+```bash
+error: No signing certificate "iOS Development" found
+```
+
+**Solution:** Ensure you're logged into the correct Apple account:
+
+```bash
+eas device:create
+```
+
+### Android Build Fails: Out of Memory
+
+```bash
+Error: OutOfMemoryError: Java heap space
+```
+
+**Solution:** Increase Gradle memory:
+
+```json title="eas.json"
+{
+  "build": {
+    "development": {
+      "android": {
+        "gradleCommand": ":app:assembleDebug",
+        "env": {
+          "GRADLE_OPTS": "-Xmx4096m"
+        }
+      }
+    }
+  }
+}
+```
+
+### Local Build: Command Not Found
+
+```bash
+Command not found: xcodebuild
+```
+
+**Solution:** Install Xcode command line tools:
+
+```bash
+xcode-select --install
+```
+
+### Slow Builds
+
+Improve build times:
+
+1. Use larger resource class (EAS Build)
+2. Enable caching
+3. Minimize dependencies
+4. Use Hermes engine:
+
+```json title="app.json"
+{
+  "expo": {
+    "jsEngine": "hermes"
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Install on Devices" icon="mobile" href="/development/installation">
+    Install your development build on physical devices
+  </Card>
+  <Card title="Start Developing" icon="code" href="/development/debugging">
+    Learn how to debug your app
+  </Card>
+  <Card title="Build Properties" icon="gear" href="/development/build-properties">
+    Customize native build settings
+  </Card>
+  <Card title="Prebuild" icon="folder" href="/development/prebuild">
+    Understand the prebuild workflow
+  </Card>
+</CardGroup>

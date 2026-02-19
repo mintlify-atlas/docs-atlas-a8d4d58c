@@ -1,0 +1,726 @@
+---
+title: "TypeScript"
+description: "Set up and use TypeScript in your Expo app with typed routes, strict type checking, and best practices"
+---
+
+## Overview
+
+TypeScript provides type safety, better IDE support, and improved code quality. Expo has first-class TypeScript support with automatic configuration.
+
+## Setup
+
+### New projects
+
+Create an Expo app with TypeScript:
+
+```bash
+npx create-expo-app@latest my-app --template blank-typescript
+```
+
+### Existing projects
+
+<Steps>
+  <Step title="Rename a file to .tsx">
+    ```bash
+    mv App.js App.tsx
+    ```
+  </Step>
+
+  <Step title="Start the dev server">
+    ```bash
+    npx expo start
+    ```
+    
+    Expo automatically creates `tsconfig.json` and installs TypeScript dependencies.
+  </Step>
+
+  <Step title="Install type definitions">
+    ```bash
+    npm install --save-dev @types/react @types/react-native
+    ```
+  </Step>
+</Steps>
+
+## TypeScript Configuration
+
+### Basic tsconfig.json
+
+Expo generates this automatically:
+
+```json tsconfig.json
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
+}
+```
+
+### Strict mode configuration
+
+For better type safety:
+
+```json tsconfig.json
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
+  }
+}
+```
+
+### Path aliases
+
+```json tsconfig.json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "@components/*": ["./components/*"],
+      "@utils/*": ["./utils/*"],
+      "@hooks/*": ["./hooks/*"],
+      "@types/*": ["./types/*"]
+    }
+  }
+}
+```
+
+Usage:
+
+```typescript
+// Before
+import { Button } from '../../../components/Button';
+
+// After
+import { Button } from '@components/Button';
+```
+
+## Component Types
+
+### Functional components
+
+```typescript components/Button.tsx
+import { TouchableOpacity, Text, StyleSheet, TouchableOpacityProps } from 'react-native';
+
+type ButtonProps = TouchableOpacityProps & {
+  title: string;
+  variant?: 'primary' | 'secondary';
+  onPress: () => void;
+};
+
+export function Button({ title, variant = 'primary', onPress, ...props }: ButtonProps) {
+  return (
+    <TouchableOpacity
+      style={[styles.button, styles[variant]]}
+      onPress={onPress}
+      {...props}
+    >
+      <Text style={styles.text}>{title}</Text>
+    </TouchableOpacity>
+  );
+}
+
+const styles = StyleSheet.create({
+  button: {
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  primary: {
+    backgroundColor: '#007AFF',
+  },
+  secondary: {
+    backgroundColor: '#8E8E93',
+  },
+  text: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
+```
+
+### With children
+
+```typescript components/Card.tsx
+import { View, StyleSheet, ViewProps } from 'react-native';
+import { ReactNode } from 'react';
+
+type CardProps = ViewProps & {
+  children: ReactNode;
+  elevated?: boolean;
+};
+
+export function Card({ children, elevated = false, style, ...props }: CardProps) {
+  return (
+    <View
+      style={[styles.card, elevated && styles.elevated, style]}
+      {...props}
+    >
+      {children}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    padding: 16,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+  },
+  elevated: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+});
+```
+
+### Generic components
+
+```typescript components/List.tsx
+import { FlatList, FlatListProps } from 'react-native';
+
+type ListProps<T> = Omit<FlatListProps<T>, 'renderItem'> & {
+  items: T[];
+  renderItem: (item: T, index: number) => React.ReactElement;
+};
+
+export function List<T>({ items, renderItem, ...props }: ListProps<T>) {
+  return (
+    <FlatList
+      data={items}
+      renderItem={({ item, index }) => renderItem(item, index)}
+      keyExtractor={(_, index) => index.toString()}
+      {...props}
+    />
+  );
+}
+```
+
+Usage:
+
+```typescript
+type User = {
+  id: string;
+  name: string;
+};
+
+const users: User[] = [...];
+
+<List
+  items={users}
+  renderItem={(user) => <Text>{user.name}</Text>}
+/>
+```
+
+## Hooks with TypeScript
+
+### useState
+
+```typescript
+import { useState } from 'react';
+
+// Type inference
+const [count, setCount] = useState(0); // number
+const [name, setName] = useState(''); // string
+
+// Explicit types
+const [user, setUser] = useState<User | null>(null);
+const [loading, setLoading] = useState<boolean>(false);
+
+// With initial value
+type Status = 'idle' | 'loading' | 'success' | 'error';
+const [status, setStatus] = useState<Status>('idle');
+```
+
+### useRef
+
+```typescript
+import { useRef } from 'react';
+import { TextInput, View } from 'react-native';
+
+function MyComponent() {
+  // For DOM elements
+  const inputRef = useRef<TextInput>(null);
+  const viewRef = useRef<View>(null);
+
+  // For values
+  const countRef = useRef<number>(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const focusInput = () => {
+    inputRef.current?.focus();
+  };
+
+  return <TextInput ref={inputRef} />;
+}
+```
+
+### useEffect
+
+```typescript
+import { useEffect } from 'react';
+
+useEffect(() => {
+  // Effect logic
+  const subscription = subscribeToData();
+
+  // Cleanup function
+  return () => {
+    subscription.unsubscribe();
+  };
+}, [dependency]);
+```
+
+### Custom hooks
+
+```typescript hooks/useApi.ts
+import { useState, useEffect } from 'react';
+
+type ApiState<T> = {
+  data: T | null;
+  loading: boolean;
+  error: Error | null;
+};
+
+export function useApi<T>(url: string): ApiState<T> {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        setData(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err);
+        setLoading(false);
+      });
+  }, [url]);
+
+  return { data, loading, error };
+}
+```
+
+Usage:
+
+```typescript
+type User = {
+  id: string;
+  name: string;
+  email: string;
+};
+
+const { data, loading, error } = useApi<User>('/api/user');
+```
+
+## Typed Routes with Expo Router
+
+### Generate types
+
+Expo Router automatically generates route types:
+
+```typescript
+// This is auto-generated in .expo/types/router.d.ts
+declare module 'expo-router' {
+  export namespace Router {
+    export interface Routes {
+      '/': object;
+      '/profile': object;
+      '/settings': object;
+      '/posts/[id]': { id: string };
+    }
+  }
+}
+```
+
+### Using typed routes
+
+```typescript app/index.tsx
+import { router, Link } from 'expo-router';
+
+export default function Home() {
+  const handlePress = () => {
+    // ✅ Type-safe navigation
+    router.push({
+      pathname: '/posts/[id]',
+      params: { id: '123' },
+    });
+
+    // ❌ TypeScript error - missing required param
+    // router.push('/posts/[id]');
+  };
+
+  return (
+    <View>
+      {/* ✅ Type-safe Link */}
+      <Link href={{ pathname: '/posts/[id]', params: { id: '123' } }}>
+        View Post
+      </Link>
+    </View>
+  );
+}
+```
+
+### Route parameters
+
+```typescript app/posts/[id].tsx
+import { useLocalSearchParams } from 'expo-router';
+
+type Params = {
+  id: string;
+  source?: string;
+};
+
+export default function PostScreen() {
+  const { id, source } = useLocalSearchParams<Params>();
+
+  // id is string
+  // source is string | undefined
+
+  return (
+    <View>
+      <Text>Post ID: {id}</Text>
+      {source && <Text>From: {source}</Text>}
+    </View>
+  );
+}
+```
+
+## API Types
+
+### Defining API responses
+
+```typescript types/api.ts
+export type User = {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  createdAt: string;
+};
+
+export type Post = {
+  id: string;
+  title: string;
+  content: string;
+  author: User;
+  publishedAt: string;
+  tags: string[];
+};
+
+export type ApiResponse<T> = {
+  data: T;
+  meta: {
+    page: number;
+    total: number;
+  };
+};
+
+export type ApiError = {
+  message: string;
+  code: string;
+  status: number;
+};
+```
+
+### Type-safe API client
+
+```typescript utils/api.ts
+import { User, Post, ApiResponse, ApiError } from '@/types/api';
+
+class ApiClient {
+  private baseURL: string;
+
+  constructor(baseURL: string) {
+    this.baseURL = baseURL;
+  }
+
+  async get<T>(endpoint: string): Promise<T> {
+    const response = await fetch(`${this.baseURL}${endpoint}`);
+    
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.message);
+    }
+    
+    return response.json();
+  }
+
+  async post<T, D = unknown>(endpoint: string, data: D): Promise<T> {
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    
+    if (!response.ok) {
+      const error: ApiError = await response.json();
+      throw new Error(error.message);
+    }
+    
+    return response.json();
+  }
+
+  // Typed methods
+  getUser(id: string): Promise<User> {
+    return this.get<User>(`/users/${id}`);
+  }
+
+  getPosts(page: number = 1): Promise<ApiResponse<Post[]>> {
+    return this.get<ApiResponse<Post[]>>(`/posts?page=${page}`);
+  }
+
+  createPost(data: Omit<Post, 'id' | 'author' | 'publishedAt'>): Promise<Post> {
+    return this.post<Post, typeof data>('/posts', data);
+  }
+}
+
+export const api = new ApiClient(process.env.EXPO_PUBLIC_API_URL!);
+```
+
+## Type Guards
+
+```typescript utils/guards.ts
+import { User } from '@/types/api';
+
+export function isUser(obj: unknown): obj is User {
+  return (
+    typeof obj === 'object' &&
+    obj !== null &&
+    'id' in obj &&
+    'name' in obj &&
+    'email' in obj
+  );
+}
+
+export function assertUser(obj: unknown): asserts obj is User {
+  if (!isUser(obj)) {
+    throw new Error('Invalid user object');
+  }
+}
+```
+
+Usage:
+
+```typescript
+const data: unknown = await fetchData();
+
+if (isUser(data)) {
+  // TypeScript knows data is User
+  console.log(data.name);
+}
+
+// Or with assertion
+assertUser(data);
+console.log(data.name); // TypeScript knows data is User
+```
+
+## Utility Types
+
+### Commonly used utility types
+
+```typescript types/utils.ts
+// Make all properties optional
+type PartialUser = Partial<User>;
+
+// Make all properties required
+type RequiredUser = Required<User>;
+
+// Pick specific properties
+type UserPreview = Pick<User, 'id' | 'name' | 'avatar'>;
+
+// Omit specific properties
+type UserWithoutId = Omit<User, 'id'>;
+
+// Extract specific types from union
+type Status = 'idle' | 'loading' | 'success' | 'error';
+type LoadingStates = Extract<Status, 'loading'>; // 'loading'
+
+// Exclude specific types from union
+type NonIdleStatus = Exclude<Status, 'idle'>; // 'loading' | 'success' | 'error'
+
+// Get return type of function
+function getUser() { return { id: '1', name: 'John' }; }
+type GetUserReturn = ReturnType<typeof getUser>;
+
+// Get parameters type of function
+type GetUserParams = Parameters<typeof getUser>;
+```
+
+### Custom utility types
+
+```typescript types/utils.ts
+// Make specific properties optional
+type PartialBy<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+
+type UserOptionalAvatar = PartialBy<User, 'avatar'>;
+
+// Deep partial
+type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};
+
+// Nullable
+type Nullable<T> = T | null;
+
+// Async function return type
+type AsyncReturnType<T extends (...args: any) => Promise<any>> = 
+  T extends (...args: any) => Promise<infer R> ? R : any;
+```
+
+## Type-safe Context
+
+```typescript contexts/AuthContext.tsx
+import { createContext, useContext, useState, ReactNode } from 'react';
+import { User } from '@/types/api';
+
+type AuthContextType = {
+  user: User | null;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+  loading: boolean;
+};
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+type AuthProviderProps = {
+  children: ReactNode;
+};
+
+export function AuthProvider({ children }: AuthProviderProps) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const login = async (email: string, password: string) => {
+    setLoading(true);
+    try {
+      const user = await api.login(email, password);
+      setUser(user);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = () => {
+    setUser(null);
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return context;
+}
+```
+
+## Environment Variables
+
+```typescript env.d.ts
+declare module '@env' {
+  export const EXPO_PUBLIC_API_URL: string;
+  export const EXPO_PUBLIC_API_KEY: string;
+}
+```
+
+Usage:
+
+```typescript
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+```
+
+## Type Errors and Debugging
+
+### Common errors
+
+<AccordionGroup>
+  <Accordion title="'X' is possibly 'null' or 'undefined'">
+    ```typescript
+    // Problem
+    const name = user.name; // Error if user might be null
+
+    // Solutions
+    const name = user?.name; // Optional chaining
+    const name = user ? user.name : 'Guest'; // Conditional
+    const name = user!.name; // Non-null assertion (use carefully)
+    ```
+  </Accordion>
+
+  <Accordion title="Type 'X' is not assignable to type 'Y'">
+    ```typescript
+    // Problem
+    const id: string = 123; // Error
+
+    // Solution
+    const id: string = String(123);
+    // Or update the type
+    const id: string | number = 123;
+    ```
+  </Accordion>
+
+  <Accordion title="Property 'X' does not exist on type 'Y'">
+    ```typescript
+    // Problem
+    const el = useRef();
+    el.current.focus(); // Error
+
+    // Solution
+    const el = useRef<TextInput>(null);
+    el.current?.focus();
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+- **Enable strict mode**: Use `"strict": true` in tsconfig.json
+- **Avoid `any`**: Use `unknown` instead and type guard
+- **Use type inference**: Let TypeScript infer types when obvious
+- **Define API types**: Create types for all API responses
+- **Use utility types**: Leverage built-in utility types
+- **Type guards**: Create type guards for runtime checks
+- **Readonly where appropriate**: Use `readonly` for immutable data
+- **Const assertions**: Use `as const` for literal types
+- **Named types**: Use `type` or `interface` instead of inline types
+- **Export types**: Make types reusable across files
+
+## Related Resources
+
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+- [React TypeScript Cheatsheet](https://react-typescript-cheatsheet.netlify.app/)
+- [Expo TypeScript documentation](https://docs.expo.dev/guides/typescript/)
+- [Total TypeScript](https://www.totaltypescript.com/)

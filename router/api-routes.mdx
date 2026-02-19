@@ -1,0 +1,671 @@
+---
+title: API Routes
+description: Create server-side API endpoints with Expo Router's API routes
+---
+
+# API Routes
+
+Expo Router supports creating API endpoints using the `+api` convention. These routes run server-side and can handle HTTP requests.
+
+<Note>
+  API routes require server-side rendering setup with `@expo/server` or a compatible server environment.
+</Note>
+
+## Creating API Routes
+
+Create an API route by adding `+api` to your filename:
+
+```
+app/
+  api/
+    hello+api.ts       → /api/hello
+    users+api.ts       → /api/users
+    posts/
+      [id]+api.ts      → /api/posts/:id
+```
+
+From `CLAUDE.md:210-216`:
+
+```
+// Special files
+- `+not-found.tsx` → 404 handling
+- `+api.ts` → API route
+
+**Related package:** `@expo/router-server` contains server-side rendering 
+and API route handling utilities used by `expo-router/server`.
+```
+
+## Basic API Route
+
+Create a simple API endpoint:
+
+```typescript app/api/hello+api.ts
+import { ExpoRequest, ExpoResponse } from 'expo-router/server';
+
+export function GET(request: ExpoRequest) {
+  return ExpoResponse.json({
+    message: 'Hello from API!',
+    timestamp: new Date().toISOString(),
+  });
+}
+```
+
+**Request:**
+```
+GET /api/hello
+```
+
+**Response:**
+```json
+{
+  "message": "Hello from API!",
+  "timestamp": "2024-02-19T18:00:00.000Z"
+}
+```
+
+## HTTP Methods
+
+Support different HTTP methods:
+
+```typescript app/api/users+api.ts
+import { ExpoRequest, ExpoResponse } from 'expo-router/server';
+
+// GET /api/users
+export function GET(request: ExpoRequest) {
+  const users = [
+    { id: 1, name: 'Alice' },
+    { id: 2, name: 'Bob' },
+  ];
+  
+  return ExpoResponse.json(users);
+}
+
+// POST /api/users
+export async function POST(request: ExpoRequest) {
+  const body = await request.json();
+  
+  // Validate and create user
+  const newUser = {
+    id: Date.now(),
+    name: body.name,
+  };
+  
+  return ExpoResponse.json(newUser, { status: 201 });
+}
+
+// PUT /api/users
+export async function PUT(request: ExpoRequest) {
+  const body = await request.json();
+  // Update user logic
+  return ExpoResponse.json({ updated: true });
+}
+
+// DELETE /api/users
+export function DELETE(request: ExpoRequest) {
+  // Delete user logic
+  return ExpoResponse.json({ deleted: true });
+}
+
+// PATCH /api/users
+export async function PATCH(request: ExpoRequest) {
+  const body = await request.json();
+  // Partial update logic
+  return ExpoResponse.json({ patched: true });
+}
+```
+
+## Dynamic API Routes
+
+Create API routes with parameters:
+
+```typescript app/api/users/[id]+api.ts
+import { ExpoRequest, ExpoResponse } from 'expo-router/server';
+
+type RouteParams = {
+  id: string;
+};
+
+export function GET(
+  request: ExpoRequest,
+  params: RouteParams
+) {
+  const { id } = params;
+  
+  // Fetch user by ID
+  const user = getUserById(id);
+  
+  if (!user) {
+    return ExpoResponse.json(
+      { error: 'User not found' },
+      { status: 404 }
+    );
+  }
+  
+  return ExpoResponse.json(user);
+}
+
+export async function PUT(
+  request: ExpoRequest,
+  params: RouteParams
+) {
+  const { id } = params;
+  const body = await request.json();
+  
+  // Update user
+  const updated = await updateUser(id, body);
+  
+  return ExpoResponse.json(updated);
+}
+
+export function DELETE(
+  request: ExpoRequest,
+  params: RouteParams
+) {
+  const { id } = params;
+  
+  // Delete user
+  deleteUser(id);
+  
+  return ExpoResponse.json({ success: true });
+}
+```
+
+**Requests:**
+```
+GET /api/users/123
+PUT /api/users/123
+DELETE /api/users/123
+```
+
+## Request Handling
+
+### Reading Query Parameters
+
+```typescript app/api/search+api.ts
+import { ExpoRequest, ExpoResponse } from 'expo-router/server';
+
+export function GET(request: ExpoRequest) {
+  const url = new URL(request.url);
+  const query = url.searchParams.get('q');
+  const page = url.searchParams.get('page') || '1';
+  const limit = url.searchParams.get('limit') || '10';
+  
+  const results = searchDatabase(query, {
+    page: parseInt(page),
+    limit: parseInt(limit),
+  });
+  
+  return ExpoResponse.json({
+    query,
+    page: parseInt(page),
+    results,
+  });
+}
+```
+
+**Request:**
+```
+GET /api/search?q=expo&page=2&limit=20
+```
+
+### Reading Request Body
+
+```typescript app/api/posts+api.ts
+import { ExpoRequest, ExpoResponse } from 'expo-router/server';
+
+export async function POST(request: ExpoRequest) {
+  // Parse JSON body
+  const body = await request.json();
+  
+  // Validate
+  if (!body.title || !body.content) {
+    return ExpoResponse.json(
+      { error: 'Title and content required' },
+      { status: 400 }
+    );
+  }
+  
+  // Create post
+  const post = await createPost({
+    title: body.title,
+    content: body.content,
+    authorId: body.authorId,
+  });
+  
+  return ExpoResponse.json(post, { status: 201 });
+}
+```
+
+### Reading Headers
+
+```typescript app/api/protected+api.ts
+import { ExpoRequest, ExpoResponse } from 'expo-router/server';
+
+export function GET(request: ExpoRequest) {
+  const auth = request.headers.get('authorization');
+  
+  if (!auth || !auth.startsWith('Bearer ')) {
+    return ExpoResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
+  }
+  
+  const token = auth.substring(7);
+  const user = verifyToken(token);
+  
+  if (!user) {
+    return ExpoResponse.json(
+      { error: 'Invalid token' },
+      { status: 401 }
+    );
+  }
+  
+  return ExpoResponse.json({ user });
+}
+```
+
+## Response Types
+
+### JSON Response
+
+```typescript
+import { ExpoResponse } from 'expo-router/server';
+
+// Simple JSON
+return ExpoResponse.json({ message: 'Success' });
+
+// With status code
+return ExpoResponse.json(
+  { error: 'Not found' },
+  { status: 404 }
+);
+
+// With headers
+return ExpoResponse.json(
+  { data: [] },
+  {
+    status: 200,
+    headers: {
+      'Cache-Control': 'public, max-age=3600',
+    },
+  }
+);
+```
+
+### Text Response
+
+```typescript
+export function GET() {
+  return new Response('Plain text response', {
+    headers: { 'Content-Type': 'text/plain' },
+  });
+}
+```
+
+### Redirect
+
+```typescript
+export function GET() {
+  return Response.redirect('https://expo.dev', 302);
+}
+```
+
+### Stream Response
+
+```typescript
+export function GET() {
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue('chunk 1\n');
+      controller.enqueue('chunk 2\n');
+      controller.close();
+    },
+  });
+  
+  return new Response(stream, {
+    headers: { 'Content-Type': 'text/plain' },
+  });
+}
+```
+
+## Error Handling
+
+```typescript app/api/data+api.ts
+import { ExpoRequest, ExpoResponse } from 'expo-router/server';
+
+export async function GET(request: ExpoRequest) {
+  try {
+    const data = await fetchData();
+    return ExpoResponse.json(data);
+  } catch (error) {
+    console.error('API Error:', error);
+    
+    return ExpoResponse.json(
+      {
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
+}
+```
+
+## Middleware Pattern
+
+Create reusable middleware:
+
+```typescript lib/api-middleware.ts
+import { ExpoRequest, ExpoResponse } from 'expo-router/server';
+
+export function withAuth(
+  handler: (request: ExpoRequest, user: User) => Response
+) {
+  return async (request: ExpoRequest, params: any) => {
+    const auth = request.headers.get('authorization');
+    
+    if (!auth?.startsWith('Bearer ')) {
+      return ExpoResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+    
+    const user = await verifyToken(auth.substring(7));
+    
+    if (!user) {
+      return ExpoResponse.json(
+        { error: 'Invalid token' },
+        { status: 401 }
+      );
+    }
+    
+    return handler(request, user);
+  };
+}
+```
+
+Use middleware:
+
+```typescript app/api/profile+api.ts
+import { withAuth } from '../../lib/api-middleware';
+import { ExpoRequest, ExpoResponse } from 'expo-router/server';
+
+export const GET = withAuth(async (request, user) => {
+  const profile = await getProfile(user.id);
+  return ExpoResponse.json(profile);
+});
+
+export const PUT = withAuth(async (request, user) => {
+  const body = await request.json();
+  const updated = await updateProfile(user.id, body);
+  return ExpoResponse.json(updated);
+});
+```
+
+## CORS
+
+Handle cross-origin requests:
+
+```typescript app/api/public+api.ts
+import { ExpoRequest, ExpoResponse } from 'expo-router/server';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+export function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: corsHeaders,
+  });
+}
+
+export function GET(request: ExpoRequest) {
+  return ExpoResponse.json(
+    { data: 'Public API' },
+    { headers: corsHeaders }
+  );
+}
+
+export async function POST(request: ExpoRequest) {
+  const body = await request.json();
+  
+  return ExpoResponse.json(
+    { received: body },
+    {
+      status: 201,
+      headers: corsHeaders,
+    }
+  );
+}
+```
+
+## Database Integration
+
+```typescript app/api/posts+api.ts
+import { ExpoRequest, ExpoResponse } from 'expo-router/server';
+import { db } from '../../lib/database';
+
+export async function GET(request: ExpoRequest) {
+  const url = new URL(request.url);
+  const page = parseInt(url.searchParams.get('page') || '1');
+  const limit = parseInt(url.searchParams.get('limit') || '10');
+  
+  const posts = await db.post.findMany({
+    skip: (page - 1) * limit,
+    take: limit,
+    orderBy: { createdAt: 'desc' },
+  });
+  
+  return ExpoResponse.json({
+    posts,
+    page,
+    limit,
+  });
+}
+
+export async function POST(request: ExpoRequest) {
+  const body = await request.json();
+  
+  const post = await db.post.create({
+    data: {
+      title: body.title,
+      content: body.content,
+      authorId: body.authorId,
+    },
+  });
+  
+  return ExpoResponse.json(post, { status: 201 });
+}
+```
+
+## Calling API Routes
+
+### From Client Code
+
+```tsx app/posts/index.tsx
+import { useEffect, useState } from 'react';
+import { View, Text, FlatList } from 'react-native';
+
+export default function Posts() {
+  const [posts, setPosts] = useState([]);
+  
+  useEffect(() => {
+    fetch('/api/posts')
+      .then((res) => res.json())
+      .then((data) => setPosts(data.posts));
+  }, []);
+  
+  return (
+    <FlatList
+      data={posts}
+      renderItem={({ item }) => (
+        <View>
+          <Text>{item.title}</Text>
+        </View>
+      )}
+    />
+  );
+}
+```
+
+### With Authentication
+
+```tsx
+import { useAuth } from '../context/auth';
+
+export default function Profile() {
+  const { token } = useAuth();
+  const [profile, setProfile] = useState(null);
+  
+  useEffect(() => {
+    fetch('/api/profile', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    })
+      .then((res) => res.json())
+      .then(setProfile);
+  }, [token]);
+  
+  return <ProfileView data={profile} />;
+}
+```
+
+## Testing API Routes
+
+### Unit Tests
+
+```typescript __tests__/api/users.test.ts
+import { GET, POST } from '../../app/api/users+api';
+
+describe('/api/users', () => {
+  it('GET returns users list', async () => {
+    const request = new Request('http://localhost/api/users');
+    const response = await GET(request as any);
+    const data = await response.json();
+    
+    expect(Array.isArray(data)).toBe(true);
+  });
+  
+  it('POST creates new user', async () => {
+    const request = new Request('http://localhost/api/users', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Test User' }),
+    });
+    
+    const response = await POST(request as any);
+    const data = await response.json();
+    
+    expect(data.name).toBe('Test User');
+  });
+});
+```
+
+## Best Practices
+
+### Validate Input
+
+```typescript
+import { z } from 'zod';
+
+const createPostSchema = z.object({
+  title: z.string().min(1).max(200),
+  content: z.string().min(1),
+  authorId: z.string().uuid(),
+});
+
+export async function POST(request: ExpoRequest) {
+  const body = await request.json();
+  
+  const result = createPostSchema.safeParse(body);
+  
+  if (!result.success) {
+    return ExpoResponse.json(
+      { error: 'Validation failed', details: result.error },
+      { status: 400 }
+    );
+  }
+  
+  const post = await createPost(result.data);
+  return ExpoResponse.json(post);
+}
+```
+
+### Use Status Codes Correctly
+
+```typescript
+// 200 OK - Successful GET/PUT/PATCH
+return ExpoResponse.json(data, { status: 200 });
+
+// 201 Created - Successful POST
+return ExpoResponse.json(newResource, { status: 201 });
+
+// 204 No Content - Successful DELETE
+return new Response(null, { status: 204 });
+
+// 400 Bad Request - Invalid input
+return ExpoResponse.json({ error }, { status: 400 });
+
+// 401 Unauthorized - Missing/invalid auth
+return ExpoResponse.json({ error }, { status: 401 });
+
+// 403 Forbidden - Insufficient permissions
+return ExpoResponse.json({ error }, { status: 403 });
+
+// 404 Not Found - Resource doesn't exist
+return ExpoResponse.json({ error }, { status: 404 });
+
+// 500 Internal Server Error - Server error
+return ExpoResponse.json({ error }, { status: 500 });
+```
+
+### Handle Errors Gracefully
+
+```typescript
+try {
+  // API logic
+} catch (error) {
+  console.error('API Error:', error);
+  
+  if (error instanceof ValidationError) {
+    return ExpoResponse.json(
+      { error: error.message },
+      { status: 400 }
+    );
+  }
+  
+  if (error instanceof NotFoundError) {
+    return ExpoResponse.json(
+      { error: error.message },
+      { status: 404 }
+    );
+  }
+  
+  return ExpoResponse.json(
+    { error: 'Internal server error' },
+    { status: 500 }
+  );
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Server Rendering" icon="server" href="/router/server-rendering">
+    Learn about SSR and SSG
+  </Card>
+  <Card title="Dynamic Routes" icon="brackets-curly" href="/router/dynamic-routes">
+    Dynamic API endpoints
+  </Card>
+  <Card title="Typed Routes" icon="code" href="/router/typed-routes">
+    Type-safe API routes
+  </Card>
+  <Card title="Deep Linking" icon="link" href="/router/deep-linking">
+    API route URLs
+  </Card>
+</CardGroup>

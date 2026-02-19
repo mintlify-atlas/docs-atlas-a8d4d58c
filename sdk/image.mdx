@@ -1,0 +1,229 @@
+---
+title: expo-image
+description: High-performance cross-platform image component with advanced caching
+---
+
+# expo-image
+
+**Version:** 55.0.3
+
+A cross-platform, performant image component for React Native and Expo with Web support. Provides better performance, caching, and loading states than React Native's Image.
+
+## Installation
+
+```bash
+npx expo install expo-image
+```
+
+## Usage
+
+```tsx
+import { Image } from 'expo-image';
+
+function App() {
+  return (
+    <Image
+      source={{ uri: 'https://example.com/image.jpg' }}
+      style={{ width: 200, height: 200 }}
+      placeholder="blurhash"
+      contentFit="cover"
+      transition={1000}
+    />
+  );
+}
+```
+
+## API Reference
+
+### Image Props
+
+<ParamField path="source" type="ImageSource" required>
+  Image source (URI, require(), or blurhash)
+  
+  ```tsx
+  <Image source={{ uri: 'https://example.com/photo.jpg' }} />
+  <Image source={require('./local-image.png')} />
+  <Image source={{ blurhash: '...', width: 400, height: 300 }} />
+  ```
+</ParamField>
+
+<ParamField path="placeholder" type="string | number">
+  Placeholder shown while loading (blurhash or local image)
+  
+  ```tsx
+  <Image 
+    source={{ uri: 'https://example.com/image.jpg' }}
+    placeholder="LGF5]+Yk^6#M@-5c,1J5@[or[Q6." 
+  />
+  ```
+</ParamField>
+
+<ParamField path="contentFit" type="'cover' | 'contain' | 'fill' | 'none' | 'scale-down'" default="cover">
+  How the image should be resized to fit its container
+</ParamField>
+
+<ParamField path="contentPosition" type="string | object">
+  Position of the image within the container
+  
+  ```tsx
+  <Image contentPosition="top" />
+  <Image contentPosition={{ top: 0, left: 50 }} />
+  ```
+</ParamField>
+
+<ParamField path="transition" type="number | object">
+  Transition duration in ms
+  
+  ```tsx
+  <Image transition={1000} />
+  <Image transition={{ duration: 500, timing: 'ease-in-out' }} />
+  ```
+</ParamField>
+
+<ParamField path="cachePolicy" type="'none' | 'disk' | 'memory' | 'memory-disk'" default="memory-disk">
+  Image caching policy
+</ParamField>
+
+<ParamField path="priority" type="'low' | 'normal' | 'high'" default="normal">
+  Loading priority
+</ParamField>
+
+<ParamField path="onLoad" type="() => void">
+  Called when image loads successfully
+</ParamField>
+
+<ParamField path="onError" type="(error: ImageErrorEvent) => void">
+  Called when image fails to load
+</ParamField>
+
+### Methods
+
+<ParamField path="Image.prefetch(urls)" type="(urls: string[]) => Promise<void>">
+  Preloads images into cache
+  
+  ```typescript
+  await Image.prefetch([
+    'https://example.com/image1.jpg',
+    'https://example.com/image2.jpg'
+  ]);
+  ```
+</ParamField>
+
+<ParamField path="Image.clearMemoryCache()" type="() => Promise<void>">
+  Clears memory cache
+</ParamField>
+
+<ParamField path="Image.clearDiskCache()" type="() => Promise<void>">
+  Clears disk cache
+</ParamField>
+
+## Examples
+
+### Basic Image
+
+```tsx
+import { Image } from 'expo-image';
+
+function MyImage() {
+  return (
+    <Image
+      source={{ uri: 'https://picsum.photos/400/400' }}
+      style={{ width: 200, height: 200, borderRadius: 10 }}
+    />
+  );
+}
+```
+
+### With Placeholder
+
+```tsx
+import { Image } from 'expo-image';
+
+function ImageWithPlaceholder() {
+  return (
+    <Image
+      source={{ uri: 'https://example.com/large-image.jpg' }}
+      placeholder="LGF5]+Yk^6#M@-5c,1J5@[or[Q6."
+      contentFit="cover"
+      transition={1000}
+      style={{ width: 300, height: 200 }}
+    />
+  );
+}
+```
+
+### Responsive Images
+
+```tsx
+import { Image } from 'expo-image';
+
+function ResponsiveImage() {
+  return (
+    <Image
+      source={{
+        uri: 'https://example.com/image.jpg',
+        headers: {
+          'User-Agent': 'MyApp/1.0'
+        }
+      }}
+      style={{ width: '100%', aspectRatio: 16/9 }}
+      contentFit="cover"
+    />
+  );
+}
+```
+
+### Image Gallery
+
+```tsx
+import { Image } from 'expo-image';
+import { FlatList } from 'react-native';
+
+function Gallery({ images }) {
+  return (
+    <FlatList
+      data={images}
+      numColumns={3}
+      renderItem={({ item }) => (
+        <Image
+          source={{ uri: item }}
+          style={{ width: 120, height: 120, margin: 2 }}
+          contentFit="cover"
+          transition={200}
+        />
+      )}
+    />
+  );
+}
+```
+
+### Prefetch Images
+
+```tsx
+import { Image } from 'expo-image';
+import { useEffect } from 'react';
+
+function App() {
+  useEffect(() => {
+    Image.prefetch([
+      'https://example.com/img1.jpg',
+      'https://example.com/img2.jpg'
+    ]);
+  }, []);
+
+  return <YourApp />;
+}
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ✅       |
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/image/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-image)

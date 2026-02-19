@@ -1,0 +1,181 @@
+---
+title: Introduction to Config Plugins
+description: Learn about Expo config plugins and how they enable native customization in your project.
+---
+
+import { BoxLink } from '~/ui/components/BoxLink';
+import { Terminal } from '~/ui/components/Snippet';
+
+Expo config plugins are a powerful way to customize the native iOS and Android projects in your Expo app. They provide a programmatic interface to modify native configuration files during the prebuild process.
+
+## What are config plugins?
+
+Config plugins are JavaScript functions that modify your app's native project files automatically. Instead of manually editing Xcode projects, Android manifests, or Gradle files, you define your native customizations in `app.json` or `app.config.js`, and plugins apply these changes during prebuild.
+
+A config plugin is a function with this signature:
+
+```ts Plugin.types.ts
+export type ConfigPlugin<Props = void> = (config: ExpoConfig, props: Props) => ExpoConfig;
+```
+
+Plugins receive the Expo config and optional props, then return a modified config with the desired native changes.
+
+## Why do config plugins exist?
+
+### Problems they solve
+
+- **Manual native configuration is error-prone**: Editing Xcode `.pbxproj` files or Android Gradle scripts by hand is fragile and difficult to maintain
+- **Continuous Native Generation**: With Expo Prebuild, native projects are generated on demand, so manual changes would be lost
+- **Reproducibility**: Config plugins make your native customizations versioned, reviewable, and reproducible across team members
+- **Ecosystem integration**: Third-party packages can ship plugins that automatically configure native dependencies
+
+### Key benefits
+
+- **Version control**: Native configuration lives in JavaScript/JSON files that are easy to track in git
+- **Composability**: Multiple plugins can be chained together, each making specific modifications
+- **Type safety**: Written in TypeScript with full type definitions
+- **Testing**: Plugins can be unit tested and integrated into CI/CD pipelines
+- **Distribution**: Libraries can bundle plugins, eliminating manual setup instructions
+
+## When to use config plugins
+
+### You should use config plugins when:
+
+- Adding native permissions (camera, location, etc.)
+- Configuring app capabilities (push notifications, background modes)
+- Integrating third-party native SDKs
+- Modifying Android Manifest or iOS Info.plist
+- Setting build properties (SDK versions, optimization flags)
+- Adding entitlements for iOS features
+- Customizing splash screens or app icons
+- Using Expo Prebuild / Continuous Native Generation
+
+### You might not need config plugins if:
+
+- You're using only JavaScript/TypeScript code with no native dependencies
+- You're building with `expo build:ios` or `expo build:android` (classic builds)
+- You manually maintain your `ios/` and `android/` directories and never run prebuild
+
+## Overview of capabilities
+
+Config plugins can modify virtually any aspect of your native projects:
+
+### iOS modifications
+
+- **Info.plist**: Add keys, configure permissions, set URL schemes
+- **Entitlements**: Enable app capabilities like Associated Domains, HealthKit, Apple Pay
+- **Xcode project**: Add build phases, frameworks, native files
+- **Podfile**: Configure CocoaPods dependencies
+- **AppDelegate**: Inject code into your app's lifecycle
+
+### Android modifications
+
+- **AndroidManifest.xml**: Add permissions, intent filters, services, receivers
+- **Gradle files**: Set build versions, dependencies, repositories
+- **strings.xml / colors.xml**: Define string resources and color themes  
+- **MainActivity/MainApplication**: Inject Java/Kotlin code
+- **gradle.properties**: Configure build properties
+
+## Plugin types
+
+### Built-in mods
+
+Expo provides built-in "mods" for common native files:
+
+```ts
+config.mods = {
+  ios: {
+    infoPlist,      // Info.plist
+    entitlements,   // .entitlements
+    xcodeproj,      // .xcodeproj
+    appDelegate,    // AppDelegate.m
+    podfile,        // Podfile
+  },
+  android: {
+    manifest,       // AndroidManifest.xml
+    strings,        // strings.xml
+    colors,         // colors.xml  
+    gradleProperties, // gradle.properties
+    mainActivity,   // MainActivity.java
+  }
+}
+```
+
+### Library plugins
+
+Many Expo and community packages ship with config plugins:
+
+```json app.json
+{
+  "expo": {
+    "plugins": [
+      "expo-camera",
+      "expo-location",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24
+          }
+        }
+      ]
+    ]
+  }
+}
+```
+
+### Custom plugins
+
+You can write your own plugins for project-specific customizations:
+
+```js app.config.js
+const withCustomConfig = (config) => {
+  // Modify native projects
+  return config;
+};
+
+module.exports = {
+  plugins: [withCustomConfig],
+};
+```
+
+## The prebuild workflow
+
+Config plugins integrate with Expo Prebuild:
+
+<Terminal cmd={[
+  '# Generate native projects with plugins applied',
+  '$ npx expo prebuild',
+  '',
+  '# Or clean and regenerate',  
+  '$ npx expo prebuild --clean',
+]} />
+
+During prebuild:
+
+1. Expo reads your `app.json` or `app.config.js`
+2. All plugins are evaluated in order
+3. Each plugin modifies the config and adds "mods" (modifications)
+4. Native iOS and Android projects are generated
+5. Mods are applied to modify native files
+6. Projects are ready to build with Xcode or Android Studio
+
+## Next steps
+
+<BoxLink
+  title="How they work"
+  description="Learn about the plugin execution flow and prebuild process"
+  href="/config-plugins/how-they-work"
+/>
+
+<BoxLink
+  title="Creating plugins"
+  description="Build your first config plugin"
+  href="/config-plugins/creating-plugins"
+/>
+
+<BoxLink
+  title="Plugin API reference"
+  description="Explore the complete config plugin API"
+  href="/config-plugins/plugin-api"
+/>

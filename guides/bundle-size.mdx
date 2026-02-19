@@ -1,0 +1,612 @@
+---
+title: "Bundle Size Optimization"
+description: "Analyze and reduce your Expo app's bundle size with tree shaking, dynamic imports, and dependency optimization"
+---
+
+## Overview
+
+Smaller bundle sizes mean faster app startup, reduced memory usage, and better user experience. This guide shows you how to measure and optimize your app's bundle size.
+
+## Measuring Bundle Size
+
+### Expo bundle analyzer
+
+```bash
+# Generate bundle visualization
+npx expo export --platform ios
+npx expo export --platform android
+
+# Install analyzer
+npm install -g expo-atlas
+
+# Analyze the bundle
+npx expo-atlas
+```
+
+This opens an interactive visualization showing:
+- Module sizes
+- Dependency tree
+- Duplicate packages
+- Largest contributors
+
+### Manual bundle inspection
+
+```bash
+# Generate production bundle
+npx expo export:web
+
+# Check bundle sizes
+ls -lh dist/_expo/static/js/
+```
+
+### Source map explorer
+
+```bash
+npm install -g source-map-explorer
+
+# Analyze bundle
+source-map-explorer dist/_expo/static/js/*.js
+```
+
+## Reducing Bundle Size
+
+### Remove unused dependencies
+
+Check for unused packages:
+
+```bash
+npm install -g depcheck
+depcheck
+```
+
+Remove unused packages:
+
+```bash
+npm uninstall package-name
+```
+
+### Analyze dependency sizes
+
+```bash
+npm install -g bundle-phobia-cli
+bundle-phobia [package-name]
+```
+
+Or check online: [bundlephobia.com](https://bundlephobia.com/)
+
+### Replace large dependencies
+
+<Tabs>
+  <Tab title="Moment.js → date-fns">
+    ```bash
+    # Before: ~230KB
+    npm uninstall moment
+    
+    # After: ~12KB (with tree shaking)
+    npm install date-fns
+    ```
+    
+    ```typescript
+    // Before
+    import moment from 'moment';
+    const formatted = moment(date).format('YYYY-MM-DD');
+    
+    // After
+    import { format } from 'date-fns';
+    const formatted = format(date, 'yyyy-MM-dd');
+    ```
+  </Tab>
+
+  <Tab title="Lodash → lodash-es">
+    ```bash
+    npm uninstall lodash
+    npm install lodash-es
+    ```
+    
+    ```typescript
+    // Bad: Imports entire library
+    import _ from 'lodash';
+    _.debounce(fn, 300);
+    
+    // Good: Tree-shakeable imports
+    import debounce from 'lodash-es/debounce';
+    debounce(fn, 300);
+    
+    // Better: Use native methods when possible
+    items.filter(item => item.active);
+    ```
+  </Tab>
+
+  <Tab title="Axios → fetch">
+    ```typescript
+    // Before: +13KB
+    import axios from 'axios';
+    const { data } = await axios.get('/api/users');
+    
+    // After: Native (0KB)
+    const response = await fetch('/api/users');
+    const data = await response.json();
+    ```
+  </Tab>
+</Tabs>
+
+## Tree Shaking
+
+### Import only what you need
+
+```typescript
+// ❌ Bad: Imports everything
+import * as Icons from '@expo/vector-icons';
+const Icon = Icons.MaterialIcons;
+
+// ✅ Good: Imports only what's needed
+import { MaterialIcons } from '@expo/vector-icons';
+
+// ❌ Bad: Entire library
+import _ from 'lodash';
+
+// ✅ Good: Specific function
+import debounce from 'lodash-es/debounce';
+```
+
+### Configure Metro for tree shaking
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+config.transformer = {
+  ...config.transformer,
+  minifierConfig: {
+    keep_classnames: true,
+    keep_fnames: true,
+    mangle: {
+      keep_classnames: true,
+      keep_fnames: true,
+    },
+  },
+};
+
+module.exports = config;
+```
+
+## Dynamic Imports
+
+### Code splitting with React.lazy
+
+```typescript app/_layout.tsx
+import { lazy, Suspense } from 'react';
+import { ActivityIndicator } from 'react-native';
+
+// Lazy load heavy components
+const ProfileScreen = lazy(() => import('./profile'));
+const SettingsScreen = lazy(() => import('./settings'));
+
+export default function Layout() {
+  return (
+    <Suspense fallback={<ActivityIndicator />}>
+      <Stack>
+        <Stack.Screen name="profile" component={ProfileScreen} />
+        <Stack.Screen name="settings" component={SettingsScreen} />
+      </Stack>
+    </Suspense>
+  );
+}
+```
+
+### Conditional imports
+
+```typescript
+// Only import when needed
+async function handleExport() {
+  const { exportToPDF } = await import('./utils/pdf-export');
+  await exportToPDF(data);
+}
+```
+
+### Platform-specific code
+
+```typescript utils/analytics.ts
+import { Platform } from 'react-native';
+
+export async function initAnalytics() {
+  if (Platform.OS === 'web') {
+    const { initWebAnalytics } = await import('./analytics.web');
+    return initWebAnalytics();
+  } else {
+    const { initNativeAnalytics } = await import('./analytics.native');
+    return initNativeAnalytics();
+  }
+}
+```
+
+## Image Optimization
+
+### Use WebP format
+
+```typescript
+// Smaller file size, good quality
+<Image source={require('./image.webp')} />
+```
+
+### Image compression
+
+Compress images before adding to your app:
+
+```bash
+# Using ImageOptim (macOS)
+imageoptim assets/**/*.{png,jpg}
+
+# Using sharp-cli
+npm install -g sharp-cli
+sharp -i input.jpg -o output.jpg -q 80
+```
+
+### Responsive images
+
+```typescript components/ResponsiveImage.tsx
+import { Image } from 'expo-image';
+import { useWindowDimensions } from 'react-native';
+
+type Props = {
+  sources: {
+    small: string;
+    medium: string;
+    large: string;
+  };
+};
+
+export function ResponsiveImage({ sources }: Props) {
+  const { width } = useWindowDimensions();
+
+  const source = width < 400 ? sources.small :
+                 width < 800 ? sources.medium :
+                 sources.large;
+
+  return <Image source={{ uri: source }} />;
+}
+```
+
+## Font Optimization
+
+### Load fonts selectively
+
+```typescript app/_layout.tsx
+import { useFonts } from 'expo-font';
+
+export default function Layout() {
+  const [fontsLoaded] = useFonts({
+    // Only load weights you actually use
+    'Inter-Regular': require('../assets/fonts/Inter-Regular.ttf'),
+    'Inter-Bold': require('../assets/fonts/Inter-Bold.ttf'),
+    // Don't load: Light, Medium, SemiBold, ExtraBold, Black
+  });
+
+  if (!fontsLoaded) return null;
+
+  return <Slot />;
+}
+```
+
+### Use system fonts
+
+```typescript
+import { Platform, StyleSheet } from 'react-native';
+
+const styles = StyleSheet.create({
+  text: {
+    fontFamily: Platform.select({
+      ios: 'System',
+      android: 'Roboto',
+      default: 'system-ui',
+    }),
+  },
+});
+```
+
+## Optimizing Vector Icons
+
+### Use only needed icon sets
+
+```typescript
+// ❌ Loads all icon fonts (~2MB)
+import { Ionicons, MaterialIcons, FontAwesome } from '@expo/vector-icons';
+
+// ✅ Load only what you use
+import { Ionicons } from '@expo/vector-icons';
+```
+
+### Create custom icon sets
+
+```bash
+# Generate custom icon font with only icons you use
+npm install -g @expo/vector-icons
+generate-icon-set icons.json
+```
+
+### Use SVG instead
+
+```bash
+npm install react-native-svg
+```
+
+```typescript
+import Svg, { Path } from 'react-native-svg';
+
+function CustomIcon() {
+  return (
+    <Svg width="24" height="24" viewBox="0 0 24 24">
+      <Path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor" />
+    </Svg>
+  );
+}
+```
+
+## Remove Development Code
+
+### Use __DEV__ flag
+
+```typescript
+if (__DEV__) {
+  // Development-only code (removed in production)
+  console.log('Debug info');
+  require('./devtools');
+}
+```
+
+### Conditional imports
+
+```typescript
+const debugTools = __DEV__ ? require('./debug-tools') : null;
+
+if (__DEV__ && debugTools) {
+  debugTools.init();
+}
+```
+
+## Hermes Optimization
+
+Hermes provides better performance and smaller bundle size:
+
+```json app.json
+{
+  "expo": {
+    "jsEngine": "hermes",
+    "ios": {
+      "jsEngine": "hermes"
+    },
+    "android": {
+      "jsEngine": "hermes"
+    }
+  }
+}
+```
+
+Benefits:
+- Faster startup time
+- Lower memory usage
+- Bytecode compilation
+- Better optimizations
+
+## Production Build Optimization
+
+### EAS Build configuration
+
+```json eas.json
+{
+  "build": {
+    "production": {
+      "env": {
+        "NODE_ENV": "production"
+      },
+      "android": {
+        "buildType": "app-bundle",
+        "enableProguardInReleaseBuilds": true,
+        "enableShrinkResourcesInReleaseBuilds": true
+      },
+      "ios": {
+        "buildConfiguration": "Release"
+      }
+    }
+  }
+}
+```
+
+### Minification
+
+Metro automatically minifies in production:
+
+```javascript metro.config.js
+module.exports = {
+  transformer: {
+    minifierPath: 'metro-minify-terser',
+    minifierConfig: {
+      compress: {
+        drop_console: true, // Remove console.log in production
+        passes: 3,
+      },
+    },
+  },
+};
+```
+
+## Analyzing Dependencies
+
+### Find duplicate packages
+
+```bash
+npm ls [package-name]
+```
+
+### Check for multiple versions
+
+```bash
+npm dedupe
+```
+
+### Use yarn resolutions
+
+```json package.json
+{
+  "resolutions": {
+    "package-name": "1.2.3"
+  }
+}
+```
+
+## Bundle Size Budget
+
+Set size limits to prevent regressions:
+
+```javascript bundle-size-check.js
+const fs = require('fs');
+const path = require('path');
+
+const MAX_BUNDLE_SIZE = 5 * 1024 * 1024; // 5MB
+
+const distDir = path.join(__dirname, 'dist/_expo/static/js');
+const files = fs.readdirSync(distDir);
+
+let totalSize = 0;
+
+files.forEach(file => {
+  const filePath = path.join(distDir, file);
+  const stats = fs.statSync(filePath);
+  totalSize += stats.size;
+});
+
+console.log(`Total bundle size: ${(totalSize / 1024 / 1024).toFixed(2)}MB`);
+
+if (totalSize > MAX_BUNDLE_SIZE) {
+  console.error('Bundle size exceeds maximum!');
+  process.exit(1);
+}
+```
+
+Add to CI:
+
+```json package.json
+{
+  "scripts": {
+    "check-bundle-size": "node bundle-size-check.js"
+  }
+}
+```
+
+## Best Practices
+
+### Import strategy
+
+```typescript
+// ✅ Good: Named imports (tree-shakeable)
+import { useState, useEffect } from 'react';
+
+// ❌ Bad: Default import of entire module
+import React from 'react';
+const { useState, useEffect } = React;
+
+// ✅ Good: Specific imports
+import debounce from 'lodash-es/debounce';
+
+// ❌ Bad: Entire library
+import _ from 'lodash';
+```
+
+### Lazy loading strategy
+
+```typescript
+// Heavy dependencies
+const VideoPlayer = lazy(() => import('./VideoPlayer'));
+const MapView = lazy(() => import('./MapView'));
+const Charts = lazy(() => import('./Charts'));
+
+// Load on demand
+function Dashboard() {
+  const [showCharts, setShowCharts] = useState(false);
+
+  return (
+    <View>
+      <Button onPress={() => setShowCharts(true)} title="Show Charts" />
+      {showCharts && (
+        <Suspense fallback={<Spinner />}>
+          <Charts />
+        </Suspense>
+      )}
+    </View>
+  );
+}
+```
+
+## Monitoring
+
+### Track bundle size over time
+
+```yaml .github/workflows/bundle-size.yml
+name: Bundle Size
+
+on: [pull_request]
+
+jobs:
+  bundle-size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+      - run: npm ci
+      - run: npx expo export:web
+      - uses: andresz1/size-limit-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### Bundle size dashboard
+
+Use tools like [Bundlewatch](https://bundlewatch.io/) or [RelativeCI](https://relative-ci.com/) to track bundle size across builds.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Bundle size unexpectedly large">
+    - Run `npx expo-atlas` to analyze
+    - Check for duplicate dependencies with `npm ls`
+    - Look for large packages in analysis
+    - Verify tree shaking is working
+  </Accordion>
+
+  <Accordion title="Tree shaking not working">
+    - Use named imports, not default imports
+    - Check package.json has `"sideEffects": false`
+    - Ensure using ES modules, not CommonJS
+    - Verify Metro config is correct
+  </Accordion>
+
+  <Accordion title="Bundle grew after adding feature">
+    - Check if new dependencies are tree-shakeable
+    - Look for lighter alternatives
+    - Consider lazy loading the feature
+    - Analyze the dependency with bundle-phobia
+  </Accordion>
+</AccordionGroup>
+
+## Size Optimization Checklist
+
+- [ ] Run bundle analyzer to identify large modules
+- [ ] Remove unused dependencies
+- [ ] Replace large libraries with smaller alternatives
+- [ ] Use tree-shakeable imports
+- [ ] Implement code splitting with lazy loading
+- [ ] Optimize images (WebP, compression)
+- [ ] Load only required fonts and icon sets
+- [ ] Enable Hermes engine
+- [ ] Remove console.log in production
+- [ ] Enable ProGuard (Android)
+- [ ] Monitor bundle size in CI
+- [ ] Set bundle size budgets
+
+## Related Resources
+
+- [Expo Bundle Analyzer](https://docs.expo.dev/guides/analyzing-bundles/)
+- [Bundle Phobia](https://bundlephobia.com/)
+- [webpack Bundle Analyzer](https://github.com/webpack-contrib/webpack-bundle-analyzer)
+- [Source Map Explorer](https://github.com/danvk/source-map-explorer)

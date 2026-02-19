@@ -1,0 +1,494 @@
+---
+title: expo-file-system
+description: Access and manipulate the device's local file system with read, write, and directory operations
+---
+
+# expo-file-system
+
+**Version:** 55.0.6
+
+Provides access to the local file system on the device. Read, write, delete files and directories, download files, and manage app storage with a modern, Promise-based API.
+
+## Installation
+
+```bash
+npx expo install expo-file-system
+```
+
+## Usage
+
+```typescript
+import * as FileSystem from 'expo-file-system';
+
+// Modern API (Recommended)
+import { Paths, File, Directory } from 'expo-file-system';
+
+const file = new File(Paths.cache, 'notes.txt');
+await file.create();
+await file.write('Hello, World!');
+const content = await file.text();
+```
+
+## Modern API (v55+)
+
+### Paths
+
+Access system directories:
+
+<ResponseField name="Paths.cache" type="Directory">
+  Cache directory – files can be deleted by the system
+  
+  ```typescript
+  const cacheDir = Paths.cache;
+  const file = new File(cacheDir, 'temp.json');
+  ```
+</ResponseField>
+
+<ResponseField name="Paths.document" type="Directory">
+  Document directory – persistent storage safe from system deletion
+  
+  ```typescript
+  const docDir = Paths.document;
+  const file = new File(docDir, 'data.db');
+  ```
+</ResponseField>
+
+<ResponseField name="Paths.bundle" type="Directory">
+  Bundle directory – contains assets bundled with the app (read-only)
+  
+  ```typescript
+  const bundleDir = Paths.bundle;
+  const asset = new File(bundleDir, 'config.json');
+  ```
+</ResponseField>
+
+### File Class
+
+Represents a file on the filesystem:
+
+```typescript
+import { File, Paths } from 'expo-file-system';
+
+const file = new File(Paths.document, 'notes', 'note.txt');
+```
+
+#### Methods
+
+<ParamField path="file.create()" type="() => Promise<void>">
+  Creates the file if it doesn't exist
+</ParamField>
+
+<ParamField path="file.write(content)" type="(content: string | Uint8Array) => Promise<void>">
+  Writes content to the file
+  
+  ```typescript
+  await file.write('Hello, World!');
+  await file.write(new Uint8Array([1, 2, 3]));
+  ```
+</ParamField>
+
+<ParamField path="file.text()" type="() => Promise<string>">
+  Reads file content as text
+  
+  ```typescript
+  const content = await file.text();
+  ```
+</ParamField>
+
+<ParamField path="file.bytes()" type="() => Promise<Uint8Array>">
+  Reads file content as bytes
+  
+  ```typescript
+  const bytes = await file.bytes();
+  ```
+</ParamField>
+
+<ParamField path="file.delete()" type="() => Promise<void>">
+  Deletes the file
+</ParamField>
+
+<ParamField path="file.exists()" type="() => Promise<boolean>">
+  Checks if the file exists
+</ParamField>
+
+<ParamField path="file.copy(destination)" type="(destination: File | Directory) => Promise<File>">
+  Copies the file to a new location
+  
+  ```typescript
+  const newFile = await file.copy(Paths.cache);
+  ```
+</ParamField>
+
+<ParamField path="file.move(destination)" type="(destination: File | Directory) => Promise<File>">
+  Moves the file to a new location
+</ParamField>
+
+#### Properties
+
+<ResponseField name="file.uri" type="string">
+  The file URI (e.g., `file:///path/to/file.txt`)
+</ResponseField>
+
+<ResponseField name="file.name" type="string">
+  File name with extension
+</ResponseField>
+
+<ResponseField name="file.extension" type="string">
+  File extension (e.g., `.txt`, `.json`)
+</ResponseField>
+
+<ResponseField name="file.parentDirectory" type="Directory">
+  The directory containing this file
+</ResponseField>
+
+<ResponseField name="file.size" type="number">
+  File size in bytes
+</ResponseField>
+
+### Directory Class
+
+Represents a directory on the filesystem:
+
+```typescript
+import { Directory, Paths } from 'expo-file-system';
+
+const dir = new Directory(Paths.document, 'myFolder');
+```
+
+#### Methods
+
+<ParamField path="dir.create()" type="() => Promise<void>">
+  Creates the directory if it doesn't exist
+</ParamField>
+
+<ParamField path="dir.delete()" type="() => Promise<void>">
+  Deletes the directory and its contents
+</ParamField>
+
+<ParamField path="dir.exists()" type="() => Promise<boolean>">
+  Checks if the directory exists
+</ParamField>
+
+<ParamField path="dir.list()" type="() => (File | Directory)[]">
+  Lists contents of the directory
+  
+  ```typescript
+  const contents = dir.list();
+  for (const item of contents) {
+    if (item instanceof File) {
+      console.log('File:', item.name);
+    } else {
+      console.log('Directory:', item.name);
+    }
+  }
+  ```
+</ParamField>
+
+<ParamField path="dir.createFile(name, mimeType)" type="(name: string, mimeType?: string) => File">
+  Creates a new file in this directory
+  
+  ```typescript
+  const file = dir.createFile('data.json', 'application/json');
+  ```
+</ParamField>
+
+<ParamField path="dir.createDirectory(name)" type="(name: string) => Directory">
+  Creates a new subdirectory
+  
+  ```typescript
+  const subdir = dir.createDirectory('subfolder');
+  ```
+</ParamField>
+
+#### Properties
+
+<ResponseField name="dir.uri" type="string">
+  The directory URI
+</ResponseField>
+
+<ResponseField name="dir.name" type="string">
+  Directory name
+</ResponseField>
+
+<ResponseField name="dir.parentDirectory" type="Directory">
+  The parent directory
+</ResponseField>
+
+### Download Files
+
+<ParamField path="File.downloadFileAsync(url, destination, options)" type="static">
+  Downloads a file from a URL
+  
+  ```typescript
+  const file = await File.downloadFileAsync(
+    'https://example.com/file.pdf',
+    Paths.document,
+    {
+      headers: { 'Authorization': 'Bearer token' }
+    }
+  );
+  ```
+</ParamField>
+
+## Examples
+
+### Read and Write Text Files
+
+```typescript
+import { File, Paths } from 'expo-file-system';
+
+// Write to a file
+const file = new File(Paths.document, 'notes.txt');
+await file.write('My notes content');
+
+// Read from a file
+const content = await file.text();
+console.log(content); // "My notes content"
+
+// Append to a file
+const existingContent = await file.text();
+await file.write(existingContent + '\nNew line');
+```
+
+### Work with JSON
+
+```typescript
+import { File, Paths } from 'expo-file-system';
+
+interface UserData {
+  name: string;
+  email: string;
+}
+
+const dataFile = new File(Paths.document, 'user-data.json');
+
+// Write JSON
+const userData: UserData = {
+  name: 'John Doe',
+  email: 'john@example.com'
+};
+await dataFile.write(JSON.stringify(userData, null, 2));
+
+// Read JSON
+const json = await dataFile.text();
+const loaded: UserData = JSON.parse(json);
+console.log(loaded.name); // "John Doe"
+```
+
+### Create Directory Structure
+
+```typescript
+import { Directory, File, Paths } from 'expo-file-system';
+
+// Create nested directories
+const appData = new Directory(Paths.document, 'myapp');
+await appData.create();
+
+const imagesDir = new Directory(appData, 'images');
+await imagesDir.create();
+
+const cacheDir = new Directory(appData, 'cache');
+await cacheDir.create();
+
+// Create file in subdirectory
+const configFile = new File(appData, 'config.json');
+await configFile.write(JSON.stringify({ version: '1.0' }));
+```
+
+### List Directory Contents
+
+```typescript
+import { Directory, File, Paths } from 'expo-file-system';
+
+const dir = new Directory(Paths.document);
+const contents = dir.list();
+
+for (const item of contents) {
+  if (item instanceof File) {
+    console.log(`File: ${item.name} (${item.size} bytes)`);
+  } else if (item instanceof Directory) {
+    console.log(`Directory: ${item.name}`);
+  }
+}
+```
+
+### Download and Save File
+
+```typescript
+import { File, Paths } from 'expo-file-system';
+
+async function downloadImage(url: string) {
+  const file = await File.downloadFileAsync(
+    url,
+    Paths.document,
+    {
+      headers: {
+        'User-Agent': 'MyApp/1.0'
+      }
+    }
+  );
+  
+  console.log('Downloaded to:', file.uri);
+  return file;
+}
+
+await downloadImage('https://example.com/photo.jpg');
+```
+
+### Copy and Move Files
+
+```typescript
+import { File, Paths } from 'expo-file-system';
+
+// Create a file
+const original = new File(Paths.cache, 'temp.txt');
+await original.write('Temporary data');
+
+// Copy to documents (persistent storage)
+const persistent = await original.copy(Paths.document);
+
+// Move file to new location
+const renamed = await persistent.move(
+  new File(Paths.document, 'permanent.txt')
+);
+
+// Delete original cache file
+await original.delete();
+```
+
+### Check File Existence
+
+```typescript
+import { File, Paths } from 'expo-file-system';
+
+const file = new File(Paths.document, 'settings.json');
+
+if (await file.exists()) {
+  const data = await file.text();
+  console.log('Settings loaded:', data);
+} else {
+  // Create default settings
+  await file.write(JSON.stringify({ theme: 'light' }));
+}
+```
+
+### Binary Data Handling
+
+```typescript
+import { File, Paths } from 'expo-file-system';
+
+// Write binary data
+const binaryFile = new File(Paths.document, 'data.bin');
+const bytes = new Uint8Array([72, 101, 108, 108, 111]); // "Hello"
+await binaryFile.write(bytes);
+
+// Read binary data
+const readBytes = await binaryFile.bytes();
+console.log(readBytes); // Uint8Array(5) [72, 101, 108, 108, 111]
+
+// Convert to string
+const text = new TextDecoder().decode(readBytes);
+console.log(text); // "Hello"
+```
+
+### Stream Large Files
+
+```typescript
+import { File, Paths } from 'expo-file-system';
+
+const file = new File(Paths.document, 'large-file.txt');
+
+// Write stream
+const writable = file.writableStream();
+const writer = writable.getWriter();
+
+for (let i = 0; i < 1000; i++) {
+  await writer.write(new TextEncoder().encode(`Line ${i}\n`));
+}
+
+await writer.close();
+
+// Read stream
+const readable = file.readableStream();
+const reader = readable.getReader();
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  console.log('Chunk:', new TextDecoder().decode(value));
+}
+```
+
+### Storage Info
+
+```typescript
+import { Paths } from 'expo-file-system';
+
+const totalSpace = Paths.totalDiskSpace;
+const availableSpace = Paths.availableDiskSpace;
+
+console.log(`Total: ${(totalSpace / 1024 / 1024 / 1024).toFixed(2)} GB`);
+console.log(`Available: ${(availableSpace / 1024 / 1024 / 1024).toFixed(2)} GB`);
+console.log(`Used: ${((totalSpace - availableSpace) / totalSpace * 100).toFixed(1)}%`);
+```
+
+## Legacy API
+
+For backwards compatibility, the legacy API is still available:
+
+```typescript
+import * as FileSystem from 'expo-file-system/legacy';
+
+// Write file
+await FileSystem.writeAsStringAsync(
+  FileSystem.documentDirectory + 'file.txt',
+  'content'
+);
+
+// Read file
+const content = await FileSystem.readAsStringAsync(
+  FileSystem.documentDirectory + 'file.txt'
+);
+```
+
+<Note>
+Use the modern API (`File`, `Directory`, `Paths`) for new projects. The legacy API is maintained for compatibility only.
+</Note>
+
+## TypeScript
+
+```typescript
+import { File, Directory, Paths } from 'expo-file-system';
+
+const file: File = new File(Paths.document, 'data.txt');
+const dir: Directory = new Directory(Paths.cache, 'temp');
+
+const content: string = await file.text();
+const bytes: Uint8Array = await file.bytes();
+const exists: boolean = await file.exists();
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ✅ (Limited) |
+
+<Warning>
+On web, file system access is limited to browser storage. Not all features are available.
+</Warning>
+
+## Best Practices
+
+1. **Use Document Directory**: Store user data in `Paths.document` for persistence
+2. **Use Cache Directory**: Store temporary data in `Paths.cache`
+3. **Check Existence**: Always check if files exist before reading
+4. **Handle Errors**: Wrap file operations in try/catch blocks
+5. **Clean Up**: Delete unnecessary files from cache regularly
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/filesystem/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-file-system)

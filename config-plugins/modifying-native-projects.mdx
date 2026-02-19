@@ -1,0 +1,744 @@
+---
+title: Modifying Native Projects
+description: Deep dive into modifying iOS and Android native projects with config plugins.
+---
+
+import { Tab, Tabs } from '~/ui/components/Tabs';
+
+Config plugins provide fine-grained control over your native iOS and Android projects. This guide covers common modification patterns for both platforms.
+
+## Modifying iOS projects
+
+### Working with Info.plist
+
+The `Info.plist` file contains essential app configuration for iOS.
+
+#### Adding permissions
+
+```ts
+import { withInfoPlist, ConfigPlugin } from '@expo/config-plugins';
+
+const withCameraPermission: ConfigPlugin = (config) => {
+  return withInfoPlist(config, (config) => {
+    config.modResults.NSCameraUsageDescription = 
+      config.ios?.cameraPermission || 'Allow $(PRODUCT_NAME) to access your camera';
+    return config;
+  });
+};
+```
+
+#### Setting URL schemes
+
+```ts
+import { withInfoPlist, ConfigPlugin } from '@expo/config-plugins';
+
+const withURLScheme: ConfigPlugin<{ scheme: string }> = (config, { scheme }) => {
+  return withInfoPlist(config, (config) => {
+    if (!config.modResults.CFBundleURLTypes) {
+      config.modResults.CFBundleURLTypes = [];
+    }
+    
+    config.modResults.CFBundleURLTypes.push({
+      CFBundleURLSchemes: [scheme],
+      CFBundleURLName: scheme,
+    });
+    
+    return config;
+  });
+};
+```
+
+#### Configuring background modes
+
+```ts
+import { withInfoPlist, ConfigPlugin } from '@expo/config-plugins';
+
+const withBackgroundModes: ConfigPlugin = (config) => {
+  return withInfoPlist(config, (config) => {
+    if (!config.modResults.UIBackgroundModes) {
+      config.modResults.UIBackgroundModes = [];
+    }
+    
+    config.modResults.UIBackgroundModes = [
+      ...new Set([
+        ...config.modResults.UIBackgroundModes,
+        'remote-notification',
+        'fetch',
+      ]),
+    ];
+    
+    return config;
+  });
+};
+```
+
+### Working with Entitlements
+
+Entitlements enable app capabilities like Associated Domains, HealthKit, and Apple Pay.
+
+#### Adding Associated Domains
+
+```ts Entitlements.ts
+import { withEntitlementsPlist, ConfigPlugin } from '@expo/config-plugins';
+
+const withAssociatedDomains: ConfigPlugin<{ domains: string[] }> = (config, { domains }) => {
+  return withEntitlementsPlist(config, (config) => {
+    config.modResults['com.apple.developer.associated-domains'] = domains.map(
+      (domain) => `applinks:${domain}`
+    );
+    return config;
+  });
+};
+
+// Usage
+export default withAssociatedDomains(config, {
+  domains: ['example.com', 'www.example.com'],
+});
+```
+
+#### Adding App Groups
+
+```ts
+import { withEntitlementsPlist, ConfigPlugin } from '@expo/config-plugins';
+
+const withAppGroups: ConfigPlugin<{ groups: string[] }> = (config, { groups }) => {
+  return withEntitlementsPlist(config, (config) => {
+    config.modResults['com.apple.security.application-groups'] = groups;
+    return config;
+  });
+};
+```
+
+#### Enabling HealthKit
+
+```ts
+import { withEntitlementsPlist, withInfoPlist, ConfigPlugin } from '@expo/config-plugins';
+
+const withHealthKit: ConfigPlugin = (config) => {
+  // Add entitlement
+  config = withEntitlementsPlist(config, (config) => {
+    config.modResults['com.apple.developer.healthkit'] = true;
+    return config;
+  });
+  
+  // Add required keys to Info.plist
+  config = withInfoPlist(config, (config) => {
+    config.modResults.NSHealthShareUsageDescription = 'Allow app to read health data';
+    config.modResults.NSHealthUpdateUsageDescription = 'Allow app to write health data';
+    return config;
+  });
+  
+  return config;
+};
+```
+
+### Modifying Xcode project
+
+For advanced modifications like adding build phases or frameworks.
+
+#### Adding a build phase
+
+```ts
+import { withXcodeProject, ConfigPlugin } from '@expo/config-plugins';
+
+const withCustomBuildPhase: ConfigPlugin = (config) => {
+  return withXcodeProject(config, (config) => {
+    const xcodeProject = config.modResults;
+    
+    const script = `
+echo "Running custom build phase"
+# Your custom script here
+`;
+    
+    xcodeProject.addBuildPhase(
+      [],
+      'PBXShellScriptBuildPhase',
+      'Run Custom Script',
+      null,
+      {
+        shellPath: '/bin/sh',
+        shellScript: JSON.stringify(script),
+      }
+    );
+    
+    return config;
+  });
+};
+```
+
+#### Adding a framework
+
+```ts
+import { withXcodeProject, ConfigPlugin } from '@expo/config-plugins';
+
+const withFramework: ConfigPlugin = (config) => {
+  return withXcodeProject(config, (config) => {
+    const xcodeProject = config.modResults;
+    
+    // Add framework to all targets
+    xcodeProject.addFramework('CoreMotion.framework', {
+      link: true,
+    });
+    
+    return config;
+  });
+};
+```
+
+### Modifying Podfile
+
+```ts
+import { withPodfile, ConfigPlugin } from '@expo/config-plugins';
+import { mergeContents } from '@expo/config-plugins/build/utils/generateCode';
+
+const withCustomPod: ConfigPlugin = (config) => {
+  return withPodfile(config, (config) => {
+    const podfileContent = config.modResults.contents;
+    
+    const merged = mergeContents({
+      src: podfileContent,
+      newSrc: `  pod 'MyCustomPod', '~> 1.0.0'`,
+      tag: 'my-custom-pod',
+      anchor: /use_expo_modules!/,
+      offset: 1,
+      comment: '#',
+    });
+    
+    if (merged.didMerge || merged.didClear) {
+      config.modResults.contents = merged.contents;
+    }
+    
+    return config;
+  });
+};
+```
+
+### Modifying AppDelegate
+
+For Objective-C code injection (use sparingly).
+
+```ts
+import { withAppDelegate, ConfigPlugin } from '@expo/config-plugins';
+import { mergeContents } from '@expo/config-plugins/build/utils/generateCode';
+
+const withCustomAppDelegate: ConfigPlugin = (config) => {
+  return withAppDelegate(config, (config) => {
+    if (config.modResults.language !== 'objc') {
+      throw new Error('Only Objective-C AppDelegate is supported');
+    }
+    
+    let contents = config.modResults.contents;
+    
+    // Add import
+    contents = contents.replace(
+      /(#import "AppDelegate.h")/,
+      `$1\n#import <MySDK/MySDK.h>`
+    );
+    
+    // Add code to didFinishLaunchingWithOptions
+    const merged = mergeContents({
+      src: contents,
+      newSrc: `  [MySDK initializeWithKey:@"YOUR_KEY"];`,
+      tag: 'my-sdk-init',
+      anchor: /return \[super application:application didFinishLaunchingWithOptions:launchOptions\];/,
+      offset: -1,
+      comment: '//',
+    });
+    
+    if (merged.didMerge || merged.didClear) {
+      config.modResults.contents = merged.contents;
+    }
+    
+    return config;
+  });
+};
+```
+
+## Modifying Android projects
+
+### Working with AndroidManifest.xml
+
+The manifest declares app components, permissions, and features.
+
+#### Adding permissions
+
+```ts Permissions.ts
+import { withAndroidManifest, ConfigPlugin } from '@expo/config-plugins';
+import { AndroidConfig } from '@expo/config-plugins';
+
+const withCameraPermission: ConfigPlugin = (config) => {
+  return withAndroidManifest(config, (config) => {
+    const manifest = config.modResults;
+    
+    AndroidConfig.Permissions.ensurePermissions(manifest, [
+      'android.permission.CAMERA',
+      'android.permission.RECORD_AUDIO',
+    ]);
+    
+    return config;
+  });
+};
+```
+
+#### Adding features
+
+```ts
+import { withAndroidManifest, ConfigPlugin } from '@expo/config-plugins';
+
+const withCameraFeature: ConfigPlugin = (config) => {
+  return withAndroidManifest(config, (config) => {
+    const manifest = config.modResults.manifest;
+    
+    if (!manifest['uses-feature']) {
+      manifest['uses-feature'] = [];
+    }
+    
+    manifest['uses-feature'].push({
+      $: {
+        'android:name': 'android.hardware.camera',
+        'android:required': 'false',
+      },
+    });
+    
+    return config;
+  });
+};
+```
+
+#### Adding intent filters
+
+```ts
+import { withAndroidManifest, ConfigPlugin } from '@expo/config-plugins';
+
+const withCustomIntentFilter: ConfigPlugin<{ scheme: string }> = (config, { scheme }) => {
+  return withAndroidManifest(config, (config) => {
+    const manifest = config.modResults.manifest;
+    const mainActivity = manifest.application?.[0]?.activity?.find(
+      (activity) => activity.$?.['android:name'] === '.MainActivity'
+    );
+    
+    if (mainActivity) {
+      if (!mainActivity['intent-filter']) {
+        mainActivity['intent-filter'] = [];
+      }
+      
+      mainActivity['intent-filter'].push({
+        action: [{ $: { 'android:name': 'android.intent.action.VIEW' } }],
+        category: [
+          { $: { 'android:name': 'android.intent.category.DEFAULT' } },
+          { $: { 'android:name': 'android.intent.category.BROWSABLE' } },
+        ],
+        data: [{ $: { 'android:scheme': scheme } }],
+      });
+    }
+    
+    return config;
+  });
+};
+```
+
+#### Blocking permissions
+
+```ts Permissions.ts
+import { withAndroidManifest, ConfigPlugin } from '@expo/config-plugins';
+import { AndroidConfig } from '@expo/config-plugins';
+
+const withBlockedPermissions: ConfigPlugin<string[]> = (config, permissions) => {
+  return withAndroidManifest(config, (config) => {
+    const manifest = config.modResults;
+    
+    // Ensure tools namespace is available
+    manifest.manifest.$ = {
+      ...manifest.manifest.$,
+      'xmlns:tools': 'http://schemas.android.com/tools',
+    };
+    
+    if (!manifest.manifest['uses-permission']) {
+      manifest.manifest['uses-permission'] = [];
+    }
+    
+    // Block each permission
+    for (const permission of permissions) {
+      manifest.manifest['uses-permission'].push({
+        $: {
+          'android:name': permission,
+          'tools:node': 'remove',
+        },
+      });
+    }
+    
+    return config;
+  });
+};
+```
+
+### Modifying Gradle files
+
+#### Setting build properties in app/build.gradle
+
+```ts
+import { withAppBuildGradle, ConfigPlugin } from '@expo/config-plugins';
+
+const withMinSdkVersion: ConfigPlugin<{ minSdkVersion: number }> = (config, { minSdkVersion }) => {
+  return withAppBuildGradle(config, (config) => {
+    if (config.modResults.language === 'groovy') {
+      config.modResults.contents = config.modResults.contents.replace(
+        /minSdkVersion\s*=?\s*\d+/,
+        `minSdkVersion = ${minSdkVersion}`
+      );
+    }
+    return config;
+  });
+};
+```
+
+#### Adding dependencies
+
+```ts
+import { withAppBuildGradle, ConfigPlugin } from '@expo/config-plugins';
+
+const withCustomDependency: ConfigPlugin = (config) => {
+  return withAppBuildGradle(config, (config) => {
+    if (config.modResults.language === 'groovy') {
+      const dependency = `    implementation 'com.example:library:1.0.0'`;
+      
+      if (!config.modResults.contents.includes(dependency)) {
+        config.modResults.contents = config.modResults.contents.replace(
+          /dependencies\s*{/,
+          `dependencies {\n${dependency}`
+        );
+      }
+    }
+    return config;
+  });
+};
+```
+
+#### Modifying project-level build.gradle
+
+```ts
+import { withProjectBuildGradle, ConfigPlugin } from '@expo/config-plugins';
+
+const withCustomRepository: ConfigPlugin = (config) => {
+  return withProjectBuildGradle(config, (config) => {
+    if (config.modResults.language === 'groovy') {
+      const repository = `        maven { url 'https://example.com/maven' }`;
+      
+      if (!config.modResults.contents.includes(repository)) {
+        config.modResults.contents = config.modResults.contents.replace(
+          /allprojects\s*{[\s\S]*?repositories\s*{/,
+          `$&\n${repository}`
+        );
+      }
+    }
+    return config;
+  });
+};
+```
+
+### Modifying gradle.properties
+
+```ts
+import { withGradleProperties, ConfigPlugin } from '@expo/config-plugins';
+
+const withCustomGradleProperties: ConfigPlugin = (config) => {
+  return withGradleProperties(config, (config) => {
+    config.modResults.push(
+      {
+        type: 'property',
+        key: 'android.useAndroidX',
+        value: 'true',
+      },
+      {
+        type: 'property',
+        key: 'android.enableJetifier',
+        value: 'true',
+      },
+      {
+        type: 'property',
+        key: 'org.gradle.jvmargs',
+        value: '-Xmx4096m',
+      }
+    );
+    return config;
+  });
+};
+```
+
+### Working with resource files
+
+#### Modifying strings.xml
+
+```ts
+import { withStringsXml, ConfigPlugin } from '@expo/config-plugins';
+
+const withCustomStrings: ConfigPlugin = (config) => {
+  return withStringsXml(config, (config) => {
+    config.modResults.resources.string = [
+      ...config.modResults.resources.string || [],
+      {
+        $: { name: 'app_name' },
+        _: config.name || 'My App',
+      },
+      {
+        $: { name: 'custom_message' },
+        _: 'This is a custom message',
+      },
+    ];
+    return config;
+  });
+};
+```
+
+#### Modifying colors.xml
+
+```ts
+import { withAndroidColors, ConfigPlugin } from '@expo/config-plugins';
+
+const withCustomColors: ConfigPlugin = (config) => {
+  return withAndroidColors(config, (config) => {
+    config.modResults.resources.color = [
+      ...config.modResults.resources.color || [],
+      {
+        $: { name: 'colorPrimary' },
+        _: '#FF5722',
+      },
+      {
+        $: { name: 'colorAccent' },
+        _: '#00BCD4',
+      },
+    ];
+    return config;
+  });
+};
+```
+
+### Modifying Java/Kotlin files
+
+For MainActivity or MainApplication modifications.
+
+#### Adding imports and code to MainActivity
+
+```ts
+import { withMainActivity, ConfigPlugin } from '@expo/config-plugins';
+import { mergeContents } from '@expo/config-plugins/build/utils/generateCode';
+
+const withCustomMainActivity: ConfigPlugin = (config) => {
+  return withMainActivity(config, (config) => {
+    let contents = config.modResults.contents;
+    
+    // Add import
+    if (!contents.includes('import com.example.MySDK;')) {
+      contents = contents.replace(
+        /(package .+;)/,
+        `$1\n\nimport com.example.MySDK;`
+      );
+    }
+    
+    // Add code to onCreate
+    const merged = mergeContents({
+      src: contents,
+      newSrc: `    MySDK.initialize(this);`,
+      tag: 'my-sdk-init',
+      anchor: /super\.onCreate\(savedInstanceState\);/,
+      offset: 1,
+      comment: '//',
+    });
+    
+    if (merged.didMerge || merged.didClear) {
+      config.modResults.contents = merged.contents;
+    }
+    
+    return config;
+  });
+};
+```
+
+## Managing native dependencies
+
+### iOS: CocoaPods
+
+For adding CocoaPods dependencies, use Podfile modifications or the expo-build-properties plugin.
+
+```json app.json
+{
+  "expo": {
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "extraPods": [
+              {
+                "name": "Firebase/Analytics",
+                "version": "~> 10.0.0"
+              }
+            ]
+          }
+        }
+      ]
+    ]
+  }
+}
+```
+
+### Android: Maven repositories
+
+For adding Maven repositories:
+
+```json app.json
+{
+  "expo": {
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraMavenRepos": [
+              "https://example.com/maven",
+              {
+                "url": "https://private.example.com/maven",
+                "credentials": {
+                  "username": "user",
+                  "password": "pass"
+                },
+                "authentication": "basic"
+              }
+            ]
+          }
+        }
+      ]
+    ]
+  }
+}
+```
+
+## Using code generation helpers
+
+The `mergeContents` utility helps insert code with generated markers:
+
+```ts generateCode.ts
+import { mergeContents } from '@expo/config-plugins/build/utils/generateCode';
+
+const result = mergeContents({
+  src: existingCode,
+  newSrc: codeToInsert,
+  tag: 'my-plugin-name',      // Unique identifier
+  anchor: /some pattern/,      // Where to insert
+  offset: 1,                   // Lines after anchor
+  comment: '//',               // Comment style
+});
+
+if (result.didMerge) {
+  // Code was inserted
+} else if (result.didClear) {
+  // Old generated code was removed
+}
+
+fileContents = result.contents;
+```
+
+This generates:
+
+```
+// @generated begin my-plugin-name - expo prebuild (DO NOT MODIFY) sync-abc123
+your inserted code
+// @generated end my-plugin-name
+```
+
+Benefits:
+- Idempotent: Running multiple times won't duplicate code
+- Safe: Won't remove manually edited code
+- Trackable: Hash detects if user modified generated code
+
+## Best practices
+
+### 1. Use platform-specific helpers
+
+Leverage `AndroidConfig` and `IOSConfig` utilities:
+
+```ts
+import { AndroidConfig, IOSConfig } from '@expo/config-plugins';
+
+// Android
+AndroidConfig.Permissions.ensurePermissions(manifest, ['CAMERA']);
+AndroidConfig.Manifest.getMainApplicationOrThrow(manifest);
+
+// iOS
+IOSConfig.BundleIdentifier.getBundleIdentifier(config);
+IOSConfig.Entitlements.setAssociatedDomains(entitlements, domains);
+```
+
+### 2. Validate before modifying
+
+```ts
+const withSafeModification: ConfigPlugin = (config) => {
+  return withAndroidManifest(config, (config) => {
+    const mainActivity = config.modResults.manifest.application?.[0]?.activity?.find(
+      (activity) => activity.$?.['android:name'] === '.MainActivity'
+    );
+    
+    if (!mainActivity) {
+      throw new Error('MainActivity not found in AndroidManifest.xml');
+    }
+    
+    // Safe to modify
+    return config;
+  });
+};
+```
+
+### 3. Preserve existing values
+
+```ts
+const withSafeURLScheme: ConfigPlugin<{ scheme: string }> = (config, { scheme }) => {
+  return withInfoPlist(config, (config) => {
+    const existing = config.modResults.CFBundleURLTypes || [];
+    
+    // Don't duplicate if already present
+    const hasScheme = existing.some((type) =>
+      type.CFBundleURLSchemes?.includes(scheme)
+    );
+    
+    if (!hasScheme) {
+      config.modResults.CFBundleURLTypes = [
+        ...existing,
+        { CFBundleURLSchemes: [scheme] },
+      ];
+    }
+    
+    return config;
+  });
+};
+```
+
+### 4. Handle both Groovy and Kotlin DSL
+
+For Gradle modifications, check the language:
+
+```ts
+const withGradleConfig: ConfigPlugin = (config) => {
+  return withAppBuildGradle(config, (config) => {
+    if (config.modResults.language === 'groovy') {
+      // Groovy syntax
+      config.modResults.contents = config.modResults.contents.replace(
+        /minSdkVersion\s*=?\s*\d+/,
+        'minSdkVersion = 24'
+      );
+    } else if (config.modResults.language === 'kotlin') {
+      // Kotlin DSL syntax
+      config.modResults.contents = config.modResults.contents.replace(
+        /minSdk\s*=\s*\d+/,
+        'minSdk = 24'
+      );
+    }
+    return config;
+  });
+};
+```
+
+## Next steps
+
+- [iOS Entitlements](/config-plugins/ios-entitlements) - Detailed iOS entitlements guide
+- [Android Permissions](/config-plugins/android-permissions) - Android permissions reference
+- [Testing Plugins](/config-plugins/testing-plugins) - Test your modifications

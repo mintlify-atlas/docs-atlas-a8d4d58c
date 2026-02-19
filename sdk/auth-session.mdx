@@ -1,0 +1,528 @@
+---
+title: expo-auth-session
+description: Browser-based authentication using OAuth 2.0 and OpenID Connect
+---
+
+# expo-auth-session
+
+**Version:** 55.0.4
+
+Expo module for browser-based authentication using OAuth 2.0 and OpenID Connect. Supports authentication flows with providers like Google, Facebook, GitHub, and custom OAuth servers.
+
+## Installation
+
+```bash
+npx expo install expo-auth-session expo-web-browser expo-crypto
+```
+
+## Usage
+
+```typescript
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
+import { Button } from 'react-native';
+
+WebBrowser.maybeCompleteAuthSession();
+
+const discovery = {
+  authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+  tokenEndpoint: 'https://oauth2.googleapis.com/token',
+};
+
+export default function App() {
+  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: 'YOUR_CLIENT_ID',
+      redirectUri: AuthSession.makeRedirectUri({ useProxy: true }),
+      scopes: ['openid', 'profile', 'email'],
+    },
+    discovery
+  );
+
+  React.useEffect(() => {
+    if (response?.type === 'success') {
+      const { code } = response.params;
+      // Exchange code for token
+    }
+  }, [response]);
+
+  return (
+    <Button
+      title="Sign in with Google"
+      onPress={() => promptAsync()}
+      disabled={!request}
+    />
+  );
+}
+```
+
+## API Reference
+
+### Hooks
+
+<ParamField path="useAuthRequest(config, discovery)" type="(config: AuthRequestConfig, discovery: DiscoveryDocument) => [AuthRequest | null, AuthSessionResult | null, (options?: AuthRequestPromptOptions) => Promise<AuthSessionResult>]">
+  Hook for creating and managing auth requests
+  
+  Returns `[request, response, promptAsync]`
+  
+  ```typescript
+  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: 'client-id',
+      redirectUri: AuthSession.makeRedirectUri(),
+      scopes: ['openid', 'profile'],
+    },
+    discovery
+  );
+  ```
+</ParamField>
+
+<ParamField path="useAutoDiscovery(issuer)" type="(issuer: string) => DiscoveryDocument | null">
+  Auto-discovers OAuth configuration from issuer
+  
+  ```typescript
+  const discovery = AuthSession.useAutoDiscovery(
+    'https://accounts.google.com'
+  );
+  ```
+</ParamField>
+
+### Methods
+
+<ParamField path="makeRedirectUri(options)" type="(options?: MakeRedirectUriOptions) => string">
+  Generates redirect URI for your app
+  
+  ```typescript
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: 'myapp',
+    path: 'redirect',
+    useProxy: true,
+  });
+  ```
+</ParamField>
+
+<ParamField path="exchangeCodeAsync(config, discovery)" type="(config: AccessTokenRequestConfig, discovery: DiscoveryDocument) => Promise<TokenResponse>">
+  Exchanges authorization code for access token
+  
+  ```typescript
+  const tokenResponse = await AuthSession.exchangeCodeAsync(
+    {
+      clientId: 'client-id',
+      code: authCode,
+      redirectUri,
+    },
+    discovery
+  );
+  ```
+</ParamField>
+
+<ParamField path="refreshAsync(config, discovery)" type="(config: RefreshTokenRequestConfig, discovery: DiscoveryDocument) => Promise<TokenResponse>">
+  Refreshes an access token using refresh token
+  
+  ```typescript
+  const newToken = await AuthSession.refreshAsync(
+    {
+      clientId: 'client-id',
+      refreshToken: oldToken.refreshToken,
+    },
+    discovery
+  );
+  ```
+</ParamField>
+
+<ParamField path="revokeAsync(config, discovery)" type="(config: RevokeTokenRequestConfig, discovery: DiscoveryDocument) => Promise<void>">
+  Revokes an access or refresh token
+  
+  ```typescript
+  await AuthSession.revokeAsync(
+    {
+      clientId: 'client-id',
+      token: accessToken,
+    },
+    discovery
+  );
+  ```
+</ParamField>
+
+<ParamField path="fetchDiscoveryAsync(issuer)" type="(issuer: string) => Promise<DiscoveryDocument>">
+  Fetches OAuth discovery document
+  
+  ```typescript
+  const discovery = await AuthSession.fetchDiscoveryAsync(
+    'https://accounts.google.com'
+  );
+  ```
+</ParamField>
+
+### Types
+
+#### AuthRequestConfig
+
+<ParamField path="clientId" type="string" required>
+  OAuth client ID
+</ParamField>
+
+<ParamField path="redirectUri" type="string" required>
+  Redirect URI for callback
+</ParamField>
+
+<ParamField path="scopes" type="string[]">
+  OAuth scopes to request
+</ParamField>
+
+<ParamField path="responseType" type="ResponseType">
+  OAuth response type (default: `'code'`)
+</ParamField>
+
+<ParamField path="state" type="string">
+  State parameter for CSRF protection
+</ParamField>
+
+<ParamField path="codeChallenge" type="string">
+  PKCE code challenge
+</ParamField>
+
+<ParamField path="codeChallengeMethod" type="'S256' | 'plain'">
+  PKCE code challenge method
+</ParamField>
+
+#### TokenResponse
+
+<ResponseField name="accessToken" type="string">
+  Access token
+</ResponseField>
+
+<ResponseField name="refreshToken" type="string | undefined">
+  Refresh token (if available)
+</ResponseField>
+
+<ResponseField name="expiresIn" type="number">
+  Token expiration time in seconds
+</ResponseField>
+
+<ResponseField name="tokenType" type="string">
+  Token type (usually "Bearer")
+</ResponseField>
+
+<ResponseField name="idToken" type="string | undefined">
+  OpenID Connect ID token
+</ResponseField>
+
+## Examples
+
+### Google Sign-In
+
+```typescript
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
+
+WebBrowser.maybeCompleteAuthSession();
+
+const discovery = {
+  authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+  tokenEndpoint: 'https://oauth2.googleapis.com/token',
+  revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
+};
+
+export default function GoogleAuth() {
+  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: 'YOUR_GOOGLE_CLIENT_ID',
+      redirectUri: AuthSession.makeRedirectUri({ useProxy: true }),
+      scopes: ['openid', 'profile', 'email'],
+      responseType: AuthSession.ResponseType.Code,
+    },
+    discovery
+  );
+
+  React.useEffect(() => {
+    if (response?.type === 'success') {
+      exchangeCodeForToken(response.params.code);
+    }
+  }, [response]);
+
+  async function exchangeCodeForToken(code: string) {
+    const tokenResponse = await AuthSession.exchangeCodeAsync(
+      {
+        clientId: 'YOUR_GOOGLE_CLIENT_ID',
+        code,
+        redirectUri: AuthSession.makeRedirectUri({ useProxy: true }),
+      },
+      discovery
+    );
+
+    console.log('Access token:', tokenResponse.accessToken);
+    
+    // Fetch user info
+    const userInfo = await fetch(
+      'https://www.googleapis.com/oauth2/v2/userinfo',
+      {
+        headers: { Authorization: `Bearer ${tokenResponse.accessToken}` },
+      }
+    ).then(res => res.json());
+
+    console.log('User:', userInfo);
+  }
+
+  return (
+    <Button
+      title="Sign in with Google"
+      onPress={() => promptAsync()}
+      disabled={!request}
+    />
+  );
+}
+```
+
+### GitHub OAuth
+
+```typescript
+import * as AuthSession from 'expo-auth-session';
+
+const discovery = {
+  authorizationEndpoint: 'https://github.com/login/oauth/authorize',
+  tokenEndpoint: 'https://github.com/login/oauth/access_token',
+};
+
+function GitHubAuth() {
+  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: 'YOUR_GITHUB_CLIENT_ID',
+      redirectUri: AuthSession.makeRedirectUri(),
+      scopes: ['user', 'repo'],
+    },
+    discovery
+  );
+
+  React.useEffect(() => {
+    if (response?.type === 'success') {
+      const { code } = response.params;
+      // Exchange code for token
+    }
+  }, [response]);
+
+  return <Button title="Sign in with GitHub" onPress={() => promptAsync()} />;
+}
+```
+
+### Auto Discovery
+
+```typescript
+import * as AuthSession from 'expo-auth-session';
+
+function OAuthWithDiscovery() {
+  const discovery = AuthSession.useAutoDiscovery(
+    'https://accounts.google.com'
+  );
+
+  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: 'client-id',
+      redirectUri: AuthSession.makeRedirectUri(),
+      scopes: ['openid', 'profile'],
+    },
+    discovery
+  );
+
+  // Rest of the implementation
+}
+```
+
+### Token Refresh
+
+```typescript
+import * as AuthSession from 'expo-auth-session';
+import * as SecureStore from 'expo-secure-store';
+
+async function refreshAccessToken() {
+  const refreshToken = await SecureStore.getItemAsync('refreshToken');
+  if (!refreshToken) return null;
+
+  const discovery = await AuthSession.fetchDiscoveryAsync(
+    'https://accounts.google.com'
+  );
+
+  try {
+    const newTokens = await AuthSession.refreshAsync(
+      {
+        clientId: 'client-id',
+        refreshToken,
+      },
+      discovery
+    );
+
+    await SecureStore.setItemAsync('accessToken', newTokens.accessToken);
+    if (newTokens.refreshToken) {
+      await SecureStore.setItemAsync('refreshToken', newTokens.refreshToken);
+    }
+
+    return newTokens;
+  } catch (error) {
+    console.error('Token refresh failed:', error);
+    return null;
+  }
+}
+```
+
+### Complete Auth Flow
+
+```tsx
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
+import * as SecureStore from 'expo-secure-store';
+import { useState, useEffect } from 'react';
+import { View, Button, Text, StyleSheet } from 'react-native';
+
+WebBrowser.maybeCompleteAuthSession();
+
+const discovery = {
+  authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+  tokenEndpoint: 'https://oauth2.googleapis.com/token',
+  revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
+};
+
+export default function CompleteAuthExample() {
+  const [user, setUser] = useState<any>(null);
+
+  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: 'YOUR_CLIENT_ID',
+      redirectUri: AuthSession.makeRedirectUri({ useProxy: true }),
+      scopes: ['openid', 'profile', 'email'],
+      responseType: AuthSession.ResponseType.Code,
+    },
+    discovery
+  );
+
+  useEffect(() => {
+    checkStoredAuth();
+  }, []);
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      handleAuthResponse(response.params.code);
+    }
+  }, [response]);
+
+  async function checkStoredAuth() {
+    const token = await SecureStore.getItemAsync('accessToken');
+    if (token) {
+      await fetchUserInfo(token);
+    }
+  }
+
+  async function handleAuthResponse(code: string) {
+    const tokens = await AuthSession.exchangeCodeAsync(
+      {
+        clientId: 'YOUR_CLIENT_ID',
+        code,
+        redirectUri: AuthSession.makeRedirectUri({ useProxy: true }),
+      },
+      discovery
+    );
+
+    await SecureStore.setItemAsync('accessToken', tokens.accessToken);
+    if (tokens.refreshToken) {
+      await SecureStore.setItemAsync('refreshToken', tokens.refreshToken);
+    }
+
+    await fetchUserInfo(tokens.accessToken);
+  }
+
+  async function fetchUserInfo(accessToken: string) {
+    const response = await fetch(
+      'https://www.googleapis.com/oauth2/v2/userinfo',
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+    const userInfo = await response.json();
+    setUser(userInfo);
+  }
+
+  async function handleLogout() {
+    const token = await SecureStore.getItemAsync('accessToken');
+    if (token) {
+      await AuthSession.revokeAsync(
+        { clientId: 'YOUR_CLIENT_ID', token },
+        discovery
+      );
+    }
+    
+    await SecureStore.deleteItemAsync('accessToken');
+    await SecureStore.deleteItemAsync('refreshToken');
+    setUser(null);
+  }
+
+  if (user) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.welcome}>Welcome, {user.name}!</Text>
+        <Text>{user.email}</Text>
+        <Button title="Logout" onPress={handleLogout} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <Button
+        title="Sign in with Google"
+        onPress={() => promptAsync()}
+        disabled={!request}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10 },
+  welcome: { fontSize: 20, fontWeight: 'bold' },
+});
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ✅       |
+
+## Configuration
+
+### app.json
+
+```json
+{
+  "expo": {
+    "scheme": "myapp",
+    "plugins": [
+      [
+        "expo-auth-session",
+        {
+          "redirectUri": "myapp://redirect"
+        }
+      ]
+    ]
+  }
+}
+```
+
+## Best Practices
+
+1. **Use PKCE**: Always use PKCE for authorization code flow
+2. **Secure Storage**: Store tokens in SecureStore, not AsyncStorage
+3. **Token Refresh**: Implement token refresh logic for better UX
+4. **Error Handling**: Handle auth errors and cancellations gracefully
+5. **Deep Linking**: Configure proper URL schemes for redirects
+
+<Warning>
+Always call `WebBrowser.maybeCompleteAuthSession()` at the top of your component to handle redirect completion properly.
+</Warning>
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/auth-session/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-auth-session)
+- [OAuth 2.0 Specification](https://oauth.net/2/)

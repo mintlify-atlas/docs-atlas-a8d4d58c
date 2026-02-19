@@ -1,0 +1,534 @@
+---
+title: App Signing
+description: Learn how to manage iOS code signing certificates and Android keystores for your Expo apps.
+---
+
+import { Steps } from '~/components/Steps';
+import { Step } from '~/components/Step';
+import { Warning } from '~/components/Warning';
+import { Tabs, Tab } from '~/components/Tabs';
+
+# App Signing
+
+App signing is required to distribute your app on iOS and Android. Digital signatures verify that your app hasn't been tampered with and identify you as the developer.
+
+## Overview
+
+**iOS** requires:
+- Distribution Certificate (P12 file)
+- Provisioning Profile (mobileprovision file)
+
+**Android** requires:
+- Keystore (JKS or BKS file)
+- Key alias and passwords
+
+EAS Build can manage these credentials automatically, or you can provide your own.
+
+## Managed Credentials (Recommended)
+
+EAS automatically generates and stores your credentials securely.
+
+### First-Time Setup
+
+When you run your first build, EAS will prompt you:
+
+<Tabs>
+<Tab label="iOS">
+
+```bash
+eas build --platform ios
+```
+
+**Prompts:**
+1. Log in to your Apple Developer account
+2. EAS generates a distribution certificate
+3. EAS creates a provisioning profile
+4. Credentials are encrypted and stored on EAS servers
+
+EAS handles:
+- Creating distribution certificates
+- Generating provisioning profiles
+- Managing device UDIDs for ad hoc builds
+- Automatically renewing expired credentials
+
+</Tab>
+<Tab label="Android">
+
+```bash
+eas build --platform android
+```
+
+**Prompts:**
+
+EAS asks: **Would you like to generate a new keystore?**
+
+Select "Yes" to:
+- Generate a new keystore automatically
+- Store it securely on EAS servers
+- Use it for all future builds
+
+<Warning>
+Never lose your Android keystore. If you do, you cannot update your app on the Play Store - you'll need to publish a new app with a different package name.
+</Warning>
+
+</Tab>
+</Tabs>
+
+### Viewing Managed Credentials
+
+View and download your credentials:
+
+```bash
+# iOS credentials
+eas credentials --platform ios
+
+# Android credentials
+eas credentials --platform android
+```
+
+Or use the [Expo dashboard](https://expo.dev/):
+1. Navigate to your project
+2. Go to **Credentials**
+3. Select platform and view/download credentials
+
+## Local Credentials
+
+Provide your own credentials using a **credentials.json** file.
+
+### Setting Up credentials.json
+
+<Steps>
+
+<Step>
+
+### Create credentials.json
+
+Create **credentials.json** at your project root:
+
+```json credentials.json
+{
+  "android": {
+    "keystore": {
+      "keystorePath": "android/keystores/release.keystore",
+      "keystorePassword": "KEYSTORE_PASSWORD",
+      "keyAlias": "KEY_ALIAS",
+      "keyPassword": "KEY_PASSWORD"
+    }
+  },
+  "ios": {
+    "provisioningProfilePath": "ios/certs/profile.mobileprovision",
+    "distributionCertificate": {
+      "path": "ios/certs/dist-cert.p12",
+      "password": "CERT_PASSWORD"
+    }
+  }
+}
+```
+
+</Step>
+
+<Step>
+
+### Add to .gitignore
+
+<Warning>
+Never commit credentials to version control. Add them to .gitignore immediately.
+</Warning>
+
+```txt .gitignore
+# App signing credentials
+credentials.json
+android/keystores/*.keystore
+ios/certs/*
+```
+
+</Step>
+
+<Step>
+
+### Configure eas.json
+
+Tell EAS to use local credentials:
+
+```json eas.json
+{
+  "build": {
+    "production": {
+      "credentialsSource": "local"
+    }
+  }
+}
+```
+
+</Step>
+
+</Steps>
+
+## iOS Code Signing
+
+### Generating iOS Credentials Manually
+
+<Steps>
+
+<Step>
+
+### Create Distribution Certificate
+
+1. Go to [Apple Developer Portal](https://developer.apple.com/account/resources/certificates/list)
+2. Click **+** to create a new certificate
+3. Select **Apple Distribution** (for App Store and Ad Hoc)
+4. Generate a Certificate Signing Request (CSR) on your Mac:
+   - Open **Keychain Access**
+   - **Keychain Access** > **Certificate Assistant** > **Request a Certificate from a Certificate Authority**
+   - Enter your email and name
+   - Select **Save to disk**
+5. Upload the CSR to Apple Developer Portal
+6. Download the certificate (.cer file)
+7. Double-click to install in Keychain
+8. Export as P12:
+   - Open **Keychain Access**
+   - Find the certificate under **My Certificates**
+   - Right-click > **Export**
+   - Save as **.p12** with a password
+
+</Step>
+
+<Step>
+
+### Create Provisioning Profile
+
+1. Go to [Provisioning Profiles](https://developer.apple.com/account/resources/profiles/list)
+2. Click **+** to create new profile
+3. Select type:
+   - **App Store** for production
+   - **Ad Hoc** for internal distribution
+4. Select your App ID
+5. Select your distribution certificate
+6. For Ad Hoc: Select devices to include
+7. Name the profile and download (.mobileprovision)
+
+</Step>
+
+<Step>
+
+### Configure credentials.json
+
+```json credentials.json
+{
+  "ios": {
+    "provisioningProfilePath": "ios/certs/MyApp_AdHoc.mobileprovision",
+    "distributionCertificate": {
+      "path": "ios/certs/distribution.p12",
+      "password": "your-p12-password"
+    }
+  }
+}
+```
+
+</Step>
+
+</Steps>
+
+### Multi-Target iOS Projects
+
+If your app has multiple targets (main app + extensions), provide credentials for each:
+
+```json credentials.json
+{
+  "ios": {
+    "myapp": {
+      "provisioningProfilePath": "ios/certs/myapp-profile.mobileprovision",
+      "distributionCertificate": {
+        "path": "ios/certs/dist.p12",
+        "password": "PASSWORD"
+      }
+    },
+    "ShareExtension": {
+      "provisioningProfilePath": "ios/certs/share-profile.mobileprovision",
+      "distributionCertificate": {
+        "path": "ios/certs/dist.p12",
+        "password": "PASSWORD"
+      }
+    }
+  }
+}
+```
+
+### Managing Device UDIDs (Ad Hoc)
+
+For Ad Hoc distribution, register test devices:
+
+```bash
+# Register a new device
+eas device:create
+
+# List registered devices
+eas device:list
+
+# Delete a device
+eas device:delete
+
+# Rename a device
+eas device:rename
+```
+
+After adding devices, rebuild to include them in the provisioning profile:
+
+```bash
+eas build --platform ios --profile preview
+```
+
+## Android App Signing
+
+### Generating an Android Keystore
+
+Create a release keystore using the Java keytool:
+
+```bash
+keytool -genkey -v \
+  -storetype JKS \
+  -keyalg RSA \
+  -keysize 2048 \
+  -validity 10000 \
+  -storepass YOUR_KEYSTORE_PASSWORD \
+  -keypass YOUR_KEY_PASSWORD \
+  -alias YOUR_KEY_ALIAS \
+  -keystore release.keystore \
+  -dname "CN=com.yourcompany.yourapp,OU=,O=,L=,S=,C=US"
+```
+
+**Parameters:**
+- `storepass`: Password for the keystore file
+- `keypass`: Password for the specific key
+- `alias`: Identifier for the key
+- `validity`: Number of days (10,000 = ~27 years)
+- `dname`: Distinguished name (use your package name as CN)
+
+### Keystore Storage
+
+Move keystore to a secure location:
+
+```bash
+mkdir -p android/keystores
+mv release.keystore android/keystores/
+```
+
+Configure credentials.json:
+
+```json credentials.json
+{
+  "android": {
+    "keystore": {
+      "keystorePath": "android/keystores/release.keystore",
+      "keystorePassword": "YOUR_KEYSTORE_PASSWORD",
+      "keyAlias": "YOUR_KEY_ALIAS",
+      "keyPassword": "YOUR_KEY_PASSWORD"
+    }
+  }
+}
+```
+
+### Play App Signing
+
+Google Play uses **Play App Signing** to re-sign your app with a separate key.
+
+**How it works:**
+1. You upload your app signed with an **upload key**
+2. Google strips your signature
+3. Google re-signs with the **app signing key**
+4. Users download the app signed by Google's key
+
+**Benefits:**
+- Google securely manages your app signing key
+- Lost upload key can be reset (app signing key is protected)
+- Enhanced security and key rotation
+
+**Enrolling in Play App Signing:**
+1. Go to Google Play Console
+2. Navigate to your app
+3. Go to **Setup** > **App signing**
+4. Follow enrollment steps
+
+### Migrating Existing Keystore
+
+If you have an existing keystore from a previous build system:
+
+<Steps>
+
+<Step>
+
+### Locate Your Keystore
+
+Find your existing keystore file and gather:
+- Keystore file path
+- Keystore password
+- Key alias
+- Key password
+
+</Step>
+
+<Step>
+
+### Create credentials.json
+
+Add your keystore details:
+
+```json credentials.json
+{
+  "android": {
+    "keystore": {
+      "keystorePath": "path/to/existing.keystore",
+      "keystorePassword": "existing-password",
+      "keyAlias": "existing-alias",
+      "keyPassword": "existing-key-password"
+    }
+  }
+}
+```
+
+</Step>
+
+<Step>
+
+### Build with Local Credentials
+
+```bash
+eas build --platform android --profile production
+```
+
+EAS will use your existing keystore to sign the build.
+
+</Step>
+
+</Steps>
+
+## Using Credentials in CI/CD
+
+For CI/CD pipelines, encode credentials as base64:
+
+### Encoding Credentials
+
+```bash
+# Encode credentials.json
+base64 credentials.json
+
+# Encode keystore
+base64 android/keystores/release.keystore
+
+# Encode iOS certificate
+base64 ios/certs/dist.p12
+```
+
+### Decoding in CI
+
+Add environment variables to your CI service with base64 values, then decode:
+
+```bash
+# Decode credentials.json
+echo $CREDENTIALS_JSON_BASE64 | base64 -d > credentials.json
+
+# Decode keystore
+echo $KEYSTORE_BASE64 | base64 -d > android/keystores/release.keystore
+
+# Decode iOS files
+echo $IOS_DIST_CERT_BASE64 | base64 -d > ios/certs/dist.p12
+echo $IOS_PROFILE_BASE64 | base64 -d > ios/certs/profile.mobileprovision
+```
+
+### Example GitHub Actions Workflow
+
+```yaml .github/workflows/build.yml
+name: EAS Build
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      
+      - name: Restore credentials
+        run: |
+          echo ${{ secrets.CREDENTIALS_JSON }} | base64 -d > credentials.json
+          mkdir -p android/keystores
+          echo ${{ secrets.ANDROID_KEYSTORE }} | base64 -d > android/keystores/release.keystore
+      
+      - name: Build Android
+        run: eas build --platform android --non-interactive --profile production
+```
+
+## Credential Security Best Practices
+
+### Do's
+- ✅ Use EAS managed credentials for simplicity
+- ✅ Keep backups of Android keystores in secure storage
+- ✅ Use strong passwords for keystores and certificates
+- ✅ Rotate credentials periodically
+- ✅ Limit access to credentials to essential team members
+- ✅ Use environment variables in CI/CD
+
+### Don'ts
+- ❌ Never commit credentials.json to version control
+- ❌ Never share keystores via email or Slack
+- ❌ Never use weak or default passwords
+- ❌ Never store credentials in plaintext on developer machines
+- ❌ Never reuse keystores across different apps
+
+## Troubleshooting
+
+### iOS: "Provisioning profile doesn't include signing certificate"
+
+**Solution:** Regenerate provisioning profile with correct certificate:
+
+```bash
+eas credentials --platform ios
+# Select "Remove provisioning profile"
+eas build --platform ios --clear-cache
+```
+
+### Android: "Keystore was tampered with, or password was incorrect"
+
+**Solution:** Verify passwords in credentials.json match keystore:
+
+```bash
+# List keystore contents to verify
+keytool -list -v -keystore android/keystores/release.keystore
+# Enter keystore password when prompted
+```
+
+### iOS: "No suitable application records were found"
+
+**Solution:** Create App ID in Apple Developer Portal:
+1. Go to [Identifiers](https://developer.apple.com/account/resources/identifiers/list)
+2. Create App ID matching your bundle identifier
+3. Rebuild with EAS
+
+### Android: "Key alias not found"
+
+**Solution:** List aliases in keystore:
+
+```bash
+keytool -list -keystore android/keystores/release.keystore
+```
+
+Update credentials.json with correct alias.
+
+## Next Steps
+
+- [Build Configuration](/deployment/build-configuration) - Configure build profiles in eas.json
+- [Internal Distribution](/deployment/internal-distribution) - Share builds with testers
+- [Submit to App Stores](/deployment/app-stores) - Deploy signed builds to stores

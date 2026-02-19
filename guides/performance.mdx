@@ -1,0 +1,746 @@
+---
+title: "Performance Optimization"
+description: "Optimize your Expo app's performance with rendering improvements, profiling tools, and best practices"
+---
+
+## Overview
+
+Performance directly impacts user experience. This guide covers techniques to make your Expo app fast and responsive.
+
+## Measuring Performance
+
+### React DevTools Profiler
+
+Install React DevTools:
+
+```bash
+npm install --save-dev react-devtools
+```
+
+Add script:
+
+```json package.json
+{
+  "scripts": {
+    "devtools": "react-devtools"
+  }
+}
+```
+
+Run:
+
+```bash
+npm run devtools
+# In another terminal
+npx expo start
+```
+
+### Performance monitoring hook
+
+```typescript hooks/usePerformanceMonitor.ts
+import { useEffect } from 'react';
+
+export function usePerformanceMonitor(componentName: string) {
+  useEffect(() => {
+    const startTime = performance.now();
+
+    return () => {
+      const endTime = performance.now();
+      const renderTime = endTime - startTime;
+
+      if (renderTime > 16.67) { // More than one frame at 60fps
+        console.warn(`Slow render in ${componentName}: ${renderTime.toFixed(2)}ms`);
+      }
+    };
+  });
+}
+```
+
+Usage:
+
+```typescript
+function MyComponent() {
+  usePerformanceMonitor('MyComponent');
+  return <View>...</View>;
+}
+```
+
+## Optimizing Renders
+
+### React.memo
+
+Prevent unnecessary re-renders:
+
+```typescript components/UserCard.tsx
+import { memo } from 'react';
+import { View, Text } from 'react-native';
+
+type Props = {
+  name: string;
+  email: string;
+};
+
+// Without memo: re-renders whenever parent re-renders
+export const UserCard = memo(function UserCard({ name, email }: Props) {
+  return (
+    <View>
+      <Text>{name}</Text>
+      <Text>{email}</Text>
+    </View>
+  );
+});
+
+// Custom comparison
+export const UserCardWithComparison = memo(
+  UserCard,
+  (prevProps, nextProps) => {
+    return prevProps.name === nextProps.name && 
+           prevProps.email === nextProps.email;
+  }
+);
+```
+
+### useMemo
+
+Memoize expensive calculations:
+
+```typescript
+import { useMemo } from 'react';
+
+function ExpensiveComponent({ items }: { items: Item[] }) {
+  // Bad: Recalculates on every render
+  const total = items.reduce((sum, item) => sum + item.price, 0);
+
+  // Good: Only recalculates when items change
+  const total = useMemo(
+    () => items.reduce((sum, item) => sum + item.price, 0),
+    [items]
+  );
+
+  return <Text>Total: ${total}</Text>;
+}
+```
+
+### useCallback
+
+Memoize function references:
+
+```typescript
+import { useCallback, useState } from 'react';
+
+function ParentComponent() {
+  const [count, setCount] = useState(0);
+
+  // Bad: Creates new function on every render
+  const handlePress = () => {
+    setCount(count + 1);
+  };
+
+  // Good: Same function reference unless dependencies change
+  const handlePress = useCallback(() => {
+    setCount(c => c + 1);
+  }, []);
+
+  return <ChildComponent onPress={handlePress} />;
+}
+
+const ChildComponent = memo(({ onPress }: { onPress: () => void }) => {
+  return <Button onPress={onPress} title="Increment" />;
+});
+```
+
+## List Performance
+
+### FlatList optimization
+
+```typescript components/OptimizedList.tsx
+import { FlatList } from 'react-native';
+import { memo } from 'react';
+
+type Item = {
+  id: string;
+  title: string;
+};
+
+const ListItem = memo(({ item }: { item: Item }) => (
+  <View>
+    <Text>{item.title}</Text>
+  </View>
+));
+
+function OptimizedList({ data }: { data: Item[] }) {
+  return (
+    <FlatList
+      data={data}
+      renderItem={({ item }) => <ListItem item={item} />}
+      keyExtractor={item => item.id}
+      
+      // Performance optimizations
+      removeClippedSubviews={true}
+      maxToRenderPerBatch={10}
+      updateCellsBatchingPeriod={50}
+      initialNumToRender={10}
+      windowSize={10}
+      
+      // Avoid inline functions
+      getItemLayout={(data, index) => ({
+        length: 80, // Fixed height
+        offset: 80 * index,
+        index,
+      })}
+    />
+  );
+}
+```
+
+### FlashList (faster alternative)
+
+```bash
+npx expo install @shopify/flash-list
+```
+
+```typescript
+import { FlashList } from '@shopify/flash-list';
+
+function FastList({ data }: { data: Item[] }) {
+  return (
+    <FlashList
+      data={data}
+      renderItem={({ item }) => <ListItem item={item} />}
+      estimatedItemSize={80}
+    />
+  );
+}
+```
+
+<Note>
+  FlashList can be 10x faster than FlatList for large lists with consistent item sizes.
+</Note>
+
+## Image Optimization
+
+### expo-image
+
+Use the optimized Image component:
+
+```bash
+npx expo install expo-image
+```
+
+```typescript
+import { Image } from 'expo-image';
+
+function Avatar({ uri }: { uri: string }) {
+  return (
+    <Image
+      source={{ uri }}
+      style={{ width: 100, height: 100 }}
+      contentFit="cover"
+      transition={200}
+      cachePolicy="memory-disk"
+    />
+  );
+}
+```
+
+### Progressive image loading
+
+```typescript components/ProgressiveImage.tsx
+import { useState } from 'react';
+import { Image } from 'expo-image';
+import { View, ActivityIndicator } from 'react-native';
+
+type Props = {
+  uri: string;
+  thumbnailUri: string;
+  style: any;
+};
+
+export function ProgressiveImage({ uri, thumbnailUri, style }: Props) {
+  const [loading, setLoading] = useState(true);
+
+  return (
+    <View style={style}>
+      {/* Low-res thumbnail */}
+      <Image
+        source={{ uri: thumbnailUri }}
+        style={[style, { position: 'absolute' }]}
+        contentFit="cover"
+      />
+      
+      {/* High-res image */}
+      <Image
+        source={{ uri }}
+        style={style}
+        contentFit="cover"
+        onLoadEnd={() => setLoading(false)}
+      />
+      
+      {loading && (
+        <ActivityIndicator
+          style={{ position: 'absolute', alignSelf: 'center' }}
+        />
+      )}
+    </View>
+  );
+}
+```
+
+### Image sizing
+
+```typescript
+// Bad: Large image for small thumbnail
+<Image
+  source={{ uri: 'https://example.com/image-4000x3000.jpg' }}
+  style={{ width: 100, height: 100 }}
+/>
+
+// Good: Request appropriately sized image
+<Image
+  source={{ uri: 'https://example.com/image-200x200.jpg' }}
+  style={{ width: 100, height: 100 }}
+/>
+```
+
+## Animations
+
+### react-native-reanimated
+
+Use for smooth, performant animations:
+
+```bash
+npx expo install react-native-reanimated
+```
+
+```typescript components/AnimatedBox.tsx
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
+import { Pressable } from 'react-native';
+
+export function AnimatedBox() {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <Pressable
+      onPressIn={() => {
+        scale.value = withSpring(0.9);
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1);
+      }}
+    >
+      <Animated.View style={[styles.box, animatedStyle]} />
+    </Pressable>
+  );
+}
+```
+
+### Avoid setState in animations
+
+```typescript
+// Bad: setState on every frame
+const [position, setPosition] = useState(0);
+
+Animated.timing(position).start();
+
+// Good: Use Animated values
+const position = useRef(new Animated.Value(0)).current;
+
+Animated.timing(position, {
+  toValue: 100,
+  useNativeDriver: true, // Runs on native thread
+}).start();
+```
+
+## JavaScript Performance
+
+### Avoid inline objects and functions
+
+```typescript
+// Bad: Creates new object on every render
+<View style={{ flex: 1, backgroundColor: 'white' }}>
+  <Button onPress={() => console.log('pressed')} />
+</View>
+
+// Good: Stable references
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
+});
+
+const handlePress = useCallback(() => {
+  console.log('pressed');
+}, []);
+
+<View style={styles.container}>
+  <Button onPress={handlePress} />
+</View>
+```
+
+### Debounce and throttle
+
+```typescript hooks/useDebounce.ts
+import { useEffect, useState } from 'react';
+
+export function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+```
+
+Usage:
+
+```typescript
+function SearchInput() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 500);
+
+  useEffect(() => {
+    // Only search when user stops typing
+    if (debouncedSearch) {
+      performSearch(debouncedSearch);
+    }
+  }, [debouncedSearch]);
+
+  return (
+    <TextInput
+      value={searchTerm}
+      onChangeText={setSearchTerm}
+    />
+  );
+}
+```
+
+### Web Workers (Expo)
+
+Offload heavy computations:
+
+```typescript utils/worker.ts
+import { Platform } from 'react-native';
+
+if (Platform.OS === 'web') {
+  // Web worker code
+  self.addEventListener('message', (e) => {
+    const result = heavyComputation(e.data);
+    self.postMessage(result);
+  });
+}
+
+function heavyComputation(data: any) {
+  // Expensive calculations
+  return result;
+}
+```
+
+## Memory Management
+
+### Clean up subscriptions
+
+```typescript
+useEffect(() => {
+  const subscription = api.subscribe((data) => {
+    setData(data);
+  });
+
+  // Always clean up
+  return () => {
+    subscription.unsubscribe();
+  };
+}, []);
+```
+
+### Cancel pending requests
+
+```typescript hooks/useFetch.ts
+import { useEffect, useState } from 'react';
+
+export function useFetch<T>(url: string) {
+  const [data, setData] = useState<T | null>(null);
+
+  useEffect(() => {
+    const abortController = new AbortController();
+
+    fetch(url, { signal: abortController.signal })
+      .then(res => res.json())
+      .then(setData)
+      .catch(error => {
+        if (error.name !== 'AbortError') {
+          console.error(error);
+        }
+      });
+
+    return () => {
+      abortController.abort();
+    };
+  }, [url]);
+
+  return data;
+}
+```
+
+### Avoid memory leaks
+
+```typescript
+// Bad: setState after unmount
+function BadComponent() {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    fetchData().then(setData); // May set state after unmount
+  }, []);
+}
+
+// Good: Check if mounted
+function GoodComponent() {
+  const [data, setData] = useState(null);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    fetchData().then(result => {
+      if (isMounted.current) {
+        setData(result);
+      }
+    });
+
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+}
+```
+
+## Network Optimization
+
+### Request deduplication
+
+```typescript utils/cache.ts
+const requestCache = new Map<string, Promise<any>>();
+
+export async function fetchWithCache<T>(url: string): Promise<T> {
+  if (requestCache.has(url)) {
+    return requestCache.get(url)!;
+  }
+
+  const promise = fetch(url)
+    .then(res => res.json())
+    .finally(() => {
+      requestCache.delete(url);
+    });
+
+  requestCache.set(url, promise);
+  return promise;
+}
+```
+
+### Pagination
+
+```typescript hooks/usePagination.ts
+import { useState, useCallback } from 'react';
+
+export function usePagination<T>(fetchFn: (page: number) => Promise<T[]>) {
+  const [data, setData] = useState<T[]>([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  const loadMore = useCallback(async () => {
+    if (loading || !hasMore) return;
+
+    setLoading(true);
+    try {
+      const newData = await fetchFn(page);
+      if (newData.length === 0) {
+        setHasMore(false);
+      } else {
+        setData(prev => [...prev, ...newData]);
+        setPage(p => p + 1);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [page, loading, hasMore, fetchFn]);
+
+  return { data, loading, loadMore, hasMore };
+}
+```
+
+## Profiling Tools
+
+### Expo Performance Monitor
+
+```typescript
+import { Platform } from 'react-native';
+
+if (__DEV__ && Platform.OS === 'android') {
+  // Show performance overlay on Android
+  require('react-native').UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+```
+
+### Custom performance logger
+
+```typescript utils/performance.ts
+class PerformanceLogger {
+  private marks: Map<string, number> = new Map();
+
+  mark(name: string) {
+    this.marks.set(name, performance.now());
+  }
+
+  measure(name: string, startMark: string) {
+    const start = this.marks.get(startMark);
+    if (!start) return;
+
+    const duration = performance.now() - start;
+    console.log(`[Performance] ${name}: ${duration.toFixed(2)}ms`);
+    
+    this.marks.delete(startMark);
+  }
+}
+
+export const perf = new PerformanceLogger();
+```
+
+Usage:
+
+```typescript
+perf.mark('fetch-start');
+await fetchData();
+perf.measure('Data fetch', 'fetch-start');
+```
+
+## Platform-Specific Optimization
+
+<Tabs>
+  <Tab title="iOS">
+    ### Enable Hermes
+    
+    Hermes is enabled by default on iOS. Verify in `app.json`:
+    
+    ```json
+    {
+      "expo": {
+        "ios": {
+          "jsEngine": "hermes"
+        }
+      }
+    }
+    ```
+
+    ### Reduce app size
+    
+    ```json app.json
+    {
+      "expo": {
+        "ios": {
+          "bitcode": false,
+          "bundleIdentifier": "com.yourapp"
+        }
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Android">
+    ### Enable Hermes
+    
+    ```json app.json
+    {
+      "expo": {
+        "android": {
+          "jsEngine": "hermes"
+        }
+      }
+    }
+    ```
+
+    ### ProGuard (production)
+    
+    ```json app.json
+    {
+      "expo": {
+        "android": {
+          "enableProguardInReleaseBuilds": true,
+          "enableShrinkResourcesInReleaseBuilds": true
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Slow initial load">
+    - Reduce bundle size (see Bundle Size guide)
+    - Lazy load screens with dynamic imports
+    - Optimize splash screen assets
+    - Enable Hermes engine
+  </Accordion>
+
+  <Accordion title="Janky animations">
+    - Use `useNativeDriver: true` for Animated
+    - Switch to react-native-reanimated
+    - Avoid setState during animations
+    - Check for expensive renders during animation
+  </Accordion>
+
+  <Accordion title="Slow scrolling">
+    - Use FlashList instead of FlatList
+    - Memoize list items with React.memo
+    - Implement getItemLayout for fixed-size items
+    - Reduce complexity of list item components
+  </Accordion>
+
+  <Accordion title="Memory warnings">
+    - Check for memory leaks (unmounted setState)
+    - Clean up subscriptions in useEffect
+    - Cancel pending network requests
+    - Optimize image sizes and caching
+  </Accordion>
+</AccordionGroup>
+
+## Performance Checklist
+
+- [ ] Enable Hermes engine
+- [ ] Use React.memo for expensive components
+- [ ] Implement useMemo for expensive calculations
+- [ ] Use useCallback for stable function references
+- [ ] Optimize FlatList with proper props
+- [ ] Use expo-image instead of Image
+- [ ] Enable useNativeDriver for animations
+- [ ] Debounce user input handlers
+- [ ] Clean up useEffect subscriptions
+- [ ] Cancel pending requests on unmount
+- [ ] Lazy load routes and components
+- [ ] Profile with React DevTools
+- [ ] Monitor bundle size
+- [ ] Optimize images before upload
+
+## Related Resources
+
+- [React Performance Optimization](https://react.dev/learn/render-and-commit)
+- [React Native Performance](https://reactnative.dev/docs/performance)
+- [Reanimated Documentation](https://docs.swmansion.com/react-native-reanimated/)
+- [FlashList](https://shopify.github.io/flash-list/)

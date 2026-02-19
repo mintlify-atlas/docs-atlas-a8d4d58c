@@ -1,0 +1,224 @@
+---
+title: expo-device
+description: Get physical device information including model, OS version, and device type
+---
+
+# expo-device
+
+**Version:** 55.0.7
+
+A universal module that gets physical information about the device running the application.
+
+## Installation
+
+```bash
+npx expo install expo-device
+```
+
+## Usage
+
+```typescript
+import * as Device from 'expo-device';
+
+console.log(Device.modelName); // "iPhone 14 Pro"
+console.log(Device.osVersion); // "16.0"
+console.log(Device.deviceType); // Device.DeviceType.PHONE
+```
+
+## API Reference
+
+### Properties
+
+<ResponseField name="Device.brand" type="string | null">
+  Device brand (e.g., "Apple", "Samsung")
+</ResponseField>
+
+<ResponseField name="Device.manufacturer" type="string | null">
+  Device manufacturer
+</ResponseField>
+
+<ResponseField name="Device.modelName" type="string | null">
+  Device model name (e.g., "iPhone 14 Pro", "Pixel 7")
+</ResponseField>
+
+<ResponseField name="Device.modelId" type="string | null">
+  Internal model identifier
+</ResponseField>
+
+<ResponseField name="Device.designName" type="string | null">
+  Device design name
+</ResponseField>
+
+<ResponseField name="Device.productName" type="string | null">
+  Product name
+</ResponseField>
+
+<ResponseField name="Device.deviceYearClass" type="number | null">
+  Approximate year the device was released
+</ResponseField>
+
+<ResponseField name="Device.totalMemory" type="number">
+  Total device memory in bytes
+</ResponseField>
+
+<ResponseField name="Device.supportedCpuArchitectures" type="string[] | null">
+  Supported CPU architectures (e.g., ["arm64", "armv7"])
+</ResponseField>
+
+<ResponseField name="Device.osName" type="string">
+  OS name ("iOS", "Android", etc.)
+</ResponseField>
+
+<ResponseField name="Device.osVersion" type="string">
+  OS version string
+</ResponseField>
+
+<ResponseField name="Device.osBuildId" type="string | null">
+  OS build ID
+</ResponseField>
+
+<ResponseField name="Device.osInternalBuildId" type="string | null">
+  Internal OS build identifier
+</ResponseField>
+
+<ResponseField name="Device.platformApiLevel" type="number | null">
+  **Android only**: Android API level
+</ResponseField>
+
+<ResponseField name="Device.deviceName" type="string | null">
+  User-assigned device name (e.g., "John's iPhone")
+</ResponseField>
+
+<ResponseField name="Device.deviceType" type="DeviceType">
+  Type of device:
+  - `Device.DeviceType.PHONE`
+  - `Device.DeviceType.TABLET`
+  - `Device.DeviceType.DESKTOP`
+  - `Device.DeviceType.TV`
+  - `Device.DeviceType.UNKNOWN`
+</ResponseField>
+
+### Methods
+
+<ParamField path="Device.getDeviceTypeAsync()" type="() => Promise<DeviceType>">
+  Asynchronously gets device type
+  
+  ```typescript
+  const deviceType = await Device.getDeviceTypeAsync();
+  ```
+</ParamField>
+
+<ParamField path="Device.isRootedExperimentalAsync()" type="() => Promise<boolean>">
+  **Experimental**: Checks if device is rooted/jailbroken
+  
+  ```typescript
+  const isRooted = await Device.isRootedExperimentalAsync();
+  ```
+</ParamField>
+
+<ParamField path="Device.isSideLoadingEnabledAsync()" type="() => Promise<boolean>">
+  **Android only**: Checks if side-loading is enabled
+</ParamField>
+
+<ParamField path="Device.getPlatformFeaturesAsync()" type="() => Promise<string[]>">
+  **Android only**: Gets list of supported platform features
+</ParamField>
+
+<ParamField path="Device.hasPlatformFeatureAsync(feature)" type="(feature: string) => Promise<boolean>">
+  **Android only**: Checks if device supports a specific feature
+  
+  ```typescript
+  const hasNFC = await Device.hasPlatformFeatureAsync(
+    'android.hardware.nfc'
+  );
+  ```
+</ParamField>
+
+<ParamField path="Device.getMaxMemoryAsync()" type="() => Promise<number>">
+  Gets maximum available memory in bytes
+</ParamField>
+
+## Examples
+
+### Display Device Info
+
+```tsx
+import * as Device from 'expo-device';
+import { Text, View } from 'react-native';
+
+function DeviceInfo() {
+  return (
+    <View>
+      <Text>Brand: {Device.brand}</Text>
+      <Text>Model: {Device.modelName}</Text>
+      <Text>OS: {Device.osName} {Device.osVersion}</Text>
+      <Text>Device Type: {
+        Device.deviceType === Device.DeviceType.PHONE ? 'Phone' :
+        Device.deviceType === Device.DeviceType.TABLET ? 'Tablet' :
+        'Unknown'
+      }</Text>
+      <Text>Memory: {(Device.totalMemory / 1024 / 1024 / 1024).toFixed(2)} GB</Text>
+    </View>
+  );
+}
+```
+
+### Check Device Capabilities
+
+```typescript
+import * as Device from 'expo-device';
+import { Platform } from 'react-native';
+
+async function checkCapabilities() {
+  const deviceType = await Device.getDeviceTypeAsync();
+  const isTablet = deviceType === Device.DeviceType.TABLET;
+  
+  if (Platform.OS === 'android') {
+    const hasNFC = await Device.hasPlatformFeatureAsync(
+      'android.hardware.nfc'
+    );
+    console.log('NFC Support:', hasNFC);
+  }
+  
+  const maxMemory = await Device.getMaxMemoryAsync();
+  console.log('Max Memory:', maxMemory);
+}
+```
+
+### Responsive Layout Based on Device
+
+```tsx
+import * as Device from 'expo-device';
+import { View, StyleSheet } from 'react-native';
+
+function ResponsiveLayout({ children }) {
+  const isTablet = Device.deviceType === Device.DeviceType.TABLET;
+  
+  return (
+    <View style={[
+      styles.container,
+      isTablet && styles.tabletContainer
+    ]}>
+      {children}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { padding: 16 },
+  tabletContainer: { padding: 32, maxWidth: 1024 }
+});
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ✅       |
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/device/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-device)

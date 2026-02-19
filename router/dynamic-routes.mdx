@@ -1,0 +1,692 @@
+---
+title: Dynamic Routes
+description: Learn how to create dynamic routes with parameters and access them in your components
+---
+
+# Dynamic Routes
+
+Dynamic routes allow you to create flexible URL patterns that accept parameters. This is essential for pages like user profiles, blog posts, or product details.
+
+## Dynamic Segments
+
+Use square brackets `[param]` in your file name to create a dynamic route segment:
+
+```
+app/
+  user/
+    [id].tsx         → /user/:id
+```
+
+### Basic Example
+
+```tsx app/user/[id].tsx
+import { View, Text } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+
+export default function User() {
+  const { id } = useLocalSearchParams();
+  
+  return (
+    <View>
+      <Text>User ID: {id}</Text>
+    </View>
+  );
+}
+```
+
+**Matches:**
+- `/user/123` → `{ id: '123' }`
+- `/user/alice` → `{ id: 'alice' }`
+- `/user/admin-2024` → `{ id: 'admin-2024' }`
+
+### Accessing Parameters
+
+Use the `useLocalSearchParams()` hook to access route parameters:
+
+```tsx
+import { useLocalSearchParams } from 'expo-router';
+
+const params = useLocalSearchParams();
+// params.id, params.name, etc.
+```
+
+From the source (`hooks.ts:244-314`):
+
+```typescript
+/**
+ * Returns the URL parameters for the contextually focused route. 
+ * Useful for stacks where you may push a new screen that changes 
+ * the query parameters. For dynamic routes, both the route parameters 
+ * and the search parameters are returned.
+ */
+export function useLocalSearchParams(): RouteParams;
+```
+
+### Type-Safe Parameters
+
+Add TypeScript types for type safety:
+
+```tsx app/user/[id].tsx
+import { useLocalSearchParams } from 'expo-router';
+import { View, Text } from 'react-native';
+
+export default function User() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  
+  return <Text>User: {id}</Text>;
+}
+```
+
+## Multiple Dynamic Segments
+
+Create routes with multiple parameters:
+
+```
+app/
+  blog/
+    [category]/
+      [slug].tsx     → /blog/:category/:slug
+```
+
+```tsx app/blog/[category]/[slug].tsx
+import { useLocalSearchParams } from 'expo-router';
+import { View, Text } from 'react-native';
+
+export default function BlogPost() {
+  const { category, slug } = useLocalSearchParams<{
+    category: string;
+    slug: string;
+  }>();
+  
+  return (
+    <View>
+      <Text>Category: {category}</Text>
+      <Text>Post: {slug}</Text>
+    </View>
+  );
+}
+```
+
+**Matches:**
+- `/blog/tech/expo-router-guide` → `{ category: 'tech', slug: 'expo-router-guide' }`
+- `/blog/design/ui-patterns` → `{ category: 'design', slug: 'ui-patterns' }`
+
+## Query Parameters
+
+Access query parameters alongside route parameters:
+
+```tsx app/search/[query].tsx
+import { useLocalSearchParams } from 'expo-router';
+import { View, Text } from 'react-native';
+
+export default function Search() {
+  const { query, filter, sort } = useLocalSearchParams<{
+    query: string;
+    filter?: string;
+    sort?: string;
+  }>();
+  
+  return (
+    <View>
+      <Text>Searching for: {query}</Text>
+      {filter && <Text>Filter: {filter}</Text>}
+      {sort && <Text>Sort: {sort}</Text>}
+    </View>
+  );
+}
+```
+
+**URL:** `/search/react?filter=recent&sort=popular`
+
+**Params:** `{ query: 'react', filter: 'recent', sort: 'popular' }`
+
+## Catch-All Routes
+
+Use `[...param]` to match multiple segments:
+
+```
+app/
+  docs/
+    [...slug].tsx    → /docs/* (matches any depth)
+```
+
+### Basic Catch-All
+
+```tsx app/docs/[...slug].tsx
+import { useLocalSearchParams } from 'expo-router';
+import { View, Text } from 'react-native';
+
+export default function Docs() {
+  const { slug } = useLocalSearchParams<{ slug: string[] }>();
+  
+  // slug is an array of path segments
+  const path = Array.isArray(slug) ? slug.join('/') : slug;
+  
+  return (
+    <View>
+      <Text>Documentation path: {path}</Text>
+    </View>
+  );
+}
+```
+
+**Matches:**
+- `/docs/getting-started` → `{ slug: ['getting-started'] }`
+- `/docs/api/reference` → `{ slug: ['api', 'reference'] }`
+- `/docs/guides/routing/dynamic` → `{ slug: ['guides', 'routing', 'dynamic'] }`
+
+### Practical Catch-All Example
+
+```tsx app/docs/[...slug].tsx
+import { useLocalSearchParams, Stack } from 'expo-router';
+import { View, Text, ScrollView } from 'react-native';
+import { useMemo } from 'react';
+
+export default function DocsPage() {
+  const { slug } = useLocalSearchParams<{ slug: string[] }>();
+  
+  const path = useMemo(() => {
+    return Array.isArray(slug) ? slug.join('/') : slug || 'index';
+  }, [slug]);
+  
+  const content = useMemo(() => {
+    // Load content based on path
+    return loadDocContent(path);
+  }, [path]);
+  
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          title: content.title,
+        }}
+      />
+      <ScrollView>
+        <View>
+          <Text>{content.body}</Text>
+        </View>
+      </ScrollView>
+    </>
+  );
+}
+
+function loadDocContent(path: string) {
+  // Your content loading logic
+  return {
+    title: `Docs: ${path}`,
+    body: 'Documentation content...',
+  };
+}
+```
+
+## Navigating to Dynamic Routes
+
+### Using Link Component
+
+```tsx
+import { Link } from 'expo-router';
+
+// String href
+<Link href="/user/123">View User</Link>
+
+// Object href
+<Link
+  href={{
+    pathname: '/user/[id]',
+    params: { id: '123' }
+  }}
+>
+  View User
+</Link>
+
+// With multiple params
+<Link
+  href={{
+    pathname: '/blog/[category]/[slug]',
+    params: { category: 'tech', slug: 'expo-guide' }
+  }}
+>
+  Read Post
+</Link>
+```
+
+### Using Router
+
+```tsx
+import { router } from 'expo-router';
+
+// String navigation
+router.push('/user/123');
+
+// Object navigation
+router.push({
+  pathname: '/user/[id]',
+  params: { id: '123', tab: 'posts' }
+});
+
+// With query params
+router.push('/search/react?filter=recent&sort=popular');
+```
+
+### Dynamic List Example
+
+```tsx app/users/index.tsx
+import { View, FlatList, Pressable, Text } from 'react-native';
+import { Link } from 'expo-router';
+
+const users = [
+  { id: '1', name: 'Alice', role: 'Admin' },
+  { id: '2', name: 'Bob', role: 'User' },
+  { id: '3', name: 'Charlie', role: 'Moderator' },
+];
+
+export default function UsersList() {
+  return (
+    <FlatList
+      data={users}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => (
+        <Link
+          href={{
+            pathname: '/users/[id]',
+            params: { id: item.id, name: item.name }
+          }}
+          asChild
+        >
+          <Pressable style={styles.item}>
+            <Text style={styles.name}>{item.name}</Text>
+            <Text style={styles.role}>{item.role}</Text>
+          </Pressable>
+        </Link>
+      )}
+    />
+  );
+}
+```
+
+## Optional Segments
+
+Create optional dynamic segments with catch-all:
+
+```
+app/
+  shop/
+    [[...category]].tsx   → /shop/* (including /shop)
+```
+
+```tsx app/shop/[[...category]].tsx
+import { useLocalSearchParams } from 'expo-router';
+import { View, Text } from 'react-native';
+
+export default function Shop() {
+  const { category } = useLocalSearchParams<{ category?: string[] }>();
+  
+  if (!category || category.length === 0) {
+    return <Text>All Products</Text>;
+  }
+  
+  const path = category.join(' / ');
+  return <Text>Category: {path}</Text>;
+}
+```
+
+**Matches:**
+- `/shop` → `{ category: undefined }`
+- `/shop/electronics` → `{ category: ['electronics'] }`
+- `/shop/electronics/phones` → `{ category: ['electronics', 'phones'] }`
+
+## Array Parameters
+
+Handle array parameters from query strings:
+
+```tsx app/products/index.tsx
+import { useLocalSearchParams } from 'expo-router';
+import { View, Text } from 'react-native';
+
+export default function Products() {
+  const { tags } = useLocalSearchParams<{ tags: string | string[] }>();
+  
+  const tagArray = Array.isArray(tags) ? tags : tags ? [tags] : [];
+  
+  return (
+    <View>
+      <Text>Filters:</Text>
+      {tagArray.map((tag, i) => (
+        <Text key={i}>{tag}</Text>
+      ))}
+    </View>
+  );
+}
+```
+
+**URL:** `/products?tags=new&tags=sale&tags=featured`
+
+**Params:** `{ tags: ['new', 'sale', 'featured'] }`
+
+## URL Encoding
+
+Parameters are automatically URL encoded/decoded:
+
+```tsx
+import { router } from 'expo-router';
+
+// Special characters are encoded
+router.push({
+  pathname: '/search/[query]',
+  params: { query: 'hello world' }
+});
+// URL: /search/hello%20world
+
+// Decoded automatically
+const { query } = useLocalSearchParams();
+// query = "hello world"
+```
+
+From the source (`hooks.ts:286-311`):
+
+```typescript
+// Parameters are decoded automatically
+if (Array.isArray(value)) {
+  return [
+    key,
+    value.map((v) => {
+      try {
+        return decodeURIComponent(v);
+      } catch {
+        return v;
+      }
+    }),
+  ];
+} else {
+  try {
+    return [key, decodeURIComponent(value)];
+  } catch {
+    return [key, value];
+  }
+}
+```
+
+## Updating Parameters
+
+Update route parameters without navigation:
+
+```tsx
+import { router } from 'expo-router';
+import { Button } from 'react-native';
+
+export default function ProductDetails() {
+  const updateView = (view: string) => {
+    router.setParams({ view });
+  };
+  
+  return (
+    <>
+      <Button title="Grid View" onPress={() => updateView('grid')} />
+      <Button title="List View" onPress={() => updateView('list')} />
+    </>
+  );
+}
+```
+
+## Global vs Local Params
+
+### useLocalSearchParams()
+
+Updates only when the screen is focused:
+
+```tsx
+import { useLocalSearchParams } from 'expo-router';
+
+export default function Profile() {
+  // Only updates when THIS screen is focused
+  const params = useLocalSearchParams();
+  return <Text>Profile {params.id}</Text>;
+}
+```
+
+### useGlobalSearchParams()
+
+Updates even when screen is not focused:
+
+```tsx
+import { useGlobalSearchParams } from 'expo-router';
+import { useEffect } from 'react';
+
+export default function Analytics() {
+  // Updates for any route change, even when not focused
+  const params = useGlobalSearchParams();
+  
+  useEffect(() => {
+    trackPageView(params);
+  }, [params]);
+  
+  return null;
+}
+```
+
+From the source (`hooks.ts:210-242`):
+
+```typescript
+/**
+ * Returns URL parameters for globally selected route, including dynamic 
+ * path segments. This function updates even when the route is not focused. 
+ * Useful for analytics or other background operations that don't draw to 
+ * the screen.
+ *
+ * When querying search params in a stack, opt-towards using 
+ * useLocalSearchParams because it will only update when the route is focused.
+ */
+export function useGlobalSearchParams(): RouteParams;
+```
+
+## Route Specificity
+
+When multiple routes could match, Expo Router uses specificity:
+
+```
+app/
+  products/
+    index.tsx        # Matches /products exactly
+    new.tsx          # Matches /products/new exactly
+    [id].tsx         # Matches /products/:id
+    [...all].tsx     # Matches /products/*
+```
+
+**Specificity order (highest to lowest):**
+1. Exact matches: `new.tsx`
+2. Dynamic routes: `[id].tsx`
+3. Catch-all routes: `[...all].tsx`
+
+**Example:**
+- `/products` → `index.tsx`
+- `/products/new` → `new.tsx` (exact match wins)
+- `/products/123` → `[id].tsx` with `{ id: '123' }`
+- `/products/category/phones` → `[...all].tsx` with `{ all: ['category', 'phones'] }`
+
+## Best Practices
+
+### Use Descriptive Parameter Names
+
+```tsx
+// Good: Clear what the parameter represents
+app/user/[userId].tsx
+app/post/[postId].tsx
+app/category/[categorySlug].tsx
+
+// Less clear
+app/user/[id].tsx
+app/post/[id].tsx
+app/category/[slug].tsx
+```
+
+### Validate Parameters
+
+```tsx
+import { useLocalSearchParams, router } from 'expo-router';
+import { useEffect } from 'react';
+
+export default function User() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  
+  useEffect(() => {
+    // Validate parameter
+    if (!id || !isValidUserId(id)) {
+      router.replace('/404');
+    }
+  }, [id]);
+  
+  return <Text>User {id}</Text>;
+}
+
+function isValidUserId(id: string): boolean {
+  return /^\d+$/.test(id);
+}
+```
+
+### Handle Missing Parameters
+
+```tsx
+import { useLocalSearchParams } from 'expo-router';
+import { View, Text } from 'react-native';
+
+export default function Product() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  
+  if (!id) {
+    return <Text>Product ID is required</Text>;
+  }
+  
+  return <Text>Product: {id}</Text>;
+}
+```
+
+### Type All Parameters
+
+```tsx
+import { useLocalSearchParams } from 'expo-router';
+
+type Params = {
+  category: string;
+  productId: string;
+  variant?: string;
+  color?: string;
+};
+
+export default function ProductDetails() {
+  const { category, productId, variant, color } = 
+    useLocalSearchParams<Params>();
+  
+  return (
+    <View>
+      <Text>{category} / {productId}</Text>
+      {variant && <Text>Variant: {variant}</Text>}
+      {color && <Text>Color: {color}</Text>}
+    </View>
+  );
+}
+```
+
+## Common Patterns
+
+### Pagination
+
+```tsx app/posts/index.tsx
+import { useLocalSearchParams, router } from 'expo-router';
+import { Button } from 'react-native';
+
+export default function Posts() {
+  const { page = '1' } = useLocalSearchParams<{ page?: string }>();
+  const pageNum = parseInt(page, 10);
+  
+  const nextPage = () => {
+    router.setParams({ page: String(pageNum + 1) });
+  };
+  
+  const prevPage = () => {
+    router.setParams({ page: String(Math.max(1, pageNum - 1)) });
+  };
+  
+  return (
+    <View>
+      <Text>Page {pageNum}</Text>
+      <Button title="Previous" onPress={prevPage} disabled={pageNum === 1} />
+      <Button title="Next" onPress={nextPage} />
+    </View>
+  );
+}
+```
+
+### Tabs with Parameters
+
+```tsx app/profile/[userId].tsx
+import { useLocalSearchParams, Stack } from 'expo-router';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+
+const Tab = createMaterialTopTabNavigator();
+
+export default function UserProfile() {
+  const { userId } = useLocalSearchParams<{ userId: string }>();
+  
+  return (
+    <>
+      <Stack.Screen options={{ title: `User ${userId}` }} />
+      <Tab.Navigator>
+        <Tab.Screen name="posts" component={PostsTab} />
+        <Tab.Screen name="about" component={AboutTab} />
+      </Tab.Navigator>
+    </>
+  );
+}
+```
+
+### Filtering and Sorting
+
+```tsx app/products/index.tsx
+import { useLocalSearchParams, router } from 'expo-router';
+import { useState, useEffect } from 'react';
+
+type Filters = {
+  category?: string;
+  minPrice?: string;
+  maxPrice?: string;
+  sort?: 'price' | 'name' | 'rating';
+};
+
+export default function Products() {
+  const params = useLocalSearchParams<Filters>();
+  const [products, setProducts] = useState([]);
+  
+  useEffect(() => {
+    // Fetch products with filters
+    fetchProducts(params).then(setProducts);
+  }, [params]);
+  
+  const updateFilter = (key: keyof Filters, value: string) => {
+    router.setParams({ [key]: value });
+  };
+  
+  return (
+    <View>
+      <FilterControls onFilter={updateFilter} />
+      <ProductList products={products} />
+    </View>
+  );
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Layouts" icon="layer-group" href="/router/layouts">
+    Share UI across dynamic routes
+  </Card>
+  <Card title="Typed Routes" icon="code" href="/router/typed-routes">
+    Type-safe dynamic routes
+  </Card>
+  <Card title="Deep Linking" icon="link" href="/router/deep-linking">
+    Deep link to dynamic routes
+  </Card>
+  <Card title="API Routes" icon="server" href="/router/api-routes">
+    Create dynamic API endpoints
+  </Card>
+</CardGroup>

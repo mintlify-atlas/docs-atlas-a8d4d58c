@@ -1,0 +1,626 @@
+---
+title: "Monorepos"
+description: "Set up and manage Expo projects in monorepo environments with Yarn, pnpm, or npm workspaces"
+---
+
+## Overview
+
+Monorepos allow you to manage multiple packages in a single repository. This is useful for sharing code between your Expo app, web app, and shared packages.
+
+## Common Monorepo Structure
+
+```
+my-monorepo/
+├── apps/
+│   ├── mobile/              # Expo app
+│   │   ├── app/
+│   │   ├── app.json
+│   │   └── package.json
+│   └── web/                 # Next.js/web app
+│       ├── pages/
+│       └── package.json
+├── packages/
+│   ├── ui/                  # Shared UI components
+│   │   ├── src/
+│   │   └── package.json
+│   ├── api/                 # API client
+│   │   ├── src/
+│   │   └── package.json
+│   └── config/              # Shared configs
+│       └── package.json
+├── package.json             # Root package.json
+└── tsconfig.json            # Base TypeScript config
+```
+
+## Setup with Yarn Workspaces
+
+<Steps>
+  <Step title="Initialize the monorepo">
+    ```bash
+    mkdir my-monorepo
+    cd my-monorepo
+    yarn init -y
+    ```
+  </Step>
+
+  <Step title="Configure workspaces">
+    ```json package.json
+    {
+      "name": "my-monorepo",
+      "private": true,
+      "workspaces": [
+        "apps/*",
+        "packages/*"
+      ],
+      "scripts": {
+        "mobile": "yarn workspace @my-app/mobile",
+        "web": "yarn workspace @my-app/web",
+        "dev": "yarn workspaces foreach -pi run dev"
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Create the Expo app">
+    ```bash
+    mkdir -p apps/mobile
+    cd apps/mobile
+    npx create-expo-app@latest . --template blank
+    ```
+    
+    Update `apps/mobile/package.json`:
+    ```json
+    {
+      "name": "@my-app/mobile",
+      "version": "1.0.0",
+      "main": "expo-router/entry",
+      "scripts": {
+        "start": "expo start",
+        "android": "expo start --android",
+        "ios": "expo start --ios",
+        "web": "expo start --web"
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Create shared packages">
+    ```bash
+    mkdir -p packages/ui
+    cd packages/ui
+    yarn init -y
+    ```
+    
+    ```json packages/ui/package.json
+    {
+      "name": "@my-app/ui",
+      "version": "1.0.0",
+      "main": "src/index.ts",
+      "dependencies": {
+        "react": "*",
+        "react-native": "*"
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Link packages">
+    In `apps/mobile/package.json`:
+    ```json
+    {
+      "dependencies": {
+        "@my-app/ui": "*",
+        "@my-app/api": "*"
+      }
+    }
+    ```
+    
+    Then run:
+    ```bash
+    cd ../.. # Back to root
+    yarn install
+    ```
+  </Step>
+</Steps>
+
+## Setup with pnpm
+
+<Steps>
+  <Step title="Initialize with pnpm">
+    ```bash
+    pnpm init
+    ```
+  </Step>
+
+  <Step title="Create pnpm-workspace.yaml">
+    ```yaml pnpm-workspace.yaml
+    packages:
+      - 'apps/*'
+      - 'packages/*'
+    ```
+  </Step>
+
+  <Step title="Configure .npmrc">
+    ```ini .npmrc
+    node-linker=hoisted
+    public-hoist-pattern[]=*expo*
+    public-hoist-pattern[]=*react-native*
+    public-hoist-pattern[]=@react-native/*
+    public-hoist-pattern[]=metro*
+    ```
+    
+    <Note>
+      React Native and Expo require hoisting due to their native module resolution.
+    </Note>
+  </Step>
+
+  <Step title="Install dependencies">
+    ```bash
+    pnpm install
+    ```
+  </Step>
+</Steps>
+
+## Setup with npm Workspaces
+
+```json package.json
+{
+  "name": "my-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "mobile": "npm run start --workspace=@my-app/mobile",
+    "web": "npm run dev --workspace=@my-app/web"
+  }
+}
+```
+
+## Metro Configuration
+
+### Configure Metro for monorepos
+
+```javascript apps/mobile/metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
+
+// Find the project and workspace directories
+const projectRoot = __dirname;
+const workspaceRoot = path.resolve(projectRoot, '../..');
+
+const config = getDefaultConfig(projectRoot);
+
+// 1. Watch all files within the monorepo
+config.watchFolders = [workspaceRoot];
+
+// 2. Let Metro know where to resolve packages and in what order
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, 'node_modules'),
+  path.resolve(workspaceRoot, 'node_modules'),
+];
+
+// 3. Force Metro to resolve (sub)dependencies only from the `nodeModulesPaths`
+config.resolver.disableHierarchicalLookup = true;
+
+module.exports = config;
+```
+
+### For Yarn 2+ (Berry)
+
+```javascript apps/mobile/metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
+
+const projectRoot = __dirname;
+const workspaceRoot = path.resolve(projectRoot, '../..');
+
+const config = getDefaultConfig(projectRoot);
+
+config.watchFolders = [workspaceRoot];
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, '.yarn'),
+  path.resolve(workspaceRoot, '.yarn'),
+];
+
+// Handle PnP resolution
+config.resolver.extraNodeModules = new Proxy(
+  {},
+  {
+    get: (target, name) => {
+      return path.join(workspaceRoot, `node_modules/${name}`);
+    },
+  }
+);
+
+module.exports = config;
+```
+
+## TypeScript Configuration
+
+### Root tsconfig.json
+
+```json tsconfig.json
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "lib": ["esnext"],
+    "jsx": "react-native",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "@my-app/*": ["packages/*/src"]
+    }
+  }
+}
+```
+
+### App-specific tsconfig
+
+```json apps/mobile/tsconfig.json
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./"
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
+}
+```
+
+### Package tsconfig
+
+```json packages/ui/tsconfig.json
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationMap": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+```
+
+## Shared Package Examples
+
+### UI Component Package
+
+```typescript packages/ui/src/Button.tsx
+import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+
+type ButtonProps = {
+  title: string;
+  onPress: () => void;
+  variant?: 'primary' | 'secondary';
+};
+
+export function Button({ title, onPress, variant = 'primary' }: ButtonProps) {
+  return (
+    <TouchableOpacity 
+      style={[styles.button, styles[variant]]} 
+      onPress={onPress}
+    >
+      <Text style={styles.text}>{title}</Text>
+    </TouchableOpacity>
+  );
+}
+
+const styles = StyleSheet.create({
+  button: {
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  primary: {
+    backgroundColor: '#007AFF',
+  },
+  secondary: {
+    backgroundColor: '#8E8E93',
+  },
+  text: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
+```
+
+```typescript packages/ui/src/index.ts
+export { Button } from './Button';
+export { Input } from './Input';
+export { Card } from './Card';
+```
+
+### API Client Package
+
+```typescript packages/api/src/client.ts
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.example.com';
+
+export class ApiClient {
+  private baseURL: string;
+
+  constructor(baseURL: string = API_URL) {
+    this.baseURL = baseURL;
+  }
+
+  async get<T>(endpoint: string): Promise<T> {
+    const response = await fetch(`${this.baseURL}${endpoint}`);
+    if (!response.ok) throw new Error('Network response was not ok');
+    return response.json();
+  }
+
+  async post<T>(endpoint: string, data: unknown): Promise<T> {
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Network response was not ok');
+    return response.json();
+  }
+}
+
+export const api = new ApiClient();
+```
+
+### Shared Config Package
+
+```typescript packages/config/src/theme.ts
+export const theme = {
+  colors: {
+    primary: '#007AFF',
+    secondary: '#5856D6',
+    success: '#34C759',
+    danger: '#FF3B30',
+    warning: '#FF9500',
+    text: '#000000',
+    background: '#FFFFFF',
+  },
+  spacing: {
+    xs: 4,
+    sm: 8,
+    md: 16,
+    lg: 24,
+    xl: 32,
+  },
+  borderRadius: {
+    sm: 4,
+    md: 8,
+    lg: 16,
+  },
+} as const;
+
+export type Theme = typeof theme;
+```
+
+## Using Shared Packages
+
+```typescript apps/mobile/app/index.tsx
+import { Button } from '@my-app/ui';
+import { api } from '@my-app/api';
+import { theme } from '@my-app/config';
+
+export default function HomeScreen() {
+  const handlePress = async () => {
+    const data = await api.get('/users');
+    console.log(data);
+  };
+
+  return (
+    <View style={{ backgroundColor: theme.colors.background }}>
+      <Button title="Fetch Users" onPress={handlePress} />
+    </View>
+  );
+}
+```
+
+## Running Commands
+
+<Tabs>
+  <Tab title="Yarn">
+    ```bash
+    # Run command in specific workspace
+    yarn workspace @my-app/mobile start
+    yarn workspace @my-app/mobile ios
+
+    # Run command in all workspaces
+    yarn workspaces run test
+
+    # Add dependency to specific workspace
+    yarn workspace @my-app/mobile add react-native-maps
+
+    # Add dev dependency to root
+    yarn add -DW typescript
+    ```
+  </Tab>
+
+  <Tab title="pnpm">
+    ```bash
+    # Run command in specific workspace
+    pnpm --filter @my-app/mobile start
+    pnpm --filter @my-app/mobile ios
+
+    # Run command in all workspaces
+    pnpm -r run test
+
+    # Add dependency to specific workspace
+    pnpm --filter @my-app/mobile add react-native-maps
+
+    # Add dev dependency to root
+    pnpm add -Dw typescript
+    ```
+  </Tab>
+
+  <Tab title="npm">
+    ```bash
+    # Run command in specific workspace
+    npm run start --workspace=@my-app/mobile
+    npm run ios --workspace=@my-app/mobile
+
+    # Run command in all workspaces
+    npm run test --workspaces
+
+    # Add dependency to specific workspace
+    npm install react-native-maps --workspace=@my-app/mobile
+
+    # Add dev dependency to root
+    npm install -D typescript
+    ```
+  </Tab>
+</Tabs>
+
+## EAS Build Configuration
+
+```json apps/mobile/eas.json
+{
+  "cli": {
+    "version": ">= 5.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {}
+  },
+  "submit": {
+    "production": {}
+  }
+}
+```
+
+### .easignore
+
+Prevent uploading unnecessary files:
+
+```gitignore apps/mobile/.easignore
+../../node_modules
+../../apps/web
+../../packages/*/node_modules
+*.log
+.git
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Metro can't find modules from workspace packages">
+    Ensure your `metro.config.js` is configured correctly:
+    ```javascript
+    config.watchFolders = [workspaceRoot];
+    config.resolver.nodeModulesPaths = [
+      path.resolve(projectRoot, 'node_modules'),
+      path.resolve(workspaceRoot, 'node_modules'),
+    ];
+    ```
+    
+    Clear Metro cache:
+    ```bash
+    yarn workspace @my-app/mobile start --clear
+    ```
+  </Accordion>
+
+  <Accordion title="Native modules not working">
+    Native modules must be installed in the app's node_modules:
+    ```bash
+    # Install in app, not shared package
+    yarn workspace @my-app/mobile add react-native-maps
+    ```
+    
+    Or hoist with pnpm:
+    ```ini .npmrc
+    public-hoist-pattern[]=*react-native*
+    ```
+  </Accordion>
+
+  <Accordion title="TypeScript can't find shared packages">
+    Check your `tsconfig.json` paths:
+    ```json
+    {
+      "compilerOptions": {
+        "paths": {
+          "@my-app/*": ["packages/*/src"]
+        }
+      }
+    }
+    ```
+    
+    Restart TypeScript server in your editor.
+  </Accordion>
+
+  <Accordion title="EAS Build fails with workspace packages">
+    Ensure `.easignore` doesn't exclude workspace packages:
+    ```gitignore
+    # Don't do this:
+    # ../../packages
+    
+    # Do this instead:
+    ../../packages/*/node_modules
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+- **Hoist React Native dependencies**: Use hoisting patterns to avoid duplicate native modules
+- **Use workspace protocol**: Reference local packages with `"@my-app/ui": "*"` or `"workspace:*"`
+- **Share configs**: Keep ESLint, Prettier, and TypeScript configs in shared packages
+- **Version together**: Use tools like Changesets for coordinated versioning
+- **Clear caches frequently**: Metro, TypeScript, and bundler caches can cause issues
+- **Test in isolation**: Ensure packages work independently
+- **Document dependencies**: Make it clear which packages depend on React Native
+- **Use path aliases**: Configure TypeScript paths for cleaner imports
+
+## Advanced: Turborepo Integration
+
+```json turbo.json
+{
+  "$schema": "https://turbo.build/schema.json",
+  "pipeline": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".expo/**"]
+    },
+    "test": {
+      "dependsOn": ["build"],
+      "outputs": []
+    },
+    "lint": {
+      "outputs": []
+    },
+    "dev": {
+      "cache": false
+    }
+  }
+}
+```
+
+Run with:
+```bash
+npx turbo run build
+npx turbo run test
+```
+
+## Related Resources
+
+- [Expo monorepo documentation](https://docs.expo.dev/guides/monorepos/)
+- [Yarn Workspaces](https://yarnpkg.com/features/workspaces)
+- [pnpm Workspaces](https://pnpm.io/workspaces)
+- [npm Workspaces](https://docs.npmjs.com/cli/using-npm/workspaces)
+- [Turborepo](https://turbo.build/)

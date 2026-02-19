@@ -1,0 +1,709 @@
+---
+title: Frequently Asked Questions
+description: Common questions about Expo and quick answers to help you get started.
+---
+
+Quick answers to frequently asked questions about Expo development.
+
+## Getting Started
+
+<Accordion title="What is Expo?">
+
+Expo is a framework and platform for building React Native apps. It provides:
+
+- A comprehensive SDK with native modules
+- Development tools and CLI
+- Build and deployment services (EAS)
+- Over-the-air updates
+- A managed workflow for easier development
+
+Expo makes React Native development faster and more accessible while maintaining full native capabilities.
+
+</Accordion>
+
+<Accordion title="Do I need to know native development to use Expo?">
+
+No, you can build complete apps using only JavaScript/TypeScript. However:
+
+- **Managed workflow:** No native knowledge required
+- **Custom native code:** You can drop down to native code when needed
+- **Config plugins:** Many native customizations can be done without writing native code
+
+You can start without native knowledge and learn as you need it.
+
+</Accordion>
+
+<Accordion title="Can I use Expo in an existing React Native app?">
+
+Yes! You can:
+
+1. Install Expo packages in any React Native app:
+   ```bash
+   npx install-expo-modules
+   ```
+
+2. Use individual Expo modules:
+   ```bash
+   npx expo install expo-camera expo-location
+   ```
+
+3. Adopt Expo gradually without rewriting your app
+
+See the [integration guide](https://docs.expo.dev/bare/installing-expo-modules/).
+
+</Accordion>
+
+<Accordion title="What's the difference between Expo Go and development builds?">
+
+**Expo Go:**
+- Sandbox app with pre-installed Expo SDK
+- Quick prototyping and learning
+- Limited to Expo SDK modules
+- No custom native code
+
+**Development Builds:**
+- Your actual app with development tools
+- Supports any native library
+- Custom native code allowed
+- More flexibility, closer to production
+
+For production apps, use development builds. Expo Go is great for learning and quick tests.
+
+</Accordion>
+
+## Project Setup
+
+<Accordion title="How do I create a new Expo project?">
+
+```bash
+# Create a new project
+npx create-expo-app my-app
+
+# Navigate to project
+cd my-app
+
+# Start development server
+npx expo start
+```
+
+This creates a new Expo project with TypeScript support and recommended configurations.
+
+</Accordion>
+
+<Accordion title="What's the difference between app.json and app.config.js?">
+
+**app.json:**
+- Static JSON configuration
+- Simple and straightforward
+- No logic or dynamic values
+
+```json
+{
+  "expo": {
+    "name": "My App",
+    "version": "1.0.0"
+  }
+}
+```
+
+**app.config.js:**
+- Dynamic JavaScript configuration
+- Access environment variables
+- Conditional logic
+- Function-based configuration
+
+```js
+export default ({ config }) => ({
+  ...config,
+  name: process.env.APP_NAME || 'My App',
+});
+```
+
+If both exist, `app.config.js` takes precedence.
+
+</Accordion>
+
+<Accordion title="How do I add TypeScript to my project?">
+
+Expo supports TypeScript out of the box:
+
+1. Rename files from `.js` to `.tsx` or `.ts`
+2. Create `tsconfig.json`:
+   ```bash
+   npx expo customize tsconfig.json
+   ```
+
+3. Install types:
+   ```bash
+   npm install --save-dev @types/react @types/react-native
+   ```
+
+4. Start developing with TypeScript!
+
+No additional configuration needed.
+
+</Accordion>
+
+## Development
+
+<Accordion title="How do I run my app on a physical device?">
+
+**Using Expo Go:**
+1. Install Expo Go from the App Store or Google Play
+2. Run `npx expo start`
+3. Scan the QR code with your device
+
+**Using a development build:**
+1. Build your app: `eas build --profile development`
+2. Install the build on your device
+3. Run `npx expo start --dev-client`
+4. Open the app on your device
+
+See [Device Setup](https://docs.expo.dev/get-started/set-up-your-environment/).
+
+</Accordion>
+
+<Accordion title="How do I debug my app?">
+
+**React DevTools:**
+```bash
+npx expo start
+# Press 'j' to open debugger
+```
+
+**Console Logs:**
+- Logs appear in the terminal automatically
+- Use `console.log()`, `console.warn()`, `console.error()`
+
+**React Native Debugger:**
+1. Install React Native Debugger
+2. Press 'j' in the terminal
+3. Debug in the standalone app
+
+**VS Code Debugging:**
+1. Install React Native Tools extension
+2. Configure launch.json
+3. Set breakpoints and debug
+
+See [Debugging Guide](https://docs.expo.dev/debugging/runtime-issues/).
+
+</Accordion>
+
+<Accordion title="How do I clear the cache?">
+
+```bash
+# Clear Metro cache
+npx expo start --clear
+
+# Or manually delete caches
+rm -rf node_modules/.cache
+rm -rf .metro
+
+# For native projects
+cd ios && pod cache clean --all && cd ..
+cd android && ./gradlew clean && cd ..
+```
+
+Clear cache when you have bundling issues or after updating dependencies.
+
+</Accordion>
+
+<Accordion title="Why is my app loading slowly in development?">
+
+Common causes:
+
+1. **Metro cache:** Clear with `--clear` flag
+2. **Large dependencies:** Check bundle size
+3. **Network connection:** Use LAN or localhost
+4. **Debug mode overhead:** Normal in development
+5. **Source maps:** Slow but necessary for debugging
+
+Production builds are much faster. To test performance, build a release version.
+
+</Accordion>
+
+## Configuration
+
+<Accordion title="How do I add custom fonts?">
+
+1. Install expo-font:
+   ```bash
+   npx expo install expo-font
+   ```
+
+2. Load fonts:
+   ```tsx
+   import { useFonts } from 'expo-font';
+   
+   export default function App() {
+     const [loaded] = useFonts({
+       'Custom-Font': require('./assets/fonts/CustomFont.ttf'),
+     });
+     
+     if (!loaded) return null;
+     
+     return <Text style={{ fontFamily: 'Custom-Font' }}>Hello</Text>;
+   }
+   ```
+
+3. Fonts load automatically on subsequent launches
+
+See [Font Guide](https://docs.expo.dev/develop/user-interface/fonts/).
+
+</Accordion>
+
+<Accordion title="How do I use environment variables?">
+
+1. Create `.env` file (optional):
+   ```
+   EXPO_PUBLIC_API_URL=https://api.example.com
+   ```
+
+2. Access in code:
+   ```tsx
+   const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+   ```
+
+3. Or use `app.config.js`:
+   ```js
+   export default {
+     expo: {
+       extra: {
+         apiUrl: process.env.API_URL,
+       },
+     },
+   };
+   ```
+
+   Then access via Constants:
+   ```tsx
+   import Constants from 'expo-constants';
+   const apiUrl = Constants.expoConfig?.extra?.apiUrl;
+   ```
+
+Only variables prefixed with `EXPO_PUBLIC_` are available in app code.
+
+</Accordion>
+
+<Accordion title="How do I change the app icon and splash screen?">
+
+**App Icon:**
+
+1. Create a 1024x1024 PNG image
+2. Update `app.json`:
+   ```json
+   {
+     "expo": {
+       "icon": "./assets/icon.png"
+     }
+   }
+   ```
+
+**Splash Screen:**
+
+1. Create your splash image
+2. Update `app.json`:
+   ```json
+   {
+     "expo": {
+       "splash": {
+         "image": "./assets/splash.png",
+         "backgroundColor": "#ffffff",
+         "resizeMode": "contain"
+       }
+     }
+   }
+   ```
+
+3. Rebuild your app
+
+See [App Icon](https://docs.expo.dev/develop/user-interface/app-icons/) and [Splash Screen](https://docs.expo.dev/develop/user-interface/splash-screen/) guides.
+
+</Accordion>
+
+## Building & Deployment
+
+<Accordion title="How do I build my app for production?">
+
+Use EAS Build:
+
+1. Install EAS CLI:
+   ```bash
+   npm install -g eas-cli
+   ```
+
+2. Configure EAS:
+   ```bash
+   eas build:configure
+   ```
+
+3. Build for iOS and Android:
+   ```bash
+   eas build --platform all
+   ```
+
+4. Download and test the build
+
+See [EAS Build](https://docs.expo.dev/build/introduction/).
+
+</Accordion>
+
+<Accordion title="Can I build locally without EAS?">
+
+Yes, for native builds:
+
+**iOS:**
+```bash
+npx expo prebuild
+cd ios
+xcodebuild -workspace MyApp.xcworkspace -scheme MyApp
+```
+
+**Android:**
+```bash
+npx expo prebuild
+cd android
+./gradlew assembleRelease
+```
+
+However, EAS Build provides:
+- Cloud building (no native toolchain needed)
+- Consistent environment
+- Easier signing and credentials management
+- Build caching
+
+</Accordion>
+
+<Accordion title="How do I submit my app to the App Store and Google Play?">
+
+1. Build your app:
+   ```bash
+   eas build --platform all
+   ```
+
+2. Submit to stores:
+   ```bash
+   eas submit --platform ios
+   eas submit --platform android
+   ```
+
+EAS handles credentials, signing, and submission automatically.
+
+See [App Stores](https://docs.expo.dev/submit/introduction/).
+
+</Accordion>
+
+<Accordion title="What are OTA updates and how do I use them?">
+
+Over-the-air (OTA) updates let you push JavaScript changes without app store review:
+
+1. Configure updates:
+   ```json
+   {
+     "expo": {
+       "updates": {
+         "url": "https://u.expo.dev/your-project-id"
+       }
+     }
+   }
+   ```
+
+2. Publish update:
+   ```bash
+   eas update --branch production
+   ```
+
+3. Users get the update on next app launch
+
+**Limitations:**
+- JavaScript/assets only (no native code changes)
+- Requires expo-updates package
+- Users must have compatible native code
+
+See [EAS Update](https://docs.expo.dev/eas-update/introduction/).
+
+</Accordion>
+
+## Native Modules & Libraries
+
+<Accordion title="Can I use any React Native library with Expo?">
+
+Yes! You can use:
+
+1. **Expo SDK modules** - Pre-configured and tested
+2. **React Native core** - All React Native features
+3. **Community libraries** - Most work out of the box
+4. **Native modules** - With custom development builds
+
+Libraries with native code require:
+- Config plugins (for some), or
+- Custom development builds
+
+Search compatibility at [React Native Directory](https://reactnative.directory/).
+
+</Accordion>
+
+<Accordion title="How do I add a library with native code?">
+
+1. Install the library:
+   ```bash
+   npx expo install react-native-library
+   ```
+
+2. Check if it needs a config plugin:
+   ```json
+   {
+     "expo": {
+       "plugins": ["react-native-library"]
+     }
+   }
+   ```
+
+3. Rebuild your app:
+   ```bash
+   npx expo prebuild --clean
+   npx expo run:ios
+   ```
+
+Some libraries work without plugins; others require custom native code.
+
+</Accordion>
+
+<Accordion title="What are config plugins?">
+
+Config plugins modify native projects during prebuild:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      "expo-camera",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow location access"
+        }
+      ]
+    ]
+  }
+}
+```
+
+They let you customize native code without writing it manually.
+
+See [Config Plugins](https://docs.expo.dev/config-plugins/introduction/).
+
+</Accordion>
+
+## Common Errors
+
+<Accordion title="Error: Metro bundler failed to start">
+
+**Solutions:**
+
+1. Clear cache:
+   ```bash
+   npx expo start --clear
+   ```
+
+2. Check port availability (default 8081)
+
+3. Kill existing Metro processes:
+   ```bash
+   lsof -ti:8081 | xargs kill -9
+   ```
+
+4. Reinstall dependencies:
+   ```bash
+   rm -rf node_modules
+   npm install
+   ```
+
+</Accordion>
+
+<Accordion title="Error: Unable to resolve module">
+
+**Causes:**
+- Missing dependency
+- Incorrect import path
+- Cache issue
+- Case sensitivity (especially on Linux)
+
+**Solutions:**
+
+1. Install missing package:
+   ```bash
+   npx expo install package-name
+   ```
+
+2. Clear cache:
+   ```bash
+   npx expo start --clear
+   ```
+
+3. Check import paths:
+   ```tsx
+   // Wrong
+   import Component from './Component';
+   
+   // Correct (if file is Component.tsx)
+   import Component from './Component';
+   ```
+
+4. Restart Metro
+
+</Accordion>
+
+<Accordion title="Error: Invariant Violation: Native module cannot be null">
+
+**Causes:**
+- Native module not linked
+- Module not installed
+- Incompatible versions
+
+**Solutions:**
+
+1. For new modules, rebuild:
+   ```bash
+   npx expo prebuild --clean
+   npx expo run:ios
+   ```
+
+2. Check module installation:
+   ```bash
+   npx expo install --check
+   ```
+
+3. Verify config plugin is added:
+   ```json
+   {
+     "expo": {
+       "plugins": ["module-name"]
+     }
+   }
+   ```
+
+</Accordion>
+
+## Performance
+
+<Accordion title="How can I improve my app's performance?">
+
+**General optimizations:**
+
+1. **Use Hermes:**
+   ```json
+   { "expo": { "jsEngine": "hermes" } }
+   ```
+
+2. **Optimize images:**
+   - Use appropriate sizes
+   - Compress images
+   - Use WebP format
+
+3. **Lazy load components:**
+   ```tsx
+   const Component = React.lazy(() => import('./Component'));
+   ```
+
+4. **Memoize expensive computations:**
+   ```tsx
+   const value = useMemo(() => expensiveOperation(), [deps]);
+   ```
+
+5. **Use FlatList for long lists:**
+   ```tsx
+   <FlatList
+     data={items}
+     renderItem={renderItem}
+     windowSize={5}
+   />
+   ```
+
+See [Performance](https://docs.expo.dev/develop/development-builds/use-development-builds/#performance-optimization).
+
+</Accordion>
+
+<Accordion title="How do I reduce my app's bundle size?">
+
+1. **Analyze bundle:**
+   ```bash
+   npx expo export --dump-sourcemap
+   ```
+
+2. **Remove unused dependencies:**
+   ```bash
+   npm uninstall unused-package
+   ```
+
+3. **Tree shake properly:**
+   ```tsx
+   // Good
+   import { specific } from 'library';
+   
+   // Bad
+   import * as library from 'library';
+   ```
+
+4. **Use Hermes** (smaller bundle)
+
+5. **Enable minification** (production only)
+
+</Accordion>
+
+## Monorepos
+
+<Accordion title="Can I use Expo in a monorepo?">
+
+Yes! Expo works with:
+
+- Yarn Workspaces
+- npm Workspaces  
+- pnpm
+- Turborepo
+- Nx
+
+**Example Metro config:**
+
+```js
+const path = require('path');
+const { getDefaultConfig } = require('expo/metro-config');
+
+const projectRoot = __dirname;
+const workspaceRoot = path.resolve(projectRoot, '../..');
+
+const config = getDefaultConfig(projectRoot);
+
+config.watchFolders = [workspaceRoot];
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, 'node_modules'),
+  path.resolve(workspaceRoot, 'node_modules'),
+];
+
+module.exports = config;
+```
+
+See [Monorepos](https://docs.expo.dev/guides/monorepos/).
+
+</Accordion>
+
+## Getting Help
+
+<Accordion title="Where can I get help?">
+
+- **Documentation:** [docs.expo.dev](https://docs.expo.dev)
+- **Forums:** [forums.expo.dev](https://forums.expo.dev)
+- **Discord:** [chat.expo.dev](https://chat.expo.dev)
+- **GitHub:** [github.com/expo/expo](https://github.com/expo/expo)
+- **Stack Overflow:** Tag questions with `expo`
+
+See [Community Resources](/reference/community).
+
+</Accordion>
+
+## Related Documentation
+
+- [Troubleshooting Guide](/reference/troubleshooting)
+- [Community Resources](/reference/community)
+- [API Reference](/reference/expo-package)
+- [CLI Reference](/reference/cli-reference)

@@ -1,0 +1,698 @@
+---
+title: Over-the-Air Updates
+description: Learn how to deploy instant updates to your published apps using EAS Update without rebuilding or resubmitting to app stores.
+---
+
+import { Steps } from '~/components/Steps';
+import { Step } from '~/components/Step';
+import { Warning } from '~/components/Warning';
+import { Tabs, Tab } from '~/components/Tabs';
+
+# Over-the-Air Updates
+
+Over-the-Air (OTA) updates allow you to publish JavaScript, styling, and asset changes directly to users' devices without rebuilding your app or going through app store review. This enables rapid bug fixes and feature deployments.
+
+## How EAS Update Works
+
+EAS Update publishes JavaScript bundles and assets to a CDN. When users open your app:
+
+1. App checks for new updates on launch
+2. If available, downloads update in background
+3. Update applies on next app restart
+4. Users always get latest compatible version
+
+**What can be updated:**
+- JavaScript code changes
+- React components and logic
+- Styles and layouts
+- Assets (images, fonts, etc.)
+- Configuration (app.json changes)
+
+**What requires a new build:**
+- Native code changes
+- New native modules
+- Expo SDK version upgrades
+- App permissions changes
+- Native configuration (AndroidManifest.xml, Info.plist)
+
+## Setting Up EAS Update
+
+<Steps>
+
+<Step>
+
+### Install expo-updates
+
+Add the package to your project:
+
+```bash
+npx expo install expo-updates
+```
+
+For bare React Native projects, run prebuild:
+
+```bash
+npx expo prebuild
+```
+
+</Step>
+
+<Step>
+
+### Configure Your Project
+
+Run the configuration command:
+
+```bash
+eas update:configure
+```
+
+This adds update configuration to your **app.json**:
+
+```json app.json
+{
+  "expo": {
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/[your-project-id]"
+    }
+  }
+}
+```
+
+And updates **eas.json** with channel configuration:
+
+```json eas.json
+{
+  "build": {
+    "production": {
+      "channel": "production"
+    },
+    "preview": {
+      "channel": "preview",
+      "distribution": "internal"
+    }
+  }
+}
+```
+
+</Step>
+
+<Step>
+
+### Build with Update Support
+
+Create a build that includes expo-updates:
+
+```bash
+eas build --platform all --profile production
+```
+
+This build will check for updates from the configured channel.
+
+</Step>
+
+<Step>
+
+### Publish Your First Update
+
+Make changes to your JavaScript code, then publish:
+
+```bash
+eas update --channel production --message "Fix login bug"
+```
+
+Users on the production channel will receive this update on next app launch.
+
+</Step>
+
+</Steps>
+
+## Update Channels and Branches
+
+### Channels
+
+Channels link builds to update branches. Each build points to one channel.
+
+**Common channel setup:**
+
+```json eas.json
+{
+  "build": {
+    "production": {
+      "channel": "production"
+    },
+    "staging": {
+      "channel": "staging"
+    },
+    "preview": {
+      "channel": "preview"
+    }
+  }
+}
+```
+
+**How channels work:**
+- Production builds → `production` channel → receive production updates
+- Staging builds → `staging` channel → receive staging updates
+- Each channel can have different update content
+
+### Branches
+
+Branches are streams of updates published to channels.
+
+**Publishing to branches:**
+
+```bash
+# Publish to production branch (and channel)
+eas update --channel production --branch production
+
+# Publish to a feature branch
+eas update --channel preview --branch feature-new-ui
+```
+
+By default, branch name matches channel name. For most use cases, you can treat channels and branches as the same concept.
+
+### Runtime Versions
+
+Runtime version determines update compatibility. Only updates with matching runtime version will be delivered.
+
+**Runtime version policies:**
+
+```json app.json
+{
+  "expo": {
+    "runtimeVersion": {
+      "policy": "appVersion"  // Recommended
+    }
+  }
+}
+```
+
+**Policy options:**
+
+1. **`appVersion`** (Recommended):
+   - Uses `version` from app.json
+   - Example: `1.0.0` → runtime version `1.0.0`
+   - Update only delivered to apps with same version
+   - Clear, predictable versioning
+
+2. **`nativeVersion`**:
+   - Uses native build numbers
+   - iOS: CFBundleShortVersionString + CFBundleVersion
+   - Android: versionName + versionCode
+
+3. **`sdkVersion`**:
+   - Uses Expo SDK version
+   - Example: `51.0.0`
+   - Deprecated, not recommended
+
+4. **Custom string**:
+   ```json
+   {
+     "expo": {
+       "runtimeVersion": "1.0.0"
+     }
+   }
+   ```
+
+**Runtime version workflow:**
+
+1. Build app with `runtimeVersion: 1.0.0`
+2. Publish updates for runtime version `1.0.0`
+3. Only users with `1.0.0` builds receive updates
+4. When native code changes, increment to `1.1.0`
+5. Build new app version with `1.1.0`
+6. Publish separate updates for `1.1.0`
+
+## Publishing Updates
+
+### Basic Update Publishing
+
+```bash
+# Publish to specific channel
+eas update --channel production
+
+# Add descriptive message
+eas update --channel production --message "Fix critical login bug"
+
+# Publish to specific branch
+eas update --channel production --branch hotfix-123
+```
+
+### Platform-Specific Updates
+
+```bash
+# Publish to iOS only
+eas update --channel production --platform ios
+
+# Publish to Android only
+eas update --channel production --platform android
+
+# Publish to both (default)
+eas update --channel production --platform all
+```
+
+### Automatic Updates from Git
+
+Trigger updates on Git events using EAS Workflows:
+
+```yaml .eas/workflows/update-production.yml
+name: Production Updates
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  publish_update:
+    name: Publish Update
+    type: update
+    params:
+      channel: production
+      message: "Auto-update from ${{ github.event.head_commit.message }}"
+```
+
+Trigger with:
+
+```bash
+git commit -m "Fix bug"
+git push origin main
+# EAS Update automatically published
+```
+
+### Update Deployment Workflow
+
+Recommended workflow for safe deployments:
+
+<Steps>
+
+<Step>
+
+### Develop and Test Locally
+
+Make changes and test with Expo CLI:
+
+```bash
+npx expo start
+```
+
+</Step>
+
+<Step>
+
+### Publish to Preview Channel
+
+Test with internal team:
+
+```bash
+eas update --channel preview --message "Testing new feature"
+```
+
+Share preview build with team for testing.
+
+</Step>
+
+<Step>
+
+### Publish to Staging Channel
+
+Deploy to staging environment:
+
+```bash
+eas update --channel staging --message "Staging release v1.2.3"
+```
+
+Conduct thorough QA testing.
+
+</Step>
+
+<Step>
+
+### Publish to Production
+
+After staging approval:
+
+```bash
+eas update --channel production --message "Release v1.2.3"
+```
+
+Users receive update on next app launch.
+
+</Step>
+
+</Steps>
+
+## Advanced Update Features
+
+### Gradual Rollouts
+
+Deploy updates to a percentage of users:
+
+```bash
+# Roll out to 10% of users
+eas update --channel production --rollout-percentage 10
+
+# Increase rollout
+eas update:edit --message "Increase rollout" --rollout-percentage 50
+
+# Full rollout
+eas update:edit --message "Full rollout" --rollout-percentage 100
+```
+
+**Rollout strategy:**
+1. Start with 10% rollout
+2. Monitor crash reports and feedback
+3. Increase to 25%, 50%, 75%
+4. Complete with 100% rollout
+
+### Republishing Updates
+
+Promote tested update from staging to production:
+
+```bash
+# Publish to staging and test
+eas update --channel staging
+
+# After testing, republish same update to production
+eas update:republish --destination-channel production
+```
+
+This ensures exact same code tested in staging goes to production.
+
+### Rolling Back Updates
+
+Revert to previous working update:
+
+```bash
+# Initiate rollback
+eas update:rollback
+```
+
+This prompts you to:
+1. Select channel to rollback
+2. Choose previous update to restore
+3. Confirm rollback
+
+Users receive the previous update on next app restart.
+
+**Rollback workflow:**
+
+```bash
+# View update history
+eas update:list --channel production
+
+# Rollback to specific update
+eas update:rollback --channel production
+# Select update from list
+```
+
+### Update Groups
+
+Manage related updates across channels:
+
+```bash
+# Create update group
+eas update --auto
+
+# This publishes to all configured channels
+```
+
+With **eas.json**:
+
+```json eas.json
+{
+  "build": {
+    "production": { "channel": "production" },
+    "staging": { "channel": "staging" }
+  }
+}
+```
+
+## Monitoring Updates
+
+### EAS Update Dashboard
+
+View update analytics at `https://expo.dev/accounts/[account]/projects/[project]/updates`:
+
+- **Total downloads**: How many devices fetched update
+- **Successful updates**: Updates applied successfully  
+- **Failed updates**: Update errors or rollbacks
+- **Platform breakdown**: iOS vs Android adoption
+- **Version distribution**: Which runtime versions are active
+
+### Update Logs
+
+View update details:
+
+```bash
+# List recent updates for channel
+eas update:list --channel production
+
+# View specific update details
+eas update:view [update-id]
+```
+
+### Runtime Metrics
+
+Track update adoption in your app:
+
+```javascript
+import * as Updates from 'expo-updates';
+
+// Check for updates manually
+async function checkForUpdates() {
+  try {
+    const update = await Updates.checkForUpdateAsync();
+    if (update.isAvailable) {
+      await Updates.fetchUpdateAsync();
+      // Alert user
+      Alert.alert(
+        'Update Available',
+        'A new version is available. Restart to apply.',
+        [
+          { text: 'Later', style: 'cancel' },
+          { text: 'Restart', onPress: () => Updates.reloadAsync() }
+        ]
+      );
+    }
+  } catch (error) {
+    console.error('Error checking for updates:', error);
+  }
+}
+
+// Get current update info
+const updateId = Updates.updateId;
+const channel = Updates.channel;
+const runtimeVersion = Updates.runtimeVersion;
+```
+
+## Update Best Practices
+
+### Testing Before Release
+
+1. **Test locally**: Use Expo Go or development builds
+2. **Preview channel**: Share with internal team
+3. **Staging channel**: QA testing with staging builds
+4. **Production rollout**: Gradual deployment to users
+
+### Version Management
+
+**Align updates with builds:**
+
+```json app.json
+{
+  "expo": {
+    "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
+  }
+}
+```
+
+**Increment version when:**
+- Native code changes
+- New native modules added
+- Breaking changes in native configuration
+- Expo SDK upgrade
+
+**Publish updates when:**
+- Bug fixes in JavaScript
+- UI/UX improvements
+- Feature toggles
+- Analytics updates
+- Non-native configuration changes
+
+### Update Messaging
+
+Include meaningful messages:
+
+```bash
+# Bad
+eas update --channel production --message "update"
+
+# Good
+eas update --channel production --message "Fix crash on profile screen (TICKET-123)"
+```
+
+**Message should include:**
+- What changed
+- Why it changed (bug fix, feature, etc.)
+- Ticket/issue reference
+- Version or sprint number
+
+### Emergency Hotfixes
+
+**For critical production bugs:**
+
+```bash
+# 1. Create hotfix branch
+git checkout -b hotfix/critical-login-bug
+
+# 2. Fix bug and test locally
+# 3. Publish to production
+eas update --channel production --message "HOTFIX: Login crash on Android"
+
+# 4. Monitor rollout
+eas update:list --channel production
+
+# 5. If issues, rollback immediately
+eas update:rollback --channel production
+```
+
+### Update Size Optimization
+
+**Minimize update download size:**
+
+1. **Optimize assets:**
+   - Compress images
+   - Use appropriate formats (WebP for images)
+   - Lazy load large assets
+
+2. **Code splitting:**
+   - Use dynamic imports
+   - Defer non-critical code
+
+3. **Remove unused code:**
+   - Tree shaking enabled by default
+   - Remove console.logs in production
+   - Minimize dependencies
+
+## Troubleshooting
+
+### Update Not Received
+
+**Issue:** Users not getting published update
+
+**Check:**
+
+1. **Runtime version mismatch:**
+   ```bash
+   eas update:list --channel production
+   # Verify runtime version matches build
+   ```
+
+2. **Channel configuration:**
+   ```json eas.json
+   {
+     "build": {
+       "production": {
+         "channel": "production"  // Must match
+       }
+     }
+   }
+   ```
+
+3. **Update not published:**
+   ```bash
+   eas update:list --channel production
+   # Verify update exists
+   ```
+
+4. **App not checking for updates:**
+   - Ensure expo-updates is installed
+   - Check app.json configuration
+   - Verify build includes updates URL
+
+### Update Failed to Apply
+
+**Issue:** Update downloaded but not applied
+
+**Solutions:**
+
+1. **Check error logs:**
+   ```javascript
+   import * as Updates from 'expo-updates';
+   
+   Updates.addListener((event) => {
+     if (event.type === Updates.UpdateEventType.ERROR) {
+       console.error('Update error:', event.message);
+     }
+   });
+   ```
+
+2. **Asset loading failure:**
+   - Check asset URLs are accessible
+   - Verify CDN is reachable
+   - Check for CORS issues (web)
+
+3. **Corrupted update:**
+   ```bash
+   # Republish update
+   eas update --channel production --message "Republish after corruption"
+   ```
+
+### Wrong Runtime Version
+
+**Issue:** Updates not compatible with builds
+
+**Solution:** Align runtime versions:
+
+```json app.json
+{
+  "expo": {
+    "version": "1.0.0",  // App version
+    "runtimeVersion": {
+      "policy": "appVersion"  // Must match
+    }
+  }
+}
+```
+
+Build new version and publish matching updates:
+
+```bash
+# Build with runtime version 1.0.0
+eas build --platform all
+
+# Publish update for runtime version 1.0.0
+eas update --channel production
+```
+
+### Update Rollback Not Working
+
+**Issue:** Rollback command fails or doesn't revert
+
+**Solutions:**
+
+1. **Manual rollback:**
+   ```bash
+   # List updates to find previous good update
+   eas update:list --channel production
+   
+   # Republish previous update
+   eas update:republish --id [previous-update-id] --destination-channel production
+   ```
+
+2. **Create new update:**
+   - Revert code changes in Git
+   - Publish as new update (faster than rollback)
+
+## Next Steps
+
+- [Build Configuration](/deployment/build-configuration) - Configure update channels in eas.json
+- [Internal Distribution](/deployment/internal-distribution) - Test updates with beta testers
+- [Static Export](/deployment/static-export) - Deploy web version alongside native apps

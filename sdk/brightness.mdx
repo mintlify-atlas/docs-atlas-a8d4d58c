@@ -1,0 +1,163 @@
+---
+title: expo-brightness
+description: Get and set screen brightness levels
+---
+
+# expo-brightness
+
+**Version:** 55.0.6
+
+Provides an API to get and set screen brightness.
+
+## Installation
+
+```bash
+npx expo install expo-brightness
+```
+
+## Usage
+
+```typescript
+import * as Brightness from 'expo-brightness';
+
+// Get current brightness
+const brightness = await Brightness.getBrightnessAsync();
+
+// Set brightness (0-1)
+await Brightness.setBrightnessAsync(0.8);
+
+// Restore system brightness
+await Brightness.restoreSystemBrightnessAsync();
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="Brightness.getBrightnessAsync()" type="() => Promise<number>">
+  Gets current screen brightness (0-1)
+  
+  ```typescript
+  const brightness = await Brightness.getBrightnessAsync();
+  console.log(`Brightness: ${(brightness * 100).toFixed(0)}%`);
+  ```
+</ParamField>
+
+<ParamField path="Brightness.setBrightnessAsync(brightness)" type="(brightness: number) => Promise<void>">
+  Sets screen brightness (0-1)
+  
+  ```typescript
+  // Set to 50%
+  await Brightness.setBrightnessAsync(0.5);
+  
+  // Set to maximum
+  await Brightness.setBrightnessAsync(1.0);
+  ```
+</ParamField>
+
+<ParamField path="Brightness.getSystemBrightnessAsync()" type="() => Promise<number>">
+  Gets the system brightness setting
+</ParamField>
+
+<ParamField path="Brightness.setSystemBrightnessAsync(brightness)" type="(brightness: number) => Promise<void>">
+  **Android only**: Sets system brightness permanently
+</ParamField>
+
+<ParamField path="Brightness.restoreSystemBrightnessAsync()" type="() => Promise<void>">
+  **Android only**: Restores original system brightness
+</ParamField>
+
+<ParamField path="Brightness.useSystemBrightnessAsync()" type="() => Promise<void>">
+  **Android only**: Uses system brightness setting
+</ParamField>
+
+<ParamField path="Brightness.isUsingSystemBrightnessAsync()" type="() => Promise<boolean>">
+  **Android only**: Checks if using system brightness
+</ParamField>
+
+<ParamField path="Brightness.getSystemBrightnessModeAsync()" type="() => Promise<BrightnessMode>">
+  **Android only**: Gets brightness mode (manual or automatic)
+</ParamField>
+
+<ParamField path="Brightness.setSystemBrightnessModeAsync(mode)" type="(mode: BrightnessMode) => Promise<void>">
+  **Android only**: Sets brightness mode
+</ParamField>
+
+### Permissions
+
+<ParamField path="Brightness.requestPermissionsAsync()" type="() => Promise<PermissionResponse>">
+  Requests brightness permissions
+</ParamField>
+
+<ParamField path="Brightness.getPermissionsAsync()" type="() => Promise<PermissionResponse>">
+  Gets current permission status
+</ParamField>
+
+## Examples
+
+### Brightness Slider
+
+```tsx
+import * as Brightness from 'expo-brightness';
+import { useEffect, useState } from 'react';
+import { View, Text, Slider } from 'react-native';
+
+function BrightnessControl() {
+  const [brightness, setBrightness] = useState(0.5);
+
+  useEffect(() => {
+    async function loadBrightness() {
+      const current = await Brightness.getBrightnessAsync();
+      setBrightness(current);
+    }
+    loadBrightness();
+  }, []);
+
+  const handleChange = async (value: number) => {
+    setBrightness(value);
+    await Brightness.setBrightnessAsync(value);
+  };
+
+  return (
+    <View style={{ padding: 20 }}>
+      <Text>Brightness: {(brightness * 100).toFixed(0)}%</Text>
+      <Slider
+        value={brightness}
+        onValueChange={handleChange}
+        minimumValue={0}
+        maximumValue={1}
+      />
+    </View>
+  );
+}
+```
+
+### Temporarily Boost Brightness
+
+```typescript
+import * as Brightness from 'expo-brightness';
+
+// Save original brightness
+const originalBrightness = await Brightness.getBrightnessAsync();
+
+// Boost to maximum
+await Brightness.setBrightnessAsync(1.0);
+
+// Do something that needs bright screen...
+
+// Restore original
+await Brightness.setBrightnessAsync(originalBrightness);
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ❌       |
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/brightness/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-brightness)

@@ -1,0 +1,610 @@
+---
+title: Typed Routes
+description: Enable type-safe routing with automatically generated TypeScript types
+---
+
+# Typed Routes
+
+Expo Router automatically generates TypeScript types for all your routes, providing type safety for navigation, parameters, and hrefs.
+
+## How It Works
+
+When you start your development server, Expo Router analyzes your `app` directory and generates type definitions:
+
+```bash
+npx expo start
+```
+
+Types are automatically generated in `node_modules/.expo/types` and included in your project.
+
+## Type-Safe Hrefs
+
+All routes are typed, providing autocomplete and type checking:
+
+```tsx
+import { Link, router } from 'expo-router';
+
+// Type-safe href with autocomplete
+<Link href="/about" />  // ✓ Valid
+<Link href="/invalid" /> // ✗ TypeScript error
+
+// Type-safe router navigation
+router.push('/profile'); // ✓ Valid
+router.push('/fake');    // ✗ TypeScript error
+```
+
+## Type-Safe Parameters
+
+Dynamic route parameters are automatically typed:
+
+```tsx app/user/[id].tsx
+import { useLocalSearchParams } from 'expo-router';
+
+export default function User() {
+  // TypeScript knows this route has 'id' parameter
+  const { id } = useLocalSearchParams<{ id: string }>();
+  return <Text>User {id}</Text>;
+}
+```
+
+### Navigating with Parameters
+
+```tsx
+import { Link, router } from 'expo-router';
+
+// Object href with typed params
+<Link
+  href={{
+    pathname: '/user/[id]',
+    params: { id: '123' }  // TypeScript validates this
+  }}
+/>
+
+// Router with typed params
+router.push({
+  pathname: '/user/[id]',
+  params: { id: '123', name: 'John' }
+});
+```
+
+## Route Type Definition
+
+Expo Router generates a type for all your routes:
+
+```typescript
+// Automatically generated types
+type Href = 
+  | '/'
+  | '/about'
+  | '/settings'
+  | `/user/${string}`
+  | `/post/${string}`
+  | {
+      pathname: '/user/[id]';
+      params: { id: string };
+    }
+  | {
+      pathname: '/post/[slug]';
+      params: { slug: string };
+    };
+```
+
+From the source (`typed-routes/types.ts:42-59`):
+
+```typescript
+/**
+ * The main routing type for Expo Router. It includes all available routes
+ * with strongly typed parameters. It can either be:
+ * - **string**: A full path like `/profile/settings` or a relative path
+ * - **object**: An object with a `pathname` and optional `params`
+ */
+export type Href<T extends ExpoRouter.__routes = ExpoRouter.__routes> = 
+  T extends { href: any }
+    ? T['href']
+    : string | HrefObject;
+```
+
+## Using Typed Routes
+
+### Link Component
+
+```tsx
+import { Link } from 'expo-router';
+
+function Navigation() {
+  return (
+    <>
+      {/* String hrefs - autocomplete available */}
+      <Link href="/">Home</Link>
+      <Link href="/about">About</Link>
+      <Link href="/profile">Profile</Link>
+      
+      {/* Dynamic routes - type checked */}
+      <Link href="/user/123">User 123</Link>
+      <Link href={`/user/${userId}`}>User</Link>
+      
+      {/* Object hrefs - params validated */}
+      <Link
+        href={{
+          pathname: '/search',
+          params: { q: 'expo', filter: 'recent' }
+        }}
+      >
+        Search
+      </Link>
+    </>
+  );
+}
+```
+
+### Router Navigation
+
+```tsx
+import { router } from 'expo-router';
+
+function actions() {
+  // String navigation
+  router.push('/about');
+  router.replace('/login');
+  
+  // Dynamic routes
+  router.push(`/user/${userId}`);
+  
+  // Object navigation with params
+  router.push({
+    pathname: '/profile/[id]',
+    params: { id: '123', tab: 'posts' }
+  });
+}
+```
+
+### useLocalSearchParams
+
+```tsx
+import { useLocalSearchParams } from 'expo-router';
+
+export default function UserProfile() {
+  // Type the parameters
+  const { id, tab } = useLocalSearchParams<{
+    id: string;
+    tab?: string;
+  }>();
+  
+  return (
+    <View>
+      <Text>User: {id}</Text>
+      {tab && <Text>Tab: {tab}</Text>}
+    </View>
+  );
+}
+```
+
+### useSegments
+
+```tsx
+import { useSegments } from 'expo-router';
+
+type ValidSegments = 
+  | ['settings']
+  | ['profile']
+  | ['profile', 'edit']
+  | ['user', string];
+
+export default function Screen() {
+  const segments = useSegments<ValidSegments>();
+  
+  // TypeScript knows possible segment combinations
+  if (segments[0] === 'settings') {
+    // In settings
+  }
+  
+  return <View />;
+}
+```
+
+From the source (`hooks.ts:150-165`):
+
+```typescript
+/**
+ * `useSegments` can be typed using an abstract.
+ *
+ * This can be strictly typed using the following abstract:
+ * ```tsx
+ * const [first, second] = useSegments<
+ *   ['settings'] | ['[user]'] | ['[user]', 'followers']
+ * >()
+ * ```
+ */
+export function useSegments<TSegments extends Route = Route>(): 
+  RouteSegments<TSegments>;
+```
+
+## Type Generation
+
+### Automatic Generation
+
+Types are generated when:
+1. Development server starts (`npx expo start`)
+2. Files in `app` directory change
+3. New routes are added or removed
+
+### Manual Generation
+
+Force type regeneration:
+
+```bash
+# Clear cache and restart
+rm -rf node_modules/.expo
+npx expo start --clear
+```
+
+### CI/CD Type Checking
+
+Generate types for CI/CD:
+
+```bash
+# In your CI script
+npx expo customize tsconfig.json
+npx tsc --noEmit
+```
+
+## Configuration
+
+### TypeScript Config
+
+Ensure your `tsconfig.json` includes:
+
+```json tsconfig.json
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts"
+  ]
+}
+```
+
+### IDE Setup
+
+For best experience:
+
+1. **VS Code**: Install "TypeScript and JavaScript Language Features"
+2. **Restart TS Server**: `Cmd/Ctrl + Shift + P` → "TypeScript: Restart TS Server"
+3. **Enable IntelliSense**: Settings → "TypeScript › Suggest: Paths" (enabled)
+
+## Advanced Types
+
+### Generic Route Type
+
+Create helper types for routes:
+
+```typescript
+import { Href } from 'expo-router';
+
+// Type for any valid route
+type AnyRoute = Href;
+
+// Type for specific route pattern
+type UserRoute = Extract<Href, `/user/${string}`>;
+
+// Function accepting any route
+function navigateToRoute(route: Href) {
+  router.push(route);
+}
+
+// Function accepting only user routes
+function navigateToUser(userId: string) {
+  router.push(`/user/${userId}` as const);
+}
+```
+
+### Route Parameters Type
+
+```typescript
+import { RouteParams } from 'expo-router';
+
+type UserParams = RouteParams<'/user/[id]'>;
+// { id: string }
+
+type SearchParams = RouteParams<'/search'>;
+// { q?: string; filter?: string }
+
+function getUserProfile(params: UserParams) {
+  const { id } = params;
+  return fetchUser(id);
+}
+```
+
+### Const Assertions
+
+Use `as const` for literal types:
+
+```typescript
+import { router } from 'expo-router';
+
+// Without const: string type
+const path = '/about';
+router.push(path); // May need type assertion
+
+// With const: literal type '/about'
+const path = '/about' as const;
+router.push(path); // Type-safe!
+
+// For dynamic values, use template literals
+const userId = '123';
+router.push(`/user/${userId}` as const);
+```
+
+## Common Patterns
+
+### Navigation Helper
+
+```typescript
+import { router, Href } from 'expo-router';
+
+class Navigation {
+  static to(href: Href) {
+    router.push(href);
+  }
+  
+  static replace(href: Href) {
+    router.replace(href);
+  }
+  
+  static back() {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  }
+}
+
+// Usage - fully typed
+Navigation.to('/about');
+Navigation.replace('/login');
+```
+
+### Typed Link Component
+
+```typescript
+import { Link, Href } from 'expo-router';
+import { ComponentProps } from 'react';
+
+type TypedLinkProps = {
+  href: Href;
+  children: React.ReactNode;
+} & Omit<ComponentProps<typeof Link>, 'href'>;
+
+export function TypedLink({ href, children, ...props }: TypedLinkProps) {
+  return (
+    <Link href={href} {...props}>
+      {children}
+    </Link>
+  );
+}
+
+// Usage
+<TypedLink href="/about">About</TypedLink>
+<TypedLink href="/invalid"> {/* TypeScript error */}
+  Invalid
+</TypedLink>
+```
+
+### Route Constants
+
+```typescript
+import { Href } from 'expo-router';
+
+export const ROUTES = {
+  HOME: '/' as Href,
+  ABOUT: '/about' as Href,
+  SETTINGS: '/settings' as Href,
+  USER: (id: string) => `/user/${id}` as Href,
+  POST: (slug: string) => `/post/${slug}` as Href,
+} as const;
+
+// Usage
+import { router } from 'expo-router';
+import { ROUTES } from './constants/routes';
+
+router.push(ROUTES.HOME);
+router.push(ROUTES.USER('123'));
+```
+
+### Type Guards
+
+```typescript
+import { Href } from 'expo-router';
+
+function isUserRoute(href: Href): href is `/user/${string}` {
+  return typeof href === 'string' && href.startsWith('/user/');
+}
+
+function navigate(href: Href) {
+  if (isUserRoute(href)) {
+    // TypeScript knows href is `/user/${string}`
+    const userId = href.split('/')[2];
+    console.log('Navigating to user:', userId);
+  }
+  router.push(href);
+}
+```
+
+## Troubleshooting
+
+### Types Not Generated
+
+**Solution**: Restart development server
+
+```bash
+# Stop server (Ctrl + C)
+# Clear cache
+rm -rf node_modules/.expo
+# Restart
+npx expo start
+```
+
+### TypeScript Errors
+
+**"Type 'string' is not assignable to type 'Href'"**
+
+```typescript
+// Problem: Dynamic string
+const path = getDynamicPath();
+router.push(path); // Error
+
+// Solution 1: Type assertion
+router.push(path as Href);
+
+// Solution 2: Validate at runtime
+if (isValidRoute(path)) {
+  router.push(path as Href);
+}
+```
+
+**"Property does not exist on type"**
+
+```typescript
+// Problem: Missing parameter type
+const { id } = useLocalSearchParams();
+// 'id' is type unknown
+
+// Solution: Add type annotation
+const { id } = useLocalSearchParams<{ id: string }>();
+```
+
+### IDE Not Showing Autocomplete
+
+1. Restart TypeScript server: `Cmd/Ctrl + Shift + P` → "TypeScript: Restart TS Server"
+2. Check TypeScript version: Should be 5.0 or higher
+3. Verify `tsconfig.json` includes `.expo/types/**/*.ts`
+4. Check Expo CLI version: Update to latest
+
+### Build Errors
+
+If types work in development but fail in builds:
+
+```json tsconfig.json
+{
+  "compilerOptions": {
+    "skipLibCheck": false,
+    "strict": true
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
+```
+
+## Best Practices
+
+### Always Type Parameters
+
+```typescript
+// Good: Explicit types
+const { id, name } = useLocalSearchParams<{
+  id: string;
+  name?: string;
+}>();
+
+// Avoid: Implicit any
+const { id, name } = useLocalSearchParams();
+```
+
+### Use Const Assertions
+
+```typescript
+// Good: Literal type
+const route = '/about' as const;
+
+// Less ideal: String type
+const route: string = '/about';
+```
+
+### Create Route Constants
+
+```typescript
+// Good: Centralized routes
+export const ROUTES = {
+  HOME: '/',
+  PROFILE: '/profile',
+  USER: (id: string) => `/user/${id}`,
+} as const;
+
+// Avoid: Magic strings
+router.push('/profle'); // Typo!
+```
+
+### Validate Dynamic Routes
+
+```typescript
+function navigateToUser(userId: string | null) {
+  if (!userId) {
+    router.push('/');
+    return;
+  }
+  
+  // Safe navigation
+  router.push(`/user/${userId}`);
+}
+```
+
+## Migration Guide
+
+### From Untyped to Typed
+
+**Step 1: Start dev server**
+```bash
+npx expo start
+```
+
+**Step 2: Add types to parameters**
+```typescript
+// Before
+const { id } = useLocalSearchParams();
+
+// After
+const { id } = useLocalSearchParams<{ id: string }>();
+```
+
+**Step 3: Update navigation**
+```typescript
+// Before
+router.push('/user/' + userId);
+
+// After
+router.push(`/user/${userId}`);
+```
+
+**Step 4: Fix type errors**
+Address any TypeScript errors revealed by type generation.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Dynamic Routes" icon="brackets-curly" href="/router/dynamic-routes">
+    Type dynamic route parameters
+  </Card>
+  <Card title="Navigation" icon="compass" href="/router/navigation">
+    Type-safe navigation methods
+  </Card>
+  <Card title="Deep Linking" icon="link" href="/router/deep-linking">
+    Type-safe deep links
+  </Card>
+  <Card title="API Routes" icon="server" href="/router/api-routes">
+    Type-safe API endpoints
+  </Card>
+</CardGroup>

@@ -1,0 +1,609 @@
+---
+title: Installing Development Builds
+description: Install development builds on physical devices, simulators, and emulators.
+---
+
+Once you've created a development build, you need to install it on your test devices. Installation methods vary by platform and distribution strategy.
+
+## iOS Installation
+
+### iOS Simulator
+
+Simulator builds are the easiest to install for local development.
+
+<Steps>
+
+<Step title="Build for simulator">
+
+```bash
+# Local build
+npx expo run:ios --simulator
+
+# Or EAS Build
+eas build --profile development --platform ios
+```
+
+In `eas.json`, ensure simulator is enabled:
+
+```json title="eas.json"
+{
+  "build": {
+    "development": {
+      "ios": {
+        "simulator": true
+      }
+    }
+  }
+}
+```
+
+</Step>
+
+<Step title="Download the build">
+
+If using EAS Build:
+
+```bash
+eas build:list --profile development --platform ios
+```
+
+Download the `.tar.gz` file from the build URL.
+
+</Step>
+
+<Step title="Install on simulator">
+
+```bash
+# Extract and install
+tar -xvf app.tar.gz
+xcrun simctl install booted path/to/Your-App.app
+
+# Or drag and drop the .app file onto the simulator
+```
+
+</Step>
+
+</Steps>
+
+### iOS Physical Devices
+
+For testing on actual iPhones and iPads, you have several options.
+
+#### Option 1: TestFlight (Recommended for Teams)
+
+<Steps>
+
+<Step title="Configure for TestFlight">
+
+```json title="eas.json"
+{
+  "build": {
+    "development": {
+      "ios": {
+        "simulator": false,
+        "buildConfiguration": "Release",
+        "distribution": "internal"
+      }
+    }
+  },
+  "submit": {
+    "development": {
+      "ios": {
+        "appleId": "your-apple-id@example.com",
+        "ascAppId": "1234567890",
+        "appleTeamId": "YOUR_TEAM_ID"
+      }
+    }
+  }
+}
+```
+
+</Step>
+
+<Step title="Build and submit">
+
+```bash
+# Build for TestFlight
+eas build --profile development --platform ios
+
+# Submit to TestFlight
+eas submit --platform ios --profile development
+```
+
+</Step>
+
+<Step title="Invite testers">
+
+1. Go to App Store Connect
+2. Select your app
+3. Go to TestFlight tab
+4. Add internal testers (up to 100)
+5. Testers receive an email invitation
+
+</Step>
+
+<Step title="Install via TestFlight app">
+
+Testers:
+1. Install TestFlight from App Store
+2. Accept invitation email
+3. Install the development build
+
+</Step>
+
+</Steps>
+
+#### Option 2: Ad-Hoc Distribution
+
+For direct installation without TestFlight:
+
+<Steps>
+
+<Step title="Register devices">
+
+```bash
+# Register a device with EAS
+eas device:create
+```
+
+Provide your device UDID. Find it:
+- Connect device to Mac
+- Open Finder > Device > Click serial number
+- Copy UDID
+
+</Step>
+
+<Step title="Build with registered devices">
+
+```json title="eas.json"
+{
+  "build": {
+    "development": {
+      "ios": {
+        "simulator": false,
+        "distribution": "internal"
+      }
+    }
+  }
+}
+```
+
+```bash
+eas build --profile development --platform ios
+```
+
+</Step>
+
+<Step title="Download and install">
+
+Download the `.ipa` file and:
+
+**Using Xcode:**
+```bash
+# Connect device via USB
+open -a Finder
+# Drag .ipa to device in Finder sidebar
+```
+
+**Using iOS App Installer:**
+1. Download iOS App Installer
+2. Open the `.ipa` file
+3. Select connected device
+4. Click Install
+
+</Step>
+
+</Steps>
+
+#### Option 3: Xcode Direct Install
+
+For local development:
+
+```bash
+# Build and install in one command
+npx expo run:ios --device
+
+# Select your connected device from the list
+```
+
+Xcode handles code signing automatically for development.
+
+### iOS Development Certificates
+
+For physical device installation, you need:
+
+1. **Apple Developer Account** ($99/year for teams, free for personal)
+2. **Development Certificate** (automatic with Xcode)
+3. **Provisioning Profile** (automatic with EAS or Xcode)
+
+```bash
+# Check signing status
+eas credentials --platform ios
+
+# Configure new credentials
+eas credentials:configure-build --platform ios
+```
+
+## Android Installation
+
+### Android Emulator
+
+Emulator installation is straightforward.
+
+<Steps>
+
+<Step title="Start an emulator">
+
+```bash
+# List available emulators
+emulator -list-avds
+
+# Start an emulator
+emulator @Pixel_7_Pro_API_36 &
+```
+
+Or start from Android Studio > Device Manager.
+
+</Step>
+
+<Step title="Build and install">
+
+```bash
+# Local build - installs automatically
+npx expo run:android
+
+# Or install APK manually
+adb install path/to/app.apk
+```
+
+</Step>
+
+</Steps>
+
+### Android Physical Devices
+
+Android allows direct APK installation without app store distribution.
+
+#### Option 1: Direct APK Installation (Recommended)
+
+<Steps>
+
+<Step title="Enable developer options">
+
+On your Android device:
+1. Go to Settings > About Phone
+2. Tap "Build Number" 7 times
+3. Go back to Settings > System > Developer Options
+4. Enable "USB Debugging"
+
+</Step>
+
+<Step title="Build APK">
+
+```json title="eas.json"
+{
+  "build": {
+    "development": {
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleDebug"
+      }
+    }
+  }
+}
+```
+
+```bash
+# EAS Build
+eas build --profile development --platform android
+
+# Local build
+npx expo run:android --variant debug
+```
+
+</Step>
+
+<Step title="Install via USB">
+
+```bash
+# Connect device via USB
+adb devices  # Verify device is connected
+
+# Install APK
+adb install path/to/app.apk
+
+# Or install to specific device
+adb -s DEVICE_ID install path/to/app.apk
+```
+
+</Step>
+
+</Steps>
+
+#### Option 2: Download from URL
+
+Share APKs via URL:
+
+<Steps>
+
+<Step title="Get build URL">
+
+```bash
+eas build:list --profile development --platform android
+```
+
+Copy the APK download URL.
+
+</Step>
+
+<Step title="Install on device">
+
+On the Android device:
+1. Open the URL in a browser
+2. Download the APK
+3. Tap the downloaded file
+4. Allow installation from unknown sources if prompted
+5. Tap "Install"
+
+</Step>
+
+</Steps>
+
+#### Option 3: Internal Distribution
+
+For team distribution:
+
+<Steps>
+
+<Step title="Build AAB for Play Console">
+
+```json title="eas.json"
+{
+  "build": {
+    "development": {
+      "android": {
+        "buildType": "aab",
+        "gradleCommand": ":app:bundleDebug"
+      }
+    }
+  }
+}
+```
+
+</Step>
+
+<Step title="Upload to Play Console">
+
+1. Go to Google Play Console
+2. Select your app
+3. Go to Testing > Internal Testing
+4. Upload the AAB file
+5. Add testers via email
+
+</Step>
+
+</Steps>
+
+### Android Signing
+
+Debug builds use automatic debug keystore:
+
+```bash
+# View debug keystore info
+keytool -list -v -keystore ~/.android/debug.keystore \
+  -alias androiddebugkey -storepass android -keypass android
+```
+
+For custom signing:
+
+```bash
+# Generate keystore
+keytool -genkey -v -keystore my-release-key.keystore \
+  -alias my-key-alias -keyalg RSA -keysize 2048 -validity 10000
+
+# Configure in EAS
+eas credentials --platform android
+```
+
+## Installation via Development Server
+
+Once installed, load JavaScript from the dev server.
+
+### QR Code Method
+
+<Steps>
+
+<Step title="Start dev server">
+
+```bash
+npx expo start --dev-client
+```
+
+A QR code appears in the terminal.
+
+</Step>
+
+<Step title="Scan QR code">
+
+Open your development build and:
+- iOS: Use camera app or dev client scanner
+- Android: Use dev client scanner
+
+</Step>
+
+</Steps>
+
+### Manual URL Entry
+
+```bash
+# Start with explicit URL
+npx expo start --dev-client --host tunnel
+```
+
+In the dev client:
+1. Tap "Enter URL manually"
+2. Enter: `exp://YOUR-IP:8081`
+3. Tap "Connect"
+
+### LAN Connection
+
+For local network development:
+
+```bash
+# Start on LAN
+npx expo start --dev-client --host lan
+```
+
+Requires:
+- Device and computer on same network
+- Firewall allows port 8081
+- No VPN interfering with local network
+
+## Troubleshooting
+
+### iOS: App Won't Install
+
+**"Unable to Install App"**
+
+```bash
+# Check device UDID is registered
+eas device:list
+
+# Re-register device
+eas device:create
+
+# Rebuild with updated devices
+eas build --profile development --platform ios
+```
+
+### iOS: Untrusted Developer
+
+On device:
+1. Go to Settings > General > VPN & Device Management
+2. Select your developer certificate
+3. Tap "Trust"
+
+### Android: Installation Blocked
+
+**"Install blocked for security"**
+
+1. Go to Settings > Apps > Special Access
+2. Select "Install unknown apps"
+3. Enable for your browser or file manager
+
+### Android: ADB Not Found
+
+```bash
+# Add to PATH (macOS/Linux)
+export ANDROID_HOME=$HOME/Library/Android/sdk
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+
+# Or use Android Studio's adb
+~/Library/Android/sdk/platform-tools/adb devices
+```
+
+### Can't Connect to Dev Server
+
+1. **Check firewall**: Allow port 8081
+2. **Try tunnel mode**: `npx expo start --tunnel`
+3. **Verify same network**: Device and computer on same WiFi
+4. **Check URL**: Should be `exp://IP:8081` not `http://`
+
+```bash
+# Test connectivity
+ping YOUR-COMPUTER-IP
+
+# Check port is open
+nc -zv YOUR-COMPUTER-IP 8081
+```
+
+### Build Expires (iOS TestFlight)
+
+TestFlight builds expire after 90 days:
+
+```bash
+# Upload new build
+eas build --profile development --platform ios
+eas submit --platform ios
+```
+
+## Managing Multiple Builds
+
+### Build Channels
+
+Test different versions simultaneously:
+
+```json title="eas.json"
+{
+  "build": {
+    "development": {
+      "channel": "development"
+    },
+    "staging": {
+      "channel": "staging",
+      "developmentClient": true
+    }
+  }
+}
+```
+
+```bash
+# Build for different channels
+eas build --profile development
+eas build --profile staging
+
+# Load specific channel in app
+# Dev client shows available channels
+```
+
+### Build Versions
+
+Track builds with version numbers:
+
+```json title="app.json"
+{
+  "expo": {
+    "version": "1.0.0",
+    "ios": {
+      "buildNumber": "1"
+    },
+    "android": {
+      "versionCode": 1
+    }
+  }
+}
+```
+
+Auto-increment with EAS:
+
+```json title="eas.json"
+{
+  "build": {
+    "development": {
+      "ios": {
+        "autoIncrement": "buildNumber"
+      },
+      "android": {
+        "autoIncrement": "versionCode"
+      }
+    }
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Start Debugging" icon="bug" href="/development/debugging">
+    Learn how to debug your development build
+  </Card>
+  <Card title="Dev Tools" icon="wrench" href="/development/devtools">
+    Explore the dev tools and inspector
+  </Card>
+  <Card title="Testing" icon="flask" href="/development/unit-testing">
+    Set up automated testing
+  </Card>
+  <Card title="Error Handling" icon="triangle-exclamation" href="/development/errors">
+    Handle errors in development
+  </Card>
+</CardGroup>

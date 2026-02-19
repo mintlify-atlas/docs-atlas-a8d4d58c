@@ -1,0 +1,711 @@
+---
+title: Android Permissions
+description: Learn how to add and manage Android permissions using config plugins.
+---
+
+import { Tab, Tabs } from '~/ui/components/Tabs';
+
+Android permissions control access to sensitive user data and system features. They're declared in `AndroidManifest.xml` and can be configured using config plugins.
+
+## What are Android permissions?
+
+Android uses a permission system to protect user privacy and security. Apps must declare permissions they need in the manifest, and users grant them at install time (for normal permissions) or runtime (for dangerous permissions).
+
+### Permission types
+
+**Normal permissions** - Granted automatically at install:
+- Internet access
+- Vibration
+- Set alarm
+- Access network state
+
+**Dangerous permissions** - Require user approval at runtime:
+- Camera
+- Microphone
+- Location
+- Contacts
+- Storage
+- Phone
+- SMS
+- Calendar
+
+## Adding permissions with plugins
+
+### Basic permission addition
+
+Use `withPermissions` or modify the manifest directly:
+
+```ts
+import { withPermissions, ConfigPlugin } from '@expo/config-plugins';
+
+const withCameraPermission: ConfigPlugin = (config) => {
+  return withPermissions(config, [
+    'android.permission.CAMERA',
+    'android.permission.RECORD_AUDIO',
+  ]);
+};
+```
+
+### Using AndroidConfig helpers
+
+The recommended approach uses `AndroidConfig` utilities:
+
+```ts Permissions.ts
+import { withAndroidManifest, ConfigPlugin, AndroidConfig } from '@expo/config-plugins';
+
+const withCustomPermissions: ConfigPlugin = (config) => {
+  return withAndroidManifest(config, (config) => {
+    const manifest = config.modResults;
+    
+    AndroidConfig.Permissions.ensurePermissions(manifest, [
+      'android.permission.CAMERA',
+      'android.permission.RECORD_AUDIO',
+      'android.permission.ACCESS_FINE_LOCATION',
+    ]);
+    
+    return config;
+  });
+};
+```
+
+### Manual manifest modification
+
+```ts Permissions.ts
+import { withAndroidManifest, ConfigPlugin } from '@expo/config-plugins';
+
+const withManualPermissions: ConfigPlugin = (config) => {
+  return withAndroidManifest(config, (config) => {
+    const manifest = config.modResults.manifest;
+    
+    if (!manifest['uses-permission']) {
+      manifest['uses-permission'] = [];
+    }
+    
+    // Add permission
+    manifest['uses-permission'].push({
+      $: { 'android:name': 'android.permission.CAMERA' },
+    });
+    
+    return config;
+  });
+};
+```
+
+## Permission shorthand
+
+Permissions can be specified with or without the full package:
+
+```ts Permissions.ts
+// These are equivalent:
+ensurePermissions(manifest, ['CAMERA']);
+ensurePermissions(manifest, ['android.permission.CAMERA']);
+
+// The helper automatically prefixes:
+export function ensurePermissionNameFormat(permissionName: string): string {
+  if (permissionName.includes('.')) {
+    const com = permissionName.split('.');
+    const name = com.pop() as string;
+    return [...com, name.toUpperCase()].join('.');
+  } else {
+    // Expand shorthand
+    return ensurePermissionNameFormat(`android.permission.${permissionName}`);
+  }
+}
+```
+
+## Common permissions
+
+### Camera
+
+```ts
+import { withPermissions, ConfigPlugin } from '@expo/config-plugins';
+
+const withCamera: ConfigPlugin = (config) => {
+  return withPermissions(config, [
+    'android.permission.CAMERA',
+  ]);
+};
+```
+
+### Location
+
+```ts
+import { withPermissions, ConfigPlugin } from '@expo/config-plugins';
+
+const withLocation: ConfigPlugin<{ 
+  enableForeground?: boolean;
+  enableBackground?: boolean;
+}> = (config, { enableForeground = true, enableBackground = false } = {}) => {
+  const permissions = [];
+  
+  if (enableForeground) {
+    permissions.push(
+      'android.permission.ACCESS_FINE_LOCATION',
+      'android.permission.ACCESS_COARSE_LOCATION'
+    );
+  }
+  
+  if (enableBackground) {
+    permissions.push('android.permission.ACCESS_BACKGROUND_LOCATION');
+  }
+  
+  return withPermissions(config, permissions);
+};
+```
+
+### Microphone
+
+```ts
+import { withPermissions, ConfigPlugin } from '@expo/config-plugins';
+
+const withMicrophone: ConfigPlugin = (config) => {
+  return withPermissions(config, [
+    'android.permission.RECORD_AUDIO',
+  ]);
+};
+```
+
+### Storage
+
+```ts
+import { withPermissions, ConfigPlugin } from '@expo/config-plugins';
+
+const withStorage: ConfigPlugin = (config) => {
+  return withPermissions(config, [
+    'android.permission.READ_EXTERNAL_STORAGE',
+    'android.permission.WRITE_EXTERNAL_STORAGE',
+    // Android 13+ (API 33)
+    'android.permission.READ_MEDIA_IMAGES',
+    'android.permission.READ_MEDIA_VIDEO',
+    'android.permission.READ_MEDIA_AUDIO',
+  ]);
+};
+```
+
+### Contacts
+
+```ts
+import { withPermissions, ConfigPlugin } from '@expo/config-plugins';
+
+const withContacts: ConfigPlugin = (config) => {
+  return withPermissions(config, [
+    'android.permission.READ_CONTACTS',
+    'android.permission.WRITE_CONTACTS',
+  ]);
+};
+```
+
+### Phone
+
+```ts
+import { withPermissions, ConfigPlugin } from '@expo/config-plugins';
+
+const withPhone: ConfigPlugin = (config) => {
+  return withPermissions(config, [
+    'android.permission.READ_PHONE_STATE',
+    'android.permission.CALL_PHONE',
+  ]);
+};
+```
+
+### Calendar
+
+```ts
+import { withPermissions, ConfigPlugin } from '@expo/config-plugins';
+
+const withCalendar: ConfigPlugin = (config) => {
+  return withPermissions(config, [
+    'android.permission.READ_CALENDAR',
+    'android.permission.WRITE_CALENDAR',
+  ]);
+};
+```
+
+### Notifications (Android 13+)
+
+```ts
+import { withPermissions, ConfigPlugin } from '@expo/config-plugins';
+
+const withNotifications: ConfigPlugin = (config) => {
+  return withPermissions(config, [
+    'android.permission.POST_NOTIFICATIONS',
+  ]);
+};
+```
+
+## Blocking permissions
+
+Prevent third-party libraries from adding unwanted permissions:
+
+```ts Permissions.ts
+import { withAndroidManifest, ConfigPlugin, AndroidConfig } from '@expo/config-plugins';
+
+const withBlockedPermissions: ConfigPlugin<string[]> = (config, permissions) => {
+  return withAndroidManifest(config, (config) => {
+    const manifest = config.modResults;
+    
+    // Ensure tools namespace
+    if (!manifest.manifest.$['xmlns:tools']) {
+      manifest.manifest.$ = {
+        ...manifest.manifest.$,
+        'xmlns:tools': 'http://schemas.android.com/tools',
+      };
+    }
+    
+    if (!manifest.manifest['uses-permission']) {
+      manifest.manifest['uses-permission'] = [];
+    }
+    
+    // Block each permission with tools:node="remove"
+    for (const permission of permissions) {
+      const fullPermission = permission.includes('.') 
+        ? permission 
+        : `android.permission.${permission}`;
+      
+      // Remove any existing declaration
+      manifest.manifest['uses-permission'] = manifest.manifest['uses-permission'].filter(
+        (perm) => perm.$['android:name'] !== fullPermission
+      );
+      
+      // Add with tools:node="remove" to block it
+      manifest.manifest['uses-permission'].push({
+        $: {
+          'android:name': fullPermission,
+          'tools:node': 'remove',
+        },
+      });
+    }
+    
+    return config;
+  });
+};
+
+// Usage
+export default withBlockedPermissions(config, [
+  'android.permission.READ_PHONE_STATE',
+  'android.permission.ACCESS_FINE_LOCATION',
+]);
+```
+
+From the source:
+
+```ts Permissions.ts
+export function addBlockedPermissions(androidManifest: AndroidManifest, permissions: string[]) {
+  if (!Array.isArray(androidManifest.manifest['uses-permission'])) {
+    androidManifest.manifest['uses-permission'] = [];
+  }
+
+  for (const permission of prefixAndroidPermissionsIfNecessary(permissions)) {
+    androidManifest.manifest['uses-permission'] = ensureBlockedPermission(
+      androidManifest.manifest['uses-permission'],
+      permission
+    );
+  }
+
+  return androidManifest;
+}
+
+function ensureBlockedPermission(
+  manifestPermissions: ManifestUsesPermission[],
+  permission: string
+) {
+  // Remove permission if it currently exists
+  manifestPermissions = manifestPermissions.filter((e) => e.$['android:name'] !== permission);
+
+  // Add with tools:node to overwrite and remove
+  manifestPermissions.push({
+    $: { 'android:name': permission, 'tools:node': 'remove' },
+  });
+  
+  return manifestPermissions;
+}
+```
+
+## Runtime permissions
+
+Some permissions require runtime requests. While the manifest declares them, your JavaScript code must request them:
+
+```tsx
+import { PermissionsAndroid } from 'react-native';
+
+async function requestCameraPermission() {
+  const granted = await PermissionsAndroid.request(
+    PermissionsAndroid.PERMISSIONS.CAMERA,
+    {
+      title: 'Camera Permission',
+      message: 'App needs access to your camera',
+      buttonNeutral: 'Ask Me Later',
+      buttonNegative: 'Cancel',
+      buttonPositive: 'OK',
+    }
+  );
+  
+  if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+    console.log('Camera permission granted');
+  }
+}
+```
+
+Or use Expo's permissions API:
+
+```tsx
+import * as Camera from 'expo-camera';
+
+async function requestCameraPermission() {
+  const { status } = await Camera.requestCameraPermissionsAsync();
+  if (status === 'granted') {
+    console.log('Camera permission granted');
+  }
+}
+```
+
+## Permission features and hardware
+
+### Adding features
+
+Declare hardware features your app uses:
+
+```ts
+import { withAndroidManifest, ConfigPlugin } from '@expo/config-plugins';
+
+const withCameraFeature: ConfigPlugin<{ required?: boolean }> = (
+  config, 
+  { required = false } = {}
+) => {
+  return withAndroidManifest(config, (config) => {
+    const manifest = config.modResults.manifest;
+    
+    if (!manifest['uses-feature']) {
+      manifest['uses-feature'] = [];
+    }
+    
+    manifest['uses-feature'].push({
+      $: {
+        'android:name': 'android.hardware.camera',
+        'android:required': required.toString(),
+      },
+    });
+    
+    return config;
+  });
+};
+```
+
+Common features:
+- `android.hardware.camera` - Camera
+- `android.hardware.camera.autofocus` - Camera autofocus
+- `android.hardware.location` - Location
+- `android.hardware.location.gps` - GPS
+- `android.hardware.microphone` - Microphone
+- `android.hardware.telephony` - Phone
+- `android.hardware.touchscreen` - Touchscreen
+- `android.hardware.bluetooth` - Bluetooth
+- `android.hardware.nfc` - NFC
+
+### Max SDK version for permissions
+
+Limit permissions to specific Android versions:
+
+```ts
+import { withAndroidManifest, ConfigPlugin } from '@expo/config-plugins';
+
+const withMaxSdkPermission: ConfigPlugin = (config) => {
+  return withAndroidManifest(config, (config) => {
+    const manifest = config.modResults.manifest;
+    
+    if (!manifest['uses-permission']) {
+      manifest['uses-permission'] = [];
+    }
+    
+    // Only request WRITE_EXTERNAL_STORAGE on Android 9 and below
+    manifest['uses-permission'].push({
+      $: {
+        'android:name': 'android.permission.WRITE_EXTERNAL_STORAGE',
+        'android:maxSdkVersion': '28',
+      },
+    });
+    
+    return config;
+  });
+};
+```
+
+## Using Expo config for permissions
+
+Expo's `android.permissions` field automatically adds permissions:
+
+```json app.json
+{
+  "expo": {
+    "android": {
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "ACCESS_FINE_LOCATION"
+      ]
+    }
+  }
+}
+```
+
+This uses the `withPermissions` plugin internally:
+
+```ts Permissions.ts
+export const withPermissions: ConfigPlugin<string[] | void> = (config, permissions) => {
+  if (Array.isArray(permissions)) {
+    permissions = permissions.filter(Boolean);
+    if (!config.android) config.android = {};
+    if (!config.android.permissions) config.android.permissions = [];
+    config.android.permissions = [
+      ...new Set(config.android.permissions.concat(permissions)),
+    ];
+  }
+  
+  return withAndroidManifest(config, async (config) => {
+    config.modResults = await setAndroidPermissions(config, config.modResults);
+    return config;
+  });
+};
+```
+
+## Blocking permissions from config
+
+```json app.json
+{
+  "expo": {
+    "android": {
+      "blockedPermissions": [
+        "android.permission.READ_PHONE_STATE",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
+    }
+  }
+}
+```
+
+From the source:
+
+```ts Permissions.ts
+export const withInternalBlockedPermissions: ConfigPlugin = (config) => {
+  if (config.android?.blockedPermissions?.length) {
+    return withBlockedPermissions(config, config.android.blockedPermissions);
+  }
+  return config;
+};
+```
+
+## Helper functions from source
+
+### Checking if permission exists
+
+```ts Permissions.ts
+export function isPermissionAlreadyRequested(
+  permission: string,
+  manifestPermissions: ManifestUsesPermission[]
+): boolean {
+  return manifestPermissions.some((e) => e.$['android:name'] === permission);
+}
+```
+
+### Adding permission to manifest
+
+```ts Permissions.ts
+export function addPermissionToManifest(
+  permission: string,
+  manifestPermissions: ManifestUsesPermission[]
+) {
+  manifestPermissions.push({ $: { 'android:name': permission } });
+  return manifestPermissions;
+}
+```
+
+### Getting all permissions
+
+```ts Permissions.ts
+export function getPermissions(androidManifest: AndroidManifest): string[] {
+  const usesPermissions: { [key: string]: any }[] = 
+    androidManifest.manifest['uses-permission'] || [];
+  
+  const permissions = usesPermissions.map((permissionObject) => {
+    return permissionObject.$['android:name'] || permissionObject.$.name;
+  });
+  
+  return permissions;
+}
+```
+
+### Removing permissions
+
+```ts Permissions.ts
+export function removePermissions(
+  androidManifest: AndroidManifest, 
+  permissionNames?: string[]
+) {
+  const targetNames = permissionNames 
+    ? permissionNames.map(ensurePermissionNameFormat) 
+    : null;
+  
+  const permissions = androidManifest.manifest['uses-permission'] || [];
+  const nextPermissions = [];
+  
+  for (const attribute of permissions) {
+    if (targetNames) {
+      const value = attribute.$['android:name'] || attribute.$.name;
+      if (!targetNames.includes(value)) {
+        nextPermissions.push(attribute);
+      }
+    }
+  }
+
+  androidManifest.manifest['uses-permission'] = nextPermissions;
+}
+```
+
+## Complete example plugin
+
+```ts
+import { 
+  withAndroidManifest, 
+  withPlugins,
+  ConfigPlugin, 
+  AndroidConfig 
+} from '@expo/config-plugins';
+
+type Props = {
+  enableCamera?: boolean;
+  enableLocation?: boolean;
+  enableBackgroundLocation?: boolean;
+  blockedPermissions?: string[];
+};
+
+const withAdvancedPermissions: ConfigPlugin<Props> = (config, props = {}) => {
+  const {
+    enableCamera = false,
+    enableLocation = false,
+    enableBackgroundLocation = false,
+    blockedPermissions = [],
+  } = props;
+  
+  return withAndroidManifest(config, (config) => {
+    const manifest = config.modResults;
+    const permissions: string[] = [];
+    
+    if (enableCamera) {
+      permissions.push('android.permission.CAMERA');
+    }
+    
+    if (enableLocation) {
+      permissions.push(
+        'android.permission.ACCESS_FINE_LOCATION',
+        'android.permission.ACCESS_COARSE_LOCATION'
+      );
+    }
+    
+    if (enableBackgroundLocation) {
+      permissions.push('android.permission.ACCESS_BACKGROUND_LOCATION');
+    }
+    
+    // Add permissions
+    if (permissions.length > 0) {
+      AndroidConfig.Permissions.ensurePermissions(manifest, permissions);
+    }
+    
+    // Block permissions
+    if (blockedPermissions.length > 0) {
+      // Ensure tools namespace
+      manifest.manifest.$ = {
+        ...manifest.manifest.$,
+        'xmlns:tools': 'http://schemas.android.com/tools',
+      };
+      
+      for (const permission of blockedPermissions) {
+        const fullPermission = permission.includes('.')
+          ? permission
+          : `android.permission.${permission}`;
+        
+        manifest.manifest['uses-permission'] = manifest.manifest['uses-permission']?.filter(
+          (p) => p.$['android:name'] !== fullPermission
+        ) || [];
+        
+        manifest.manifest['uses-permission'].push({
+          $: { 'android:name': fullPermission, 'tools:node': 'remove' },
+        });
+      }
+    }
+    
+    return config;
+  });
+};
+
+export default withAdvancedPermissions;
+```
+
+## Testing permission plugins
+
+```ts
+import { AndroidConfig } from '@expo/config-plugins';
+import { withCustomPermissions } from '../withCustomPermissions';
+
+describe('withCustomPermissions', () => {
+  it('should add camera permission', () => {
+    const manifest = {
+      manifest: {
+        $: {},
+        'uses-permission': [],
+      },
+    };
+    
+    AndroidConfig.Permissions.ensurePermissions(manifest, ['CAMERA']);
+    
+    const permissions = AndroidConfig.Permissions.getPermissions(manifest);
+    expect(permissions).toContain('android.permission.CAMERA');
+  });
+  
+  it('should not duplicate permissions', () => {
+    const manifest = {
+      manifest: {
+        $: {},
+        'uses-permission': [
+          { $: { 'android:name': 'android.permission.CAMERA' } },
+        ],
+      },
+    };
+    
+    const added = AndroidConfig.Permissions.ensurePermission(
+      manifest,
+      'android.permission.CAMERA'
+    );
+    
+    expect(added).toBe(false);
+    expect(manifest.manifest['uses-permission']).toHaveLength(1);
+  });
+});
+```
+
+## Best practices
+
+### 1. Request minimum necessary permissions
+
+Only request permissions your app actually needs.
+
+### 2. Use permission helpers
+
+Leverage `AndroidConfig.Permissions` utilities instead of manual manipulation.
+
+### 3. Block unnecessary permissions
+
+Use `blockedPermissions` to remove permissions added by third-party libraries.
+
+### 4. Consider Android version differences
+
+Some permissions changed in Android 11, 12, and 13. Use `maxSdkVersion` when appropriate.
+
+### 5. Combine with runtime permission requests
+
+Manifest permissions are necessary but not sufficient. Always request dangerous permissions at runtime.
+
+## Next steps
+
+- [iOS Entitlements](/config-plugins/ios-entitlements) - iOS equivalent
+- [Modifying native projects](/config-plugins/modifying-native-projects) - More Android modifications
+- [Plugin API reference](/config-plugins/plugin-api) - Complete API docs

@@ -1,0 +1,404 @@
+---
+title: File-Based Routing
+description: Learn how Expo Router's file-based routing system works and all the routing conventions
+---
+
+# File-Based Routing
+
+Expo Router uses your file system structure to automatically generate navigation routes. This guide covers all the routing conventions and how files map to URLs.
+
+## Basic Concepts
+
+Every file in your `app` directory becomes a route. The file name determines the URL path.
+
+```
+app/
+  index.tsx          → /
+  about.tsx          → /about
+  contact.tsx        → /contact
+  blog/
+    index.tsx        → /blog
+    post.tsx         → /blog/post
+```
+
+## Route Conventions
+
+### Index Routes
+
+Files named `index` match the root of the directory:
+
+```
+app/
+  index.tsx          → /
+  blog/
+    index.tsx        → /blog
+```
+
+```tsx app/index.tsx
+import { View, Text } from 'react-native';
+
+export default function Home() {
+  return <Text>Home Screen</Text>;
+}
+```
+
+### Named Routes
+
+Any other filename creates a route with that name:
+
+```
+app/
+  about.tsx          → /about
+  settings.tsx       → /settings
+  help.tsx           → /help
+```
+
+### Nested Routes
+
+Directories create nested URL paths:
+
+```
+app/
+  blog/
+    index.tsx        → /blog
+    posts.tsx        → /blog/posts
+    authors/
+      index.tsx      → /blog/authors
+      [id].tsx       → /blog/authors/:id
+```
+
+## Dynamic Routes
+
+Use square brackets `[param]` to create dynamic route segments:
+
+### Single Dynamic Segment
+
+```
+app/
+  profile/
+    [id].tsx         → /profile/:id
+```
+
+```tsx app/profile/[id].tsx
+import { useLocalSearchParams } from 'expo-router';
+import { Text } from 'react-native';
+
+export default function Profile() {
+  const { id } = useLocalSearchParams();
+  return <Text>Profile {id}</Text>;
+}
+```
+
+Matches:
+- `/profile/123` → `{ id: '123' }`
+- `/profile/john` → `{ id: 'john' }`
+
+### Multiple Dynamic Segments
+
+You can have multiple dynamic segments:
+
+```
+app/
+  posts/
+    [category]/
+      [id].tsx       → /posts/:category/:id
+```
+
+```tsx app/posts/[category]/[id].tsx
+import { useLocalSearchParams } from 'expo-router';
+import { Text } from 'react-native';
+
+export default function Post() {
+  const { category, id } = useLocalSearchParams();
+  return <Text>Post {id} in {category}</Text>;
+}
+```
+
+Matches:
+- `/posts/tech/123` → `{ category: 'tech', id: '123' }`
+- `/posts/sports/456` → `{ category: 'sports', id: '456' }`
+
+## Catch-All Routes
+
+Use `[...segments]` to match multiple path segments:
+
+```
+app/
+  docs/
+    [...slug].tsx    → /docs/* (matches any path)
+```
+
+```tsx app/docs/[...slug].tsx
+import { useLocalSearchParams } from 'expo-router';
+import { Text } from 'react-native';
+
+export default function Docs() {
+  const { slug } = useLocalSearchParams();
+  const path = Array.isArray(slug) ? slug.join('/') : slug;
+  return <Text>Docs: {path}</Text>;
+}
+```
+
+Matches:
+- `/docs/intro` → `{ slug: ['intro'] }`
+- `/docs/guide/getting-started` → `{ slug: ['guide', 'getting-started'] }`
+- `/docs/api/v1/users` → `{ slug: ['api', 'v1', 'users'] }`
+
+## Layout Routes
+
+Files named `_layout` create shared layouts:
+
+```
+app/
+  _layout.tsx        # Root layout
+  (tabs)/
+    _layout.tsx      # Tabs layout
+    index.tsx
+    profile.tsx
+```
+
+Layouts wrap their child routes. See the [Layouts guide](/router/layouts) for details.
+
+## Route Groups
+
+Parentheses `(group)` create organization without affecting the URL:
+
+```
+app/
+  (auth)/
+    login.tsx        → /login (not /auth/login)
+    register.tsx     → /register
+  (tabs)/
+    index.tsx        → /
+    profile.tsx      → /profile
+```
+
+Route groups are invisible in URLs but allow you to:
+- Organize files logically
+- Apply different layouts to different sections
+- Keep routes at the same URL level
+
+See the [Route Groups guide](/router/groups) for details.
+
+## Special Files
+
+### Not Found Route
+
+`+not-found.tsx` handles 404 errors:
+
+```tsx app/+not-found.tsx
+import { View, Text } from 'react-native';
+import { Link } from 'expo-router';
+
+export default function NotFound() {
+  return (
+    <View>
+      <Text>Page not found</Text>
+      <Link href="/">Go home</Link>
+    </View>
+  );
+}
+```
+
+### API Routes
+
+`+api.ts` files create API endpoints:
+
+```tsx app/users/[id]+api.ts
+import { ExpoRequest, ExpoResponse } from 'expo-router/server';
+
+export function GET(req: ExpoRequest, { id }: { id: string }) {
+  return ExpoResponse.json({ user: id });
+}
+```
+
+See the [API Routes guide](/router/api-routes) for details.
+
+## Route Resolution
+
+Expo Router uses specificity scoring to resolve routes:
+
+### Specificity Order (highest to lowest)
+
+1. **Exact matches**: `about.tsx` > `[slug].tsx` for `/about`
+2. **Dynamic routes**: `post/[id].tsx` > `[...all].tsx` for `/post/123`
+3. **Catch-all routes**: `[...all].tsx` matches everything else
+
+### Example
+
+```
+app/
+  blog/
+    index.tsx        # Matches /blog exactly
+    [slug].tsx       # Matches /blog/anything
+    [...all].tsx     # Matches /blog/any/nested/path
+```
+
+Route matching:
+- `/blog` → `blog/index.tsx`
+- `/blog/post-1` → `blog/[slug].tsx` with `{ slug: 'post-1' }`
+- `/blog/2024/january` → `blog/[...all].tsx` with `{ all: ['2024', 'january'] }`
+
+## Platform-Specific Routes
+
+Create platform-specific routes with file extensions:
+
+```
+app/
+  home.tsx           # All platforms
+  home.ios.tsx       # iOS only
+  home.android.tsx   # Android only
+  home.web.tsx       # Web only
+  home.native.tsx    # iOS + Android
+```
+
+**Resolution order:**
+1. Platform-specific file (`.ios.tsx`, `.android.tsx`, `.web.tsx`)
+2. Native file (`.native.tsx`) for iOS/Android
+3. Default file (`.tsx`)
+
+## Array Syntax
+
+Multiple route groups can share files using comma syntax:
+
+```
+app/
+  (home,profile)/
+    _layout.tsx      # Shared layout
+```
+
+This is equivalent to:
+
+```
+app/
+  (home)/
+    _layout.tsx
+  (profile)/
+    _layout.tsx
+```
+
+From the source code (`getRoutesCore.ts:74`):
+
+```typescript
+// Array syntax: (a,b,c) creates multiple routes
+matchArrayGroupName: /^\(([^/]+?)\)$/
+```
+
+## Route Processing Pipeline
+
+Under the hood, Expo Router converts files to routes:
+
+1. **File Discovery**: Metro's `require.context()` finds all route files
+2. **Route Tree**: Files are converted to a `RouteNode` tree structure
+3. **Specificity Scoring**: Routes get specificity scores for matching
+4. **Navigation Config**: React Navigation configuration is generated
+5. **Deep Linking**: URL patterns are created automatically
+
+From `CLAUDE.md:77-83`:
+
+```
+1. Metro `require.context()` collects route files at build time
+2. `getRoutes()` converts file paths to `RouteNode` tree
+3. `getReactNavigationConfig()` generates React Navigation config
+4. `getLinkingConfig()` creates deep linking configuration
+5. The linking is then injected into `NavigationContainer` ExpoRoot.tsx
+```
+
+## Best Practices
+
+### File Organization
+
+```
+app/
+  _layout.tsx              # Root layout
+  index.tsx                # Home screen
+  (auth)/                  # Auth routes group
+    _layout.tsx
+    login.tsx
+    register.tsx
+  (tabs)/                  # Main app tabs
+    _layout.tsx
+    index.tsx
+    profile.tsx
+  modal.tsx                # Modal screen
+  +not-found.tsx           # 404 handler
+```
+
+### Naming Conventions
+
+- Use lowercase for file names: `profile.tsx`, not `Profile.tsx`
+- Use hyphens for multi-word names: `user-settings.tsx`
+- Use clear, descriptive names: `invoice-details.tsx`, not `id.tsx`
+
+### Dynamic Route Naming
+
+- Be specific: `[userId].tsx` is better than `[id].tsx`
+- Use camelCase in brackets: `[postId].tsx`, `[categorySlug].tsx`
+
+## Common Patterns
+
+### Auth Flow
+
+```
+app/
+  (auth)/
+    _layout.tsx
+    login.tsx
+    register.tsx
+    forgot-password.tsx
+```
+
+### Tabbed Interface
+
+```
+app/
+  (tabs)/
+    _layout.tsx        # Tabs layout
+    index.tsx          # Home tab
+    search.tsx         # Search tab
+    profile.tsx        # Profile tab
+```
+
+### Nested Navigation
+
+```
+app/
+  _layout.tsx
+  index.tsx
+  settings/
+    _layout.tsx        # Settings stack
+    index.tsx
+    account.tsx
+    privacy.tsx
+    notifications.tsx
+```
+
+### E-commerce
+
+```
+app/
+  index.tsx            # Home/catalog
+  products/
+    [id].tsx           # Product detail
+  cart.tsx             # Shopping cart
+  checkout/
+    index.tsx          # Checkout form
+    confirmation.tsx   # Order confirmation
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Navigation" icon="compass" href="/router/navigation">
+    Learn how to navigate between routes
+  </Card>
+  <Card title="Dynamic Routes" icon="brackets-curly" href="/router/dynamic-routes">
+    Master dynamic route parameters
+  </Card>
+  <Card title="Layouts" icon="layer-group" href="/router/layouts">
+    Create shared layouts for your routes
+  </Card>
+  <Card title="Route Groups" icon="folder" href="/router/groups">
+    Organize routes without affecting URLs
+  </Card>
+</CardGroup>

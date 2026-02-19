@@ -1,0 +1,265 @@
+---
+title: Installation
+description: Learn how to install and manage Expo CLI.
+---
+
+Expo CLI is available as the `@expo/cli` npm package. There are two primary ways to use it: via `npx` (recommended) or as a global installation.
+
+## npx (Recommended)
+
+The recommended way to use Expo CLI is with `npx`, which runs the CLI without installing it globally:
+
+```bash
+npx expo start
+```
+
+### Benefits of npx
+
+- Always uses the correct version for your project
+- No global installation required
+- Automatically updates when you run commands
+- Works seamlessly in CI/CD environments
+- Avoids version conflicts between projects
+
+### How it Works
+
+When you run `npx expo`, it:
+1. Checks if `expo` is installed in your project's `node_modules`
+2. Downloads and caches the latest version if not found
+3. Executes the command with the appropriate version
+
+## Global Installation
+
+You can install Expo CLI globally if you prefer to have it available system-wide:
+
+<CodeGroup>
+
+```bash npm
+npm install -g expo-cli
+```
+
+```bash yarn
+yarn global add expo-cli
+```
+
+```bash pnpm
+pnpm add -g expo-cli
+```
+
+```bash bun
+bun add -g expo-cli
+```
+
+</CodeGroup>
+
+After global installation, you can run commands without `npx`:
+
+```bash
+expo start
+expo run:ios
+expo prebuild
+```
+
+### Considerations for Global Installation
+
+- You may need to manually update the CLI to get new features
+- Different projects might need different CLI versions
+- Can cause conflicts if projects expect specific versions
+- Requires administrative permissions on some systems
+
+## Project-Level Installation
+
+Expo CLI is typically included as a dependency when you create a new Expo project. You can also add it manually:
+
+<CodeGroup>
+
+```bash npm
+npm install expo --save-dev
+```
+
+```bash yarn
+yarn add expo --dev
+```
+
+```bash pnpm
+pnpm add -D expo
+```
+
+```bash bun
+bun add -D expo
+```
+
+</CodeGroup>
+
+Then run it via your package manager:
+
+<CodeGroup>
+
+```bash npm
+npm run expo start
+```
+
+```bash yarn
+yarn expo start
+```
+
+```bash pnpm
+pnpm expo start
+```
+
+```bash bun
+bun expo start
+```
+
+</CodeGroup>
+
+## Version Management
+
+### Checking Your Version
+
+```bash
+npx expo --version
+```
+
+This displays the current version of Expo CLI being used.
+
+### Upgrading Expo CLI
+
+When using `npx`, you automatically get the latest version. For global installations:
+
+<CodeGroup>
+
+```bash npm
+npm update -g expo-cli
+```
+
+```bash yarn
+yarn global upgrade expo-cli
+```
+
+```bash pnpm
+pnpm update -g expo-cli
+```
+
+```bash bun
+bun update -g expo-cli
+```
+
+</CodeGroup>
+
+### Pinning to a Specific Version
+
+If you need a specific version for compatibility:
+
+```bash
+npx expo@52.0.0 start
+```
+
+Or in your `package.json`:
+
+```json
+{
+  "devDependencies": {
+    "expo": "~52.0.0"
+  }
+}
+```
+
+## Verifying Installation
+
+After installation, verify that Expo CLI is working:
+
+```bash
+npx expo --help
+```
+
+You should see a list of available commands:
+
+```
+Usage
+  $ npx expo <command>
+
+Commands
+  start, export
+  run:ios, run:android, prebuild
+  install, customize, config, serve
+  login, logout, whoami, register
+```
+
+## Node.js Requirements
+
+Expo CLI requires Node.js version 20.19.4 or newer. Check your Node.js version:
+
+```bash
+node --version
+```
+
+If you need to upgrade Node.js, download the latest LTS version from [nodejs.org](https://nodejs.org/).
+
+### Using Version Managers
+
+We recommend using a Node.js version manager like `nvm` or `fnm`:
+
+```bash
+# Using nvm
+nvm install --lts
+nvm use --lts
+
+# Using fnm
+fnm install --lts
+fnm use lts-latest
+```
+
+## Troubleshooting
+
+### Command Not Found
+
+If you get "command not found" errors:
+
+1. Ensure Node.js and npm are installed
+2. Check that your PATH includes npm global binaries
+3. Try closing and reopening your terminal
+4. Use `npx expo` instead of `expo`
+
+### Permission Errors
+
+On macOS/Linux, if you get permission errors with global installation:
+
+```bash
+# Option 1: Use sudo (not recommended)
+sudo npm install -g expo-cli
+
+# Option 2: Fix npm permissions (recommended)
+npm config set prefix ~/.npm-global
+export PATH=~/.npm-global/bin:$PATH
+```
+
+### Version Conflicts
+
+If you have multiple versions installed:
+
+```bash
+# Uninstall global version
+npm uninstall -g expo-cli
+
+# Clear npm cache
+npm cache clean --force
+
+# Use npx for all commands
+npx expo start
+```
+
+## CI/CD Environments
+
+For continuous integration, always use `npx` or install as a dev dependency:
+
+```yaml
+# Example GitHub Actions workflow
+- name: Install dependencies
+  run: npm install
+
+- name: Start Expo
+  run: npx expo export
+```
+
+This ensures consistent versions across all environments.

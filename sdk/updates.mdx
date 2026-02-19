@@ -1,0 +1,456 @@
+---
+title: expo-updates
+description: Fetch and manage remote updates to your app's JavaScript bundle over-the-air
+---
+
+# expo-updates
+
+**Version:** 55.0.8
+
+Fetches and manages remotely-hosted assets and updates to your app's JS bundle. Enables over-the-air (OTA) updates so you can ship bug fixes and features without waiting for app store approval.
+
+## Installation
+
+```bash
+npx expo install expo-updates
+```
+
+## Usage
+
+```typescript
+import * as Updates from 'expo-updates';
+
+// Check for updates
+const update = await Updates.checkForUpdateAsync();
+
+if (update.isAvailable) {
+  await Updates.fetchUpdateAsync();
+  await Updates.reloadAsync();
+}
+```
+
+## API Reference
+
+### Properties
+
+<ResponseField name="Updates.updateId" type="string | null">
+  The UUID of the current update, or `null` in development
+  
+  ```typescript
+  const updateId = Updates.updateId;
+  console.log('Running update:', updateId);
+  ```
+</ResponseField>
+
+<ResponseField name="Updates.channel" type="string | null">
+  The release channel configured for this app
+  
+  ```typescript
+  console.log('Channel:', Updates.channel); // "production"
+  ```
+</ResponseField>
+
+<ResponseField name="Updates.runtimeVersion" type="string">
+  The runtime version for this build
+</ResponseField>
+
+<ResponseField name="Updates.isEmergencyLaunch" type="boolean">
+  Whether the app is running in emergency mode (after a fatal error)
+</ResponseField>
+
+<ResponseField name="Updates.isEmbeddedLaunch" type="boolean">
+  Whether the app is running the bundled update (not downloaded OTA)
+</ResponseField>
+
+### Methods
+
+<ParamField path="Updates.checkForUpdateAsync()" type="() => Promise<UpdateCheckResult>">
+  Checks if a new update is available
+  
+  ```typescript
+  const { isAvailable, manifest } = await Updates.checkForUpdateAsync();
+  
+  if (isAvailable) {
+    console.log('Update available!');
+  }
+  ```
+  
+  Returns:
+  ```typescript
+  {
+    isAvailable: boolean;
+    manifest?: Manifest;
+  }
+  ```
+</ParamField>
+
+<ParamField path="Updates.fetchUpdateAsync()" type="() => Promise<UpdateFetchResult>">
+  Downloads the most recent update
+  
+  ```typescript
+  const { isNew, manifest } = await Updates.fetchUpdateAsync();
+  
+  if (isNew) {
+    console.log('New update downloaded');
+  }
+  ```
+  
+  Returns:
+  ```typescript
+  {
+    isNew: boolean;
+    manifest?: Manifest;
+  }
+  ```
+</ParamField>
+
+<ParamField path="Updates.reloadAsync()" type="() => Promise<void>">
+  Reloads the app with the most recently downloaded update
+  
+  ```typescript
+  await Updates.reloadAsync();
+  ```
+  
+  <Warning>
+  This will immediately reload your app. Save any state before calling.
+  </Warning>
+</ParamField>
+
+<ParamField path="Updates.readLogEntriesAsync(maxAge)" type="(maxAge: number) => Promise<UpdatesLogEntry[]>">
+  Reads expo-updates log entries
+  
+  ```typescript
+  const logs = await Updates.readLogEntriesAsync(3600000); // Last hour
+  logs.forEach(log => console.log(log.message));
+  ```
+</ParamField>
+
+<ParamField path="Updates.clearLogEntriesAsync()" type="() => Promise<void>">
+  Clears all expo-updates log entries
+</ParamField>
+
+### Events
+
+<ParamField path="Updates.useUpdateEvents(listener)" type="(listener: (event: UpdateEvent) => void) => void">
+  Hook to subscribe to update events
+  
+  ```typescript
+  Updates.useUpdateEvents((event) => {
+    if (event.type === Updates.UpdateEventType.UPDATE_AVAILABLE) {
+      console.log('Update available:', event.manifest);
+    }
+  });
+  ```
+</ParamField>
+
+## Examples
+
+### Check and Install Update
+
+```typescript
+import * as Updates from 'expo-updates';
+import { Alert } from 'react-native';
+
+async function checkForUpdates() {
+  try {
+    const update = await Updates.checkForUpdateAsync();
+    
+    if (update.isAvailable) {
+      await Updates.fetchUpdateAsync();
+      
+      Alert.alert(
+        'Update Available',
+        'A new version has been downloaded. Restart the app to use it.',
+        [
+          { text: 'Later', style: 'cancel' },
+          { 
+            text: 'Restart', 
+            onPress: () => Updates.reloadAsync() 
+          }
+        ]
+      );
+    }
+  } catch (error) {
+    console.error('Error checking for updates:', error);
+  }
+}
+```
+
+### Auto-Update on App Start
+
+```tsx
+import * as Updates from 'expo-updates';
+import { useEffect } from 'react';
+
+function App() {
+  useEffect(() => {
+    async function updateApp() {
+      if (__DEV__) return; // Skip in development
+      
+      try {
+        const { isAvailable } = await Updates.checkForUpdateAsync();
+        
+        if (isAvailable) {
+          const { isNew } = await Updates.fetchUpdateAsync();
+          
+          if (isNew) {
+            await Updates.reloadAsync();
+          }
+        }
+      } catch (error) {
+        console.error('Update error:', error);
+      }
+    }
+    
+    updateApp();
+  }, []);
+  
+  return <YourApp />;
+}
+```
+
+### Update with Progress Indicator
+
+```tsx
+import * as Updates from 'expo-updates';
+import { useState } from 'react';
+import { View, Text, Button, ActivityIndicator } from 'react-native';
+
+function UpdateManager() {
+  const [checking, setChecking] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  async function handleUpdate() {
+    try {
+      setChecking(true);
+      const { isAvailable } = await Updates.checkForUpdateAsync();
+      setChecking(false);
+      
+      if (!isAvailable) {
+        alert('No updates available');
+        return;
+      }
+      
+      setDownloading(true);
+      await Updates.fetchUpdateAsync();
+      setDownloading(false);
+      
+      alert('Update ready! Restarting...');
+      await Updates.reloadAsync();
+    } catch (error) {
+      console.error(error);
+      setChecking(false);
+      setDownloading(false);
+    }
+  }
+
+  return (
+    <View>
+      {checking && (
+        <>
+          <ActivityIndicator />
+          <Text>Checking for updates...</Text>
+        </>
+      )}
+      
+      {downloading && (
+        <>
+          <ActivityIndicator />
+          <Text>Downloading update...</Text>
+        </>
+      )}
+      
+      <Button 
+        title="Check for Updates" 
+        onPress={handleUpdate}
+        disabled={checking || downloading}
+      />
+    </View>
+  );
+}
+```
+
+### Listen to Update Events
+
+```tsx
+import * as Updates from 'expo-updates';
+import { useEffect, useState } from 'react';
+import { Text, View } from 'react-native';
+
+function UpdateStatus() {
+  const [status, setStatus] = useState('Checking for updates...');
+  
+  Updates.useUpdateEvents((event) => {
+    if (event.type === Updates.UpdateEventType.ERROR) {
+      setStatus(`Error: ${event.message}`);
+    } else if (event.type === Updates.UpdateEventType.NO_UPDATE_AVAILABLE) {
+      setStatus('App is up to date');
+    } else if (event.type === Updates.UpdateEventType.UPDATE_AVAILABLE) {
+      setStatus('Update available! Downloading...');
+    }
+  });
+  
+  return (
+    <View>
+      <Text>{status}</Text>
+    </View>
+  );
+}
+```
+
+### Display Update Info
+
+```tsx
+import * as Updates from 'expo-updates';
+import { Text, View } from 'react-native';
+
+function UpdateInfo() {
+  return (
+    <View>
+      <Text>Update ID: {Updates.updateId || 'Development'}</Text>
+      <Text>Channel: {Updates.channel || 'default'}</Text>
+      <Text>Runtime Version: {Updates.runtimeVersion}</Text>
+      <Text>Embedded Launch: {Updates.isEmbeddedLaunch ? 'Yes' : 'No'}</Text>
+      <Text>Emergency Launch: {Updates.isEmergencyLaunch ? 'Yes' : 'No'}</Text>
+    </View>
+  );
+}
+```
+
+### Staged Rollout
+
+```typescript
+import * as Updates from 'expo-updates';
+import * as Device from 'expo-device';
+
+async function checkForStagedUpdate() {
+  // Only update 20% of users
+  const userId = await Device.getDeviceIdAsync();
+  const hash = hashCode(userId);
+  const shouldUpdate = Math.abs(hash) % 100 < 20;
+  
+  if (!shouldUpdate) {
+    console.log('Not in rollout group');
+    return;
+  }
+  
+  const { isAvailable } = await Updates.checkForUpdateAsync();
+  if (isAvailable) {
+    await Updates.fetchUpdateAsync();
+    await Updates.reloadAsync();
+  }
+}
+
+function hashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash;
+}
+```
+
+### Debug Logs
+
+```typescript
+import * as Updates from 'expo-updates';
+
+async function debugUpdates() {
+  const logs = await Updates.readLogEntriesAsync(3600000); // Last hour
+  
+  console.log('Recent update logs:');
+  logs.forEach(log => {
+    console.log(`[${new Date(log.timestamp)}] ${log.message}`);
+  });
+  
+  // Clear old logs
+  await Updates.clearLogEntriesAsync();
+}
+```
+
+## Configuration
+
+**app.json:**
+```json
+{
+  "expo": {
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/your-project-id"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
+  }
+}
+```
+
+### Check Automatically Options
+
+- `ON_LOAD`: Check on app load (default)
+- `ON_ERROR_RECOVERY`: Only check after error
+- `WIFI_ONLY`: Only check on Wi-Fi
+- `NEVER`: Manual checks only
+
+## EAS Update
+
+Publish updates with EAS:
+
+```bash
+# Publish to production channel
+eas update --branch production --message "Bug fixes"
+
+# Publish to staging
+eas update --branch staging --message "New features"
+```
+
+## TypeScript
+
+```typescript
+import * as Updates from 'expo-updates';
+import type { 
+  UpdateCheckResult, 
+  UpdateFetchResult,
+  UpdateEvent 
+} from 'expo-updates';
+
+const updateId: string | null = Updates.updateId;
+const channel: string | null = Updates.channel;
+
+const checkResult: UpdateCheckResult = await Updates.checkForUpdateAsync();
+const fetchResult: UpdateFetchResult = await Updates.fetchUpdateAsync();
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ❌       |
+
+<Note>
+Updates do not work in Expo Go. Build a development or production build to test.
+</Note>
+
+## Best Practices
+
+1. **Check on Launch**: Check for updates when app starts
+2. **Background Downloads**: Download updates in background, apply on next launch
+3. **Test Updates**: Test updates on staging channel before production
+4. **Handle Errors**: Always wrap update calls in try/catch
+5. **User Choice**: Let users decide when to apply updates
+6. **Monitor Logs**: Use log entries to debug update issues
+
+<Warning>
+Never call `reloadAsync()` without user confirmation, as it will immediately restart the app.
+</Warning>
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/updates/)
+- [EAS Update Documentation](https://docs.expo.dev/eas-update/introduction/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-updates)

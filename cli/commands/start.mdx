@@ -1,0 +1,338 @@
+---
+title: expo start
+description: Start a local development server for your Expo app.
+---
+
+The `expo start` command launches a local development server with Metro bundler, enabling you to develop your app on iOS, Android, and web platforms simultaneously.
+
+## Usage
+
+```bash
+npx expo start [directory] [options]
+```
+
+## Arguments
+
+<ParamField path="directory" type="string">
+  Directory of the Expo project. Defaults to the current working directory.
+</ParamField>
+
+## Options
+
+### Platform Selection
+
+<ParamField path="--android" type="boolean">
+  Open the app on a connected Android device or emulator. Alias: `-a`
+</ParamField>
+
+<ParamField path="--ios" type="boolean">
+  Open the app in an iOS simulator. Alias: `-i`
+</ParamField>
+
+<ParamField path="--web" type="boolean">
+  Open the app in a web browser. Alias: `-w`
+</ParamField>
+
+### Development Client Options
+
+<ParamField path="--dev-client" type="boolean">
+  Launch the app in a custom native development build. Alias: `-d`
+</ParamField>
+
+<ParamField path="--go" type="boolean">
+  Launch the app in Expo Go. Alias: `-g`
+</ParamField>
+
+### Bundler Options
+
+<ParamField path="--clear" type="boolean">
+  Clear the Metro bundler cache before starting. Alias: `-c`, `--reset-cache`
+</ParamField>
+
+<ParamField path="--max-workers" type="number">
+  Maximum number of tasks to allow Metro to spawn. Useful for controlling CPU usage.
+</ParamField>
+
+<ParamField path="--no-dev" type="boolean">
+  Bundle in production mode instead of development mode.
+</ParamField>
+
+<ParamField path="--minify" type="boolean">
+  Minify JavaScript code. Typically used with `--no-dev` for production testing.
+</ParamField>
+
+### Network Options
+
+<ParamField path="--host" type="string">
+  Dev server hosting type. Alias: `-m`
+  
+  Options:
+  - `lan` - Use the local network (default)
+  - `tunnel` - Use any network by tunneling through ngrok
+  - `localhost` - Connect over localhost only
+</ParamField>
+
+<ParamField path="--tunnel" type="boolean">
+  Same as `--host tunnel`. Enables remote access via ngrok.
+</ParamField>
+
+<ParamField path="--lan" type="boolean">
+  Same as `--host lan`. Uses your local network IP address.
+</ParamField>
+
+<ParamField path="--localhost" type="boolean">
+  Same as `--host localhost`. Only accessible from the same machine.
+</ParamField>
+
+<ParamField path="--port" type="number">
+  Port to start the dev server on. Defaults to 8081. Does not apply to web or tunnel. Alias: `-p`
+</ParamField>
+
+<ParamField path="--offline" type="boolean">
+  Skip network requests and use anonymous manifest signatures. Useful for development without internet.
+</ParamField>
+
+### Advanced Options
+
+<ParamField path="--scheme" type="string">
+  Custom URI protocol to use when launching the app. Overrides the scheme in app.json.
+</ParamField>
+
+<ParamField path="--https" type="boolean">
+  Start the dev server with HTTPS protocol. **Deprecated in favor of `--tunnel`**.
+</ParamField>
+
+<ParamField path="--private-key-path" type="string">
+  Path to private key for code signing. Defaults to `private-key.pem` in the same directory as the certificate specified by expo-updates configuration in app.json.
+</ParamField>
+
+## Examples
+
+### Basic Development
+
+Start the development server with default settings:
+
+```bash
+npx expo start
+```
+
+This starts Metro bundler and shows an interactive terminal UI with:
+- QR code for Expo Go
+- Options to open on different platforms
+- Keyboard shortcuts for common actions
+
+### Launch on Specific Platform
+
+Open directly on iOS simulator:
+
+```bash
+npx expo start --ios
+```
+
+Open on Android emulator:
+
+```bash
+npx expo start --android
+```
+
+Open in web browser:
+
+```bash
+npx expo start --web
+```
+
+### Multiple Platforms
+
+Launch on multiple platforms simultaneously:
+
+```bash
+npx expo start --ios --android --web
+```
+
+### Development Client
+
+For custom development builds:
+
+```bash
+npx expo start --dev-client
+```
+
+### Clear Cache
+
+If you're experiencing issues, clear the bundler cache:
+
+```bash
+npx expo start --clear
+```
+
+Or use the alias:
+
+```bash
+npx expo start -c
+```
+
+### Production Mode
+
+Test production bundling locally:
+
+```bash
+npx expo start --no-dev --minify
+```
+
+### Custom Port
+
+Run on a different port:
+
+```bash
+npx expo start --port 8000
+```
+
+### Tunnel for Remote Access
+
+Share your development server over the internet:
+
+```bash
+npx expo start --tunnel
+```
+
+This is useful for:
+- Testing on physical devices without being on the same network
+- Sharing with team members
+- Testing from different locations
+
+### Localhost Only
+
+Restrict access to localhost:
+
+```bash
+npx expo start --localhost
+```
+
+### Offline Development
+
+Work without an internet connection:
+
+```bash
+npx expo start --offline
+```
+
+### Limit CPU Usage
+
+Control Metro's resource consumption:
+
+```bash
+npx expo start --max-workers 2
+```
+
+## Interactive Commands
+
+While the dev server is running, you can press these keys:
+
+- **a** - Open on Android
+- **i** - Open on iOS
+- **w** - Open on web
+- **r** - Reload app
+- **m** - Toggle menu
+- **j** - Open debugger
+- **o** - Open project in editor
+- **c** - Clear cache and restart
+- **?** - Show help
+
+## Environment Variables
+
+The `expo start` command respects several environment variables:
+
+- `PORT` - Default port for the dev server
+- `EXPO_DEVTOOLS_LISTEN_ADDRESS` - Address to bind the dev server
+- `EXPO_DEBUG=1` - Enable debug logging
+- `EXPO_OFFLINE=1` - Start in offline mode
+- `CI=1` - Run in non-interactive CI mode
+- `EXPO_NO_CACHE=1` - Disable API caches
+
+## How It Works
+
+When you run `expo start`:
+
+1. **Loads Configuration** - Reads app.json or app.config.js
+2. **Starts Metro Bundler** - Initializes the JavaScript bundler
+3. **Creates Dev Server** - Sets up HTTP server with middleware
+4. **Generates Manifest** - Creates the Expo manifest for runtime
+5. **Displays UI** - Shows QR code and interactive terminal
+6. **Watches Files** - Monitors for changes and triggers hot reloads
+
+## Platform-Specific Behavior
+
+### iOS
+
+- Automatically detects running simulators
+- Can launch new simulator if none are running
+- Supports both Expo Go and development builds
+- Handles code signing for development certificates
+
+### Android
+
+- Detects connected devices via ADB
+- Can launch emulators if none are running
+- Installs APK if not present
+- Forwards port for device communication
+
+### Web
+
+- Uses Metro bundler (not Webpack)
+- Supports server-side rendering
+- Handles static file serving
+- Includes React Native Web shims
+
+## Troubleshooting
+
+### Port Already in Use
+
+If port 8081 is busy:
+
+```bash
+npx expo start --port 8082
+```
+
+Or kill the process using the port:
+
+```bash
+# macOS/Linux
+lsof -ti:8081 | xargs kill -9
+
+# Windows
+netstat -ano | findstr :8081
+taskkill /PID <PID> /F
+```
+
+### Cache Issues
+
+Clear the cache if you see stale code:
+
+```bash
+npx expo start --clear
+```
+
+### Network Connection Issues
+
+If QR code doesn't work:
+
+1. Ensure both computer and device are on same network
+2. Check firewall settings
+3. Try `--tunnel` mode
+4. Use `--localhost` and connect via USB
+
+### Metro Bundler Errors
+
+If Metro fails to start:
+
+```bash
+# Clear watchman cache (macOS)
+watchman watch-del-all
+
+# Clear Metro cache
+npx expo start --clear
+
+# Clear node_modules
+rm -rf node_modules
+npm install
+```

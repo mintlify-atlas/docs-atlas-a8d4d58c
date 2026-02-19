@@ -1,0 +1,557 @@
+---
+title: Creating Config Plugins
+description: Learn how to create custom config plugins to modify your native iOS and Android projects.
+---
+
+import { Step } from '~/ui/components/Step';
+import { Terminal } from '~/ui/components/Snippet';
+
+Config plugins are JavaScript or TypeScript functions that modify your Expo config and native projects. This guide shows you how to create your own plugins.
+
+## Plugin structure and exports
+
+A config plugin is a function with this signature:
+
+```ts Plugin.types.ts
+export type ConfigPlugin<Props = void> = (config: ExpoConfig, props: Props) => ExpoConfig;
+```
+
+### Basic plugin
+
+The simplest plugin takes a config and returns it:
+
+```ts
+import { ConfigPlugin } from '@expo/config-plugins';
+
+const withCustomPlugin: ConfigPlugin = (config) => {
+  // Modify config
+  config.name = 'My Custom App';
+  return config;
+};
+
+export default withCustomPlugin;
+```
+
+### Plugin with props
+
+Plugins can accept typed props:
+
+```ts
+import { ConfigPlugin } from '@expo/config-plugins';
+
+type Props = {
+  apiKey: string;
+  enableFeature?: boolean;
+};
+
+const withCustomPlugin: ConfigPlugin<Props> = (config, props) => {
+  if (!props) {
+    throw new Error('Props are required for withCustomPlugin');
+  }
+  
+  // Use props
+  console.log('API Key:', props.apiKey);
+  console.log('Feature enabled:', props.enableFeature ?? false);
+  
+  return config;
+};
+
+export default withCustomPlugin;
+```
+
+Usage in `app.json`:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "./plugins/withCustomPlugin",
+        {
+          "apiKey": "abc123",
+          "enableFeature": true
+        }
+      ]
+    ]
+  }
+}
+```
+
+## Naming conventions
+
+Follow these naming conventions from the Expo ecosystem:
+
+### Function names
+
+Start plugin functions with `with`:
+
+```ts
+// Good
+withCustomFeature
+withMyLibrary
+withAndroidManifest
+
+// Avoid
+customFeaturePlugin
+myLibrary
+configureAndroid
+```
+
+This naming helps with:
+- **Debugging**: Stack traces show clear plugin names
+- **Consistency**: Matches Expo's built-in plugins
+- **Convention**: Indicates the function is a config plugin
+
+### File names
+
+For plugin files:
+
+```
+plugins/withCustomFeature.ts
+plugins/withMyLibrary.js
+```
+
+For packages shipping plugins:
+
+```
+my-library/
+  plugin/
+    src/
+      index.ts          # exports withMyLibrary
+      withIos.ts
+      withAndroid.ts
+  package.json          # "main": "./plugin/build/index.js"
+```
+
+## Creating your first plugin
+
+Let's create a plugin that adds a custom URL scheme to your app.
+
+<Step label="1">Create the plugin file</Step>
+
+Create `plugins/withCustomScheme.ts`:
+
+```ts plugins/withCustomScheme.ts
+import { ConfigPlugin, withInfoPlist, withAndroidManifest } from '@expo/config-plugins';
+
+type Props = {
+  scheme: string;
+};
+
+const withCustomScheme: ConfigPlugin<Props> = (config, { scheme }) => {
+  // Add iOS URL scheme
+  config = withInfoPlist(config, (config) => {
+    if (!config.modResults.CFBundleURLTypes) {
+      config.modResults.CFBundleURLTypes = [];
+    }
+    
+    config.modResults.CFBundleURLTypes.push({
+      CFBundleURLSchemes: [scheme],
+      CFBundleURLName: scheme,
+    });
+    
+    return config;
+  });
+  
+  // Add Android intent filter
+  config = withAndroidManifest(config, (config) => {
+    const mainActivity = config.modResults.manifest.application?.[0]?.activity?.find(
+      (activity) => activity.$?.['android:name'] === '.MainActivity'
+    );
+    
+    if (mainActivity) {
+      if (!mainActivity['intent-filter']) {
+        mainActivity['intent-filter'] = [];
+      }
+      
+      mainActivity['intent-filter'].push({
+        action: [{ $: { 'android:name': 'android.intent.action.VIEW' } }],
+        category: [
+          { $: { 'android:name': 'android.intent.category.DEFAULT' } },
+          { $: { 'android:name': 'android.intent.category.BROWSABLE' } },
+        ],
+        data: [{ $: { 'android:scheme': scheme } }],
+      });
+    }
+    
+    return config;
+  });
+  
+  return config;
+};
+
+export default withCustomScheme;
+```
+
+<Step label="2">Use the plugin</Step>
+
+Add it to your `app.json`:
+
+```json app.json
+{
+  "expo": {
+    "plugins": [
+      [
+        "./plugins/withCustomScheme",
+        { "scheme": "myapp" }
+      ]
+    ]
+  }
+}
+```
+
+<Step label="3">Run prebuild</Step>
+
+<Terminal cmd={[
+  '$ npx expo prebuild --clean',
+]} />
+
+Your app now supports the `myapp://` URL scheme on both platforms.
+
+## TypeScript types
+
+Expo provides comprehensive TypeScript types for config plugins.
+
+### Core types
+
+```ts Plugin.types.ts
+import { ExpoConfig } from '@expo/config-types';
+import { XcodeProject } from 'xcode';
+
+// Main plugin type
+export type ConfigPlugin<Props = void> = (config: ExpoConfig, props: Props) => ExpoConfig;
+
+// Static plugin (plugin with props in app.json)
+export type StaticPlugin<T = any> = [string | ConfigPlugin<T>, T];
+
+// Mod (file modification function)
+export type Mod<Props = any> = ((config: ExportedConfigWithProps<Props>) => 
+  OptionalPromise<ExportedConfigWithProps<Props>>);
+
+// Platform type
+export type ModPlatform = 'ios' | 'android';
+```
+
+### File type definitions
+
+```ts
+import { InfoPlist, AndroidManifest, XcodeProject } from '@expo/config-plugins';
+
+// iOS Info.plist
+type InfoPlist = Record<string, any>;
+
+// Android Manifest
+interface AndroidManifest {
+  manifest: {
+    $: Record<string, string>;
+    'uses-permission'?: ManifestUsesPermission[];
+    application?: AndroidManifestApplication[];
+  };
+}
+
+// Xcode project
+type XcodeProject = import('xcode').XcodeProject;
+```
+
+### Helper to extract plugin parameter types
+
+```ts Plugin.types.ts
+export type PluginParameters<T extends ConfigPlugin<any>> = T extends (
+  config: any,
+  props: infer P
+) => any
+  ? P
+  : never;
+```
+
+Usage:
+
+```ts
+import { withBuildProperties, PluginParameters } from '@expo/config-plugins';
+
+type BuildPropsParams = PluginParameters<typeof withBuildProperties>;
+// Type is inferred from the plugin's props parameter
+```
+
+## Plugin helpers
+
+### createRunOncePlugin
+
+Prevent a plugin from running multiple times:
+
+```ts withRunOnce.ts
+import { createRunOncePlugin } from '@expo/config-plugins';
+
+const withMyPlugin: ConfigPlugin<Props> = (config, props) => {
+  // Plugin logic
+  return config;
+};
+
+// Wrap with createRunOncePlugin
+export default createRunOncePlugin(
+  withMyPlugin,
+  'withMyPlugin',
+  '1.0.0'
+);
+```
+
+This is useful for:
+- Preventing duplicate modifications
+- Migrating from unversioned to versioned plugins
+- Tracking plugin history
+
+### createInfoPlistPlugin
+
+Helper for iOS Info.plist modifications:
+
+```ts ios-plugins.ts
+import { createInfoPlistPlugin } from '@expo/config-plugins';
+
+const setCustomKey = (config, infoPlist) => {
+  infoPlist.MyCustomKey = config.myValue;
+  return infoPlist;
+};
+
+export default createInfoPlistPlugin(setCustomKey, 'withCustomKey');
+```
+
+### createAndroidManifestPlugin
+
+Helper for Android manifest modifications:
+
+```ts android-plugins.ts
+import { createAndroidManifestPlugin } from '@expo/config-plugins';
+
+const addCustomAttribute = (config, androidManifest) => {
+  androidManifest.manifest.$.myAttribute = 'value';
+  return androidManifest;
+};
+
+export default createAndroidManifestPlugin(addCustomAttribute, 'withCustomAttribute');
+```
+
+### createEntitlementsPlugin
+
+Helper for iOS entitlements:
+
+```ts ios-plugins.ts
+import { createEntitlementsPlugin } from '@expo/config-plugins';
+
+const setAssociatedDomains = (config, entitlements) => {
+  if (config.ios?.associatedDomains) {
+    return {
+      ...entitlements,
+      'com.apple.developer.associated-domains': config.ios.associatedDomains,
+    };
+  }
+  return entitlements;
+};
+
+export default createEntitlementsPlugin(setAssociatedDomains, 'withAssociatedDomains');
+```
+
+## Composing multiple plugins
+
+Plugins can chain other plugins:
+
+```ts
+import { ConfigPlugin, withPlugins } from '@expo/config-plugins';
+import withIosConfig from './withIosConfig';
+import withAndroidConfig from './withAndroidConfig';
+import withSharedConfig from './withSharedConfig';
+
+const withMyLibrary: ConfigPlugin<Props> = (config, props) => {
+  return withPlugins(config, [
+    [withSharedConfig, props],
+    [withIosConfig, props],
+    [withAndroidConfig, props],
+  ]);
+};
+
+export default withMyLibrary;
+```
+
+## Error handling
+
+Use `PluginError` for better error messages:
+
+```ts
+import { ConfigPlugin, PluginError } from '@expo/config-plugins';
+
+const withCustomPlugin: ConfigPlugin<Props> = (config, props) => {
+  if (!props?.apiKey) {
+    throw new PluginError(
+      'apiKey is required. Add it to your plugin configuration in app.json',
+      'MISSING_API_KEY'
+    );
+  }
+  
+  if (props.apiKey.length < 10) {
+    throw new PluginError(
+      'apiKey must be at least 10 characters long',
+      'INVALID_API_KEY'
+    );
+  }
+  
+  return config;
+};
+```
+
+## Exporting plugins from packages
+
+For npm packages, export your plugin from a `plugin` directory:
+
+```
+my-library/
+  src/
+    index.ts           # JavaScript API
+  plugin/
+    src/
+      index.ts         # Plugin exports
+      withIos.ts
+      withAndroid.ts
+    tsconfig.json
+  package.json
+```
+
+**package.json**:
+
+```json
+{
+  "name": "my-library",
+  "main": "./build/index.js",
+  "exports": {
+    ".": "./build/index.js",
+    "./plugin": "./plugin/build/index.js"
+  }
+}
+```
+
+**plugin/src/index.ts**:
+
+```ts
+import { ConfigPlugin, withPlugins } from '@expo/config-plugins';
+import { withIos } from './withIos';
+import { withAndroid } from './withAndroid';
+
+export type Props = {
+  apiKey: string;
+};
+
+const withMyLibrary: ConfigPlugin<Props> = (config, props) => {
+  return withPlugins(config, [
+    [withIos, props],
+    [withAndroid, props],
+  ]);
+};
+
+export default withMyLibrary;
+```
+
+Users install your package and add to `app.json`:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "my-library",
+        { "apiKey": "..." }
+      ]
+    ]
+  }
+}
+```
+
+Expo automatically resolves to `my-library/plugin`.
+
+## Best practices
+
+### 1. Keep plugins pure
+
+Plugins should be deterministic:
+
+```ts
+// Good: Deterministic
+const withPlugin: ConfigPlugin = (config) => {
+  config.name = config.name || 'Default Name';
+  return config;
+};
+
+// Bad: Non-deterministic
+const withPlugin: ConfigPlugin = (config) => {
+  config.name = `App-${Date.now()}`; // Different each time
+  return config;
+};
+```
+
+### 2. Document your props
+
+Use JSDoc comments:
+
+```ts
+/**
+ * Props for the custom plugin
+ */
+type Props = {
+  /**
+   * API key for the service
+   * @example "abc123"
+   */
+  apiKey: string;
+  
+  /**
+   * Enable the beta feature
+   * @default false
+   */
+  betaFeature?: boolean;
+};
+```
+
+### 3. Validate props early
+
+```ts
+const withPlugin: ConfigPlugin<Props> = (config, props) => {
+  if (!props) {
+    throw new PluginError('Props are required');
+  }
+  
+  if (!props.apiKey) {
+    throw new PluginError('apiKey is required');
+  }
+  
+  // Continue with plugin logic
+  return config;
+};
+```
+
+### 4. Avoid side effects
+
+Don't write files or make network requests during plugin execution. Use mods instead:
+
+```ts
+// Bad: Side effect during plugin execution
+const withPlugin: ConfigPlugin = (config) => {
+  fs.writeFileSync('some-file.txt', 'content'); // Don't do this
+  return config;
+};
+
+// Good: Use a dangerous mod for file operations
+const withPlugin: ConfigPlugin = (config) => {
+  return withDangerousMod(config, ['ios', async (config) => {
+    const filePath = path.join(config.modRequest.platformProjectRoot, 'some-file.txt');
+    await fs.promises.writeFile(filePath, 'content');
+    return config;
+  }]);
+};
+```
+
+### 5. Use helpers for common tasks
+
+Leverage built-in helpers like `createInfoPlistPlugin`, `createAndroidManifestPlugin`, etc.
+
+## Next steps
+
+- [Plugin API reference](/config-plugins/plugin-api) - Complete API documentation
+- [Modifying native projects](/config-plugins/modifying-native-projects) - Deep dive into iOS and Android modifications
+- [Testing plugins](/config-plugins/testing-plugins) - Test your plugins effectively

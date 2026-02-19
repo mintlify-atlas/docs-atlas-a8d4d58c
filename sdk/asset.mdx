@@ -1,0 +1,372 @@
+---
+title: expo-asset
+description: Download and manage app assets efficiently across all platforms
+---
+
+# expo-asset
+
+**Version:** 55.0.5
+
+A universal module to download assets and pass them into other APIs. Simplifies asset management by providing automatic caching, downloading, and local URI access for bundled and remote assets.
+
+## Installation
+
+```bash
+npx expo install expo-asset
+```
+
+## Usage
+
+```typescript
+import { Asset } from 'expo-asset';
+
+// Load a bundled asset
+const asset = Asset.fromModule(require('./assets/image.png'));
+await asset.downloadAsync();
+
+// Use the local URI
+console.log(asset.localUri);
+```
+
+## API Reference
+
+### Asset Class
+
+<ResponseField name="name" type="string">
+  The name of the asset file
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  The file extension/type (e.g., 'png', 'jpg', 'mp4')
+</ResponseField>
+
+<ResponseField name="hash" type="string | null">
+  The MD5 hash of the asset's content
+</ResponseField>
+
+<ResponseField name="uri" type="string">
+  The URI that points to the asset's location (local or remote)
+</ResponseField>
+
+<ResponseField name="localUri" type="string | null">
+  The local filesystem URI after the asset is downloaded. `null` if not yet downloaded.
+</ResponseField>
+
+<ResponseField name="width" type="number | null">
+  Width in pixels for image assets
+</ResponseField>
+
+<ResponseField name="height" type="number | null">
+  Height in pixels for image assets
+</ResponseField>
+
+<ResponseField name="downloaded" type="boolean">
+  Whether the asset has been downloaded to the local filesystem
+</ResponseField>
+
+### Methods
+
+<ParamField path="Asset.fromModule(module)" type="(module: number) => Asset">
+  Creates an Asset instance from a require() statement
+  
+  ```typescript
+  const asset = Asset.fromModule(require('./logo.png'));
+  ```
+</ParamField>
+
+<ParamField path="Asset.fromURI(uri)" type="(uri: string) => Asset">
+  Creates an Asset instance from a URI string
+  
+  ```typescript
+  const asset = Asset.fromURI('https://example.com/image.png');
+  ```
+</ParamField>
+
+<ParamField path="Asset.loadAsync(modules)" type="(modules: number | number[]) => Promise<void>">
+  Loads and caches assets by require() module IDs
+  
+  ```typescript
+  await Asset.loadAsync([
+    require('./image1.png'),
+    require('./image2.png')
+  ]);
+  ```
+</ParamField>
+
+<ParamField path="asset.downloadAsync()" type="() => Promise<void>">
+  Downloads the asset to the local filesystem if not already downloaded
+  
+  ```typescript
+  const asset = Asset.fromModule(require('./video.mp4'));
+  await asset.downloadAsync();
+  console.log(asset.localUri); // file:/// path
+  ```
+</ParamField>
+
+## Examples
+
+### Preload Assets on App Start
+
+```tsx
+import { Asset } from 'expo-asset';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect, useState } from 'react';
+
+// Prevent splash screen from auto-hiding
+SplashScreen.preventAutoHideAsync();
+
+function App() {
+  const [isReady, setIsReady] = useState(false);
+  
+  useEffect(() => {
+    async function prepare() {
+      try {
+        // Preload assets
+        await Asset.loadAsync([
+          require('./assets/images/logo.png'),
+          require('./assets/images/background.jpg'),
+          require('./assets/videos/intro.mp4')
+        ]);
+      } catch (error) {
+        console.warn(error);
+      } finally {
+        setIsReady(true);
+        await SplashScreen.hideAsync();
+      }
+    }
+    
+    prepare();
+  }, []);
+  
+  if (!isReady) {
+    return null;
+  }
+  
+  return <YourApp />;
+}
+```
+
+### Use with Image Component
+
+```tsx
+import { Asset } from 'expo-asset';
+import { Image } from 'react-native';
+import { useEffect, useState } from 'react';
+
+function ImageWithAsset() {
+  const [asset, setAsset] = useState<Asset | null>(null);
+  
+  useEffect(() => {
+    async function loadAsset() {
+      const img = Asset.fromModule(require('./image.png'));
+      await img.downloadAsync();
+      setAsset(img);
+    }
+    loadAsset();
+  }, []);
+  
+  if (!asset?.localUri) {
+    return null;
+  }
+  
+  return (
+    <Image
+      source={{ uri: asset.localUri }}
+      style={{ width: asset.width, height: asset.height }}
+    />
+  );
+}
+```
+
+### Load Remote Asset
+
+```typescript
+import { Asset } from 'expo-asset';
+
+async function downloadRemoteImage() {
+  const asset = Asset.fromURI('https://example.com/image.jpg');
+  
+  // Download to cache
+  await asset.downloadAsync();
+  
+  // Now available locally
+  console.log('Downloaded to:', asset.localUri);
+  
+  return asset;
+}
+```
+
+### Pass to Video Player
+
+```tsx
+import { Asset } from 'expo-asset';
+import { Video } from 'expo-av';
+import { useEffect, useState } from 'react';
+
+function VideoPlayer() {
+  const [videoUri, setVideoUri] = useState<string | null>(null);
+  
+  useEffect(() => {
+    async function prepareVideo() {
+      const asset = Asset.fromModule(require('./video.mp4'));
+      await asset.downloadAsync();
+      setVideoUri(asset.localUri);
+    }
+    prepareVideo();
+  }, []);
+  
+  if (!videoUri) {
+    return null;
+  }
+  
+  return (
+    <Video
+      source={{ uri: videoUri }}
+      style={{ width: 300, height: 200 }}
+      useNativeControls
+    />
+  );
+}
+```
+
+### Batch Asset Loading
+
+```typescript
+import { Asset } from 'expo-asset';
+
+const imageAssets = [
+  require('./assets/1.png'),
+  require('./assets/2.png'),
+  require('./assets/3.png')
+];
+
+const soundAssets = [
+  require('./assets/sound1.mp3'),
+  require('./assets/sound2.mp3')
+];
+
+async function cacheAssets() {
+  const images = Asset.loadAsync(imageAssets);
+  const sounds = Asset.loadAsync(soundAssets);
+  
+  await Promise.all([images, sounds]);
+  console.log('All assets loaded!');
+}
+```
+
+### Asset with Dimensions
+
+```typescript
+import { Asset } from 'expo-asset';
+
+async function getImageDimensions() {
+  const asset = Asset.fromModule(require('./photo.jpg'));
+  await asset.downloadAsync();
+  
+  return {
+    uri: asset.localUri,
+    width: asset.width,
+    height: asset.height,
+    aspectRatio: asset.width! / asset.height!
+  };
+}
+```
+
+### Custom Asset Hook
+
+```typescript
+import { Asset } from 'expo-asset';
+import { useEffect, useState } from 'react';
+
+function useAsset(moduleId: number) {
+  const [asset, setAsset] = useState<Asset | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  
+  useEffect(() => {
+    async function loadAsset() {
+      try {
+        const loaded = Asset.fromModule(moduleId);
+        await loaded.downloadAsync();
+        setAsset(loaded);
+      } catch (err) {
+        setError(err as Error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadAsset();
+  }, [moduleId]);
+  
+  return { asset, loading, error };
+}
+
+// Usage
+function MyComponent() {
+  const { asset, loading, error } = useAsset(require('./image.png'));
+  
+  if (loading) return <Text>Loading...</Text>;
+  if (error) return <Text>Error: {error.message}</Text>;
+  
+  return <Image source={{ uri: asset!.localUri! }} />;
+}
+```
+
+## App Plugin Configuration
+
+For asset optimization during build:
+
+**app.json:**
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "expo-asset",
+        {
+          "assets": ["./assets/images", "./assets/fonts"]
+        }
+      ]
+    ]
+  }
+}
+```
+
+## TypeScript
+
+```typescript
+import { Asset } from 'expo-asset';
+
+const asset: Asset = Asset.fromModule(require('./image.png'));
+
+await asset.downloadAsync();
+
+const uri: string | null = asset.localUri;
+const width: number | null = asset.width;
+const downloaded: boolean = asset.downloaded;
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ✅       |
+
+<Note>
+On web, assets are loaded via HTTP and "downloading" is essentially ensuring they're loaded in the browser cache.
+</Note>
+
+## Best Practices
+
+1. **Preload Critical Assets**: Load essential assets during app initialization
+2. **Use Asset Caching**: Assets are automatically cached after first download
+3. **Handle Errors**: Wrap downloadAsync() in try/catch blocks
+4. **Batch Loading**: Use Asset.loadAsync() for multiple assets
+5. **Check Downloaded State**: Verify asset.downloaded before using localUri
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/asset/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-asset)

@@ -1,0 +1,230 @@
+---
+title: Introduction to Development Builds
+description: Learn about development builds and when to use them instead of Expo Go.
+---
+
+Development builds are custom versions of the Expo Go app that include your app's native code and third-party libraries. They provide a development environment closer to your production app while maintaining fast iteration speeds.
+
+## What are Development Builds?
+
+A development build is a debug build of your app that includes the `expo-dev-client` package. Unlike Expo Go, which has a fixed set of native modules, development builds contain exactly the native code your app needs.
+
+Development builds include:
+
+- **Custom native modules** - Any native module from npm or your own native code
+- **Dev client UI** - A launcher screen to load different versions of your JavaScript
+- **Enhanced debugging** - Improved network inspection, error boundaries, and developer menu
+- **Fast iteration** - Hot reloading and fast refresh for JavaScript changes
+
+## Expo Go vs Development Builds
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th>Expo Go</th>
+      <th>Development Build</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Native modules</td>
+      <td>Fixed set included</td>
+      <td>Any module you install</td>
+    </tr>
+    <tr>
+      <td>Setup time</td>
+      <td>Instant (just download)</td>
+      <td>Requires initial build (~10-20 min)</td>
+    </tr>
+    <tr>
+      <td>JS iteration</td>
+      <td>Instant reload</td>
+      <td>Instant reload</td>
+    </tr>
+    <tr>
+      <td>Native changes</td>
+      <td>Not possible</td>
+      <td>Requires rebuild</td>
+    </tr>
+    <tr>
+      <td>Production-like</td>
+      <td>No</td>
+      <td>Yes</td>
+    </tr>
+  </tbody>
+</table>
+
+## When to Use Development Builds
+
+You should use development builds when:
+
+### 1. Using Custom Native Modules
+
+If your app requires native modules not included in Expo Go:
+
+```json title="app.json"
+{
+  "expo": {
+    "plugins": [
+      "expo-camera",
+      "expo-media-library",
+      ["expo-build-properties", {
+        "android": { "minSdkVersion": 24 }
+      }]
+    ]
+  }
+}
+```
+
+### 2. Testing Native Configuration
+
+When you need to test platform-specific settings:
+
+- iOS entitlements and capabilities
+- Android permissions and manifest configurations
+- Custom app icons, splash screens, or schemes
+- Native build properties (SDK versions, architectures)
+
+### 3. Preparing for Production
+
+Development builds use the same native code as production:
+
+```bash
+# Same native code for development and production
+npx expo run:ios --configuration Release
+npx expo run:android --variant release
+```
+
+### 4. Working in Teams
+
+Share builds with teammates without Xcode or Android Studio:
+
+- iOS: Distribute via TestFlight or ad-hoc provisioning
+- Android: Share APK files directly
+
+## Benefits
+
+### Faster Development Workflow
+
+Once the initial build is complete, you get:
+
+- Instant JavaScript reloads
+- No need to rebuild for JS changes
+- Hot module replacement
+- Fast refresh
+
+### Production Parity
+
+Your development environment matches production:
+
+- Same native dependencies
+- Same build configuration
+- Same bundling process
+- Same performance characteristics
+
+### Enhanced Developer Experience
+
+`expo-dev-client` adds powerful tools:
+
+```typescript
+import { useDevToolsPluginClient } from 'expo/devtools';
+
+export function MyComponent() {
+  const client = useDevToolsPluginClient('my-plugin');
+  
+  // Enhanced debugging capabilities
+  client?.sendMessage('debug', { data: 'test' });
+}
+```
+
+### Flexible Deployment Options
+
+- Test multiple JavaScript bundles without rebuilding
+- Load PR previews instantly
+- Switch between development servers
+- Test updates and rollbacks
+
+## Development Build Workflow
+
+A typical development workflow:
+
+<Steps>
+
+<Step title="Install expo-dev-client">
+
+```bash
+npx expo install expo-dev-client
+```
+
+</Step>
+
+<Step title="Create a development build">
+
+```bash
+# Local build
+npx expo run:ios
+npx expo run:android
+
+# Or cloud build with EAS
+eas build --profile development --platform ios
+```
+
+</Step>
+
+<Step title="Start the dev server">
+
+```bash
+npx expo start --dev-client
+```
+
+</Step>
+
+<Step title="Iterate on JavaScript">
+
+Make changes to your JavaScript code - they reload instantly.
+
+</Step>
+
+<Step title="Rebuild when needed">
+
+Only rebuild when you:
+- Install new native modules
+- Change native configuration
+- Update `app.json` plugins
+
+</Step>
+
+</Steps>
+
+## Cost Considerations
+
+### Local Builds (Free)
+
+- Build on your own machine
+- Requires Xcode (iOS) or Android Studio (Android)
+- Full control over build environment
+
+### EAS Build (Paid)
+
+- Cloud building service
+- No local tooling required
+- Faster builds on powerful servers
+- Free tier available
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Creating Builds" icon="hammer" href="/development/creating-builds">
+    Learn how to create your first development build
+  </Card>
+  <Card title="Installation" icon="mobile" href="/development/installation">
+    Install builds on your devices
+  </Card>
+  <Card title="Debugging" icon="bug" href="/development/debugging">
+    Debug your development builds
+  </Card>
+  <Card title="Testing" icon="flask" href="/development/unit-testing">
+    Set up testing for your app
+  </Card>
+</CardGroup>

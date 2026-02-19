@@ -1,0 +1,598 @@
+---
+title: iOS Entitlements
+description: Learn how to add and configure iOS entitlements using config plugins.
+---
+
+import { Tab, Tabs } from '~/ui/components/Tabs';
+
+Entitlements are key-value pairs that grant your app special capabilities and permissions on iOS. They're stored in a `.entitlements` plist file and must be configured correctly for features like push notifications, HealthKit, Apple Pay, and more.
+
+## What are entitlements?
+
+Entitlements are capabilities that require Apple's approval and proper configuration. They enable features like:
+
+- Associated Domains (Universal Links, Handoff)
+- Push Notifications
+- App Groups (data sharing between apps)
+- iCloud
+- HealthKit
+- Apple Pay
+- Sign in with Apple
+- HomeKit
+- And many more
+
+## The entitlements file
+
+Entitlements are stored in `ios/<ProjectName>/<ProductName>.entitlements`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>com.apple.developer.associated-domains</key>
+  <array>
+    <string>applinks:example.com</string>
+  </array>
+</dict>
+</plist>
+```
+
+## Modifying entitlements with plugins
+
+Use `withEntitlementsPlist` to modify the entitlements file:
+
+```ts
+import { withEntitlementsPlist, ConfigPlugin } from '@expo/config-plugins';
+
+const withCustomEntitlements: ConfigPlugin = (config) => {
+  return withEntitlementsPlist(config, (config) => {
+    // config.modResults is the entitlements object
+    config.modResults['com.apple.developer.associated-domains'] = [
+      'applinks:example.com',
+    ];
+    
+    return config;
+  });
+};
+```
+
+## Common entitlements
+
+### Associated Domains
+
+For Universal Links, Handoff, and App Clips.
+
+```ts Entitlements.ts
+import { withEntitlementsPlist, ConfigPlugin } from '@expo/config-plugins';
+
+const withAssociatedDomains: ConfigPlugin<{ domains: string[] }> = (config, { domains }) => {
+  return withEntitlementsPlist(config, (config) => {
+    config.modResults['com.apple.developer.associated-domains'] = domains;
+    return config;
+  });
+};
+
+// Usage in app.json
+{
+  "expo": {
+    "plugins": [
+      [
+        "./plugins/withAssociatedDomains",
+        {
+          "domains": [
+            "applinks:example.com",
+            "applinks:www.example.com",
+            "webcredentials:example.com"
+          ]
+        }
+      ]
+    ]
+  }
+}
+```
+
+Domain formats:
+- `applinks:example.com` - Universal Links
+- `webcredentials:example.com` - Password AutoFill
+- `activitycontinuation:example.com` - Handoff
+- `appclips:example.com` - App Clips
+
+### Push Notifications
+
+Built into Expo by default, but here's how to add it manually:
+
+```ts
+import { withEntitlementsPlist, ConfigPlugin } from '@expo/config-plugins';
+
+const withPushNotifications: ConfigPlugin = (config) => {
+  return withEntitlementsPlist(config, (config) => {
+    config.modResults['aps-environment'] = 'production';
+    return config;
+  });
+};
+```
+
+Values:
+- `development` - For development builds
+- `production` - For App Store and TestFlight builds
+
+### App Groups
+
+Share data between your app and extensions (widgets, share extensions, etc.).
+
+```ts
+import { withEntitlementsPlist, ConfigPlugin } from '@expo/config-plugins';
+
+const withAppGroups: ConfigPlugin<{ groups: string[] }> = (config, { groups }) => {
+  return withEntitlementsPlist(config, (config) => {
+    config.modResults['com.apple.security.application-groups'] = groups;
+    return config;
+  });
+};
+
+// Usage
+export default withAppGroups(config, {
+  groups: ['group.com.company.app'],
+});
+```
+
+App group identifiers must:
+- Start with `group.`
+- Follow reverse-DNS naming (e.g., `group.com.company.app`)
+- Be registered in Apple Developer Portal
+
+### iCloud
+
+Enable iCloud storage and CloudKit.
+
+```ts
+import { withEntitlementsPlist, ConfigPlugin } from '@expo/config-plugins';
+
+const withiCloud: ConfigPlugin = (config) => {
+  return withEntitlementsPlist(config, (config) => {
+    config.modResults['com.apple.developer.icloud-container-identifiers'] = [
+      'iCloud.$(CFBundleIdentifier)',
+    ];
+    
+    config.modResults['com.apple.developer.icloud-services'] = [
+      'CloudDocuments',
+      'CloudKit',
+    ];
+    
+    config.modResults['com.apple.developer.ubiquity-container-identifiers'] = [
+      'iCloud.$(CFBundleIdentifier)',
+    ];
+    
+    config.modResults['com.apple.developer.ubiquity-kvstore-identifier'] = 
+      '$(TeamIdentifierPrefix)$(CFBundleIdentifier)';
+    
+    return config;
+  });
+};
+```
+
+### HealthKit
+
+Access health and fitness data.
+
+```ts
+import { withEntitlementsPlist, withInfoPlist, ConfigPlugin } from '@expo/config-plugins';
+
+const withHealthKit: ConfigPlugin = (config) => {
+  // Add entitlement
+  config = withEntitlementsPlist(config, (config) => {
+    config.modResults['com.apple.developer.healthkit'] = true;
+    config.modResults['com.apple.developer.healthkit.access'] = [];
+    return config;
+  });
+  
+  // Add required Info.plist keys
+  config = withInfoPlist(config, (config) => {
+    config.modResults.NSHealthShareUsageDescription = 
+      config.ios?.healthShareUsageDescription || 
+      'Allow $(PRODUCT_NAME) to read health data';
+    
+    config.modResults.NSHealthUpdateUsageDescription = 
+      config.ios?.healthUpdateUsageDescription ||
+      'Allow $(PRODUCT_NAME) to write health data';
+    
+    return config;
+  });
+  
+  return config;
+};
+```
+
+### Apple Pay
+
+Accept payments with Apple Pay.
+
+```ts
+import { withEntitlementsPlist, ConfigPlugin } from '@expo/config-plugins';
+
+const withApplePay: ConfigPlugin<{ merchantIds: string[] }> = (config, { merchantIds }) => {
+  return withEntitlementsPlist(config, (config) => {
+    config.modResults['com.apple.developer.in-app-payments'] = merchantIds;
+    return config;
+  });
+};
+
+// Usage
+export default withApplePay(config, {
+  merchantIds: ['merchant.com.company.app'],
+});
+```
+
+Merchant IDs must be registered in Apple Developer Portal.
+
+### Sign in with Apple
+
+Authenticate users with Apple ID.
+
+```ts
+import { withEntitlementsPlist, ConfigPlugin } from '@expo/config-plugins';
+
+const withSignInWithApple: ConfigPlugin = (config) => {
+  return withEntitlementsPlist(config, (config) => {
+    config.modResults['com.apple.developer.applesignin'] = ['Default'];
+    return config;
+  });
+};
+```
+
+### HomeKit
+
+Control smart home devices.
+
+```ts
+import { withEntitlementsPlist, withInfoPlist, ConfigPlugin } from '@expo/config-plugins';
+
+const withHomeKit: ConfigPlugin = (config) => {
+  // Add entitlement
+  config = withEntitlementsPlist(config, (config) => {
+    config.modResults['com.apple.developer.homekit'] = true;
+    return config;
+  });
+  
+  // Add Info.plist key
+  config = withInfoPlist(config, (config) => {
+    config.modResults.NSHomeKitUsageDescription = 
+      'Allow $(PRODUCT_NAME) to control your smart home devices';
+    return config;
+  });
+  
+  return config;
+};
+```
+
+### Keychain Sharing
+
+Share keychain items between apps.
+
+```ts
+import { withEntitlementsPlist, ConfigPlugin } from '@expo/config-plugins';
+
+const withKeychainSharing: ConfigPlugin<{ groups: string[] }> = (config, { groups }) => {
+  return withEntitlementsPlist(config, (config) => {
+    config.modResults['keychain-access-groups'] = groups;
+    return config;
+  });
+};
+
+// Usage
+export default withKeychainSharing(config, {
+  groups: [
+    '$(AppIdentifierPrefix)com.company.app',
+    '$(AppIdentifierPrefix)com.company.another-app',
+  ],
+});
+```
+
+### Near Field Communication (NFC)
+
+Read NFC tags.
+
+```ts
+import { withEntitlementsPlist, withInfoPlist, ConfigPlugin } from '@expo/config-plugins';
+
+const withNFC: ConfigPlugin = (config) => {
+  // Add entitlement
+  config = withEntitlementsPlist(config, (config) => {
+    config.modResults['com.apple.developer.nfc.readersession.formats'] = [
+      'NDEF',
+      'TAG',
+    ];
+    return config;
+  });
+  
+  // Add Info.plist key
+  config = withInfoPlist(config, (config) => {
+    config.modResults.NFCReaderUsageDescription = 
+      'Allow $(PRODUCT_NAME) to scan NFC tags';
+    return config;
+  });
+  
+  return config;
+};
+```
+
+### Background Modes
+
+While not technically an entitlement, background modes are configured similarly:
+
+```ts
+import { withInfoPlist, ConfigPlugin } from '@expo/config-plugins';
+
+const withBackgroundModes: ConfigPlugin<{ modes: string[] }> = (config, { modes }) => {
+  return withInfoPlist(config, (config) => {
+    config.modResults.UIBackgroundModes = modes;
+    return config;
+  });
+};
+
+// Usage
+export default withBackgroundModes(config, {
+  modes: [
+    'audio',                    // Audio playback
+    'location',                 // Location updates
+    'fetch',                    // Background fetch
+    'remote-notification',      // Silent push notifications
+    'processing',               // Background processing
+    'voip',                     // Voice over IP
+  ],
+});
+```
+
+## Ensuring entitlements file exists
+
+The entitlements file must be properly configured in Xcode. From the source:
+
+```ts Entitlements.ts
+export function ensureApplicationTargetEntitlementsFileConfigured(projectRoot: string): void {
+  const project = getPbxproj(projectRoot);
+  const projectName = getProjectName(projectRoot);
+  const productName = getProductName(project);
+
+  const [, applicationTarget] = findFirstNativeTarget(project);
+  const buildConfigurations = getBuildConfigurationsForListId(
+    project,
+    applicationTarget.buildConfigurationList
+  );
+  
+  let hasChangesToWrite = false;
+  
+  for (const [, xcBuildConfiguration] of buildConfigurations) {
+    const oldEntitlementPath = getEntitlementsPathFromBuildConfiguration(
+      projectRoot,
+      xcBuildConfiguration
+    );
+    
+    if (oldEntitlementPath && fs.existsSync(oldEntitlementPath)) {
+      return; // Already configured
+    }
+    
+    hasChangesToWrite = true;
+    
+    // Create entitlements file
+    const entitlementsRelativePath = path
+      .join(projectName, `${productName}.entitlements`)
+      .replace(/\\/g, '/');
+    
+    const entitlementsPath = path.resolve(projectRoot, 'ios', entitlementsRelativePath);
+    
+    fs.mkdirSync(path.dirname(entitlementsPath), { recursive: true });
+    
+    if (!fs.existsSync(entitlementsPath)) {
+      fs.writeFileSync(entitlementsPath, ENTITLEMENTS_TEMPLATE);
+    }
+    
+    // Update Xcode build settings
+    xcBuildConfiguration.buildSettings.CODE_SIGN_ENTITLEMENTS = entitlementsRelativePath;
+  }
+  
+  if (hasChangesToWrite) {
+    fs.writeFileSync(project.filepath, project.writeSync());
+  }
+}
+```
+
+## Reading entitlements
+
+To read the current entitlements file:
+
+```ts Entitlements.ts
+export function getEntitlementsPath(
+  projectRoot: string,
+  {
+    targetName,
+    buildConfiguration = 'Release',
+  }: { targetName?: string; buildConfiguration?: string } = {}
+): string | null {
+  const project = getPbxproj(projectRoot);
+  const xcBuildConfiguration = getXCBuildConfigurationFromPbxproj(project, {
+    targetName,
+    buildConfiguration,
+  });
+  
+  if (!xcBuildConfiguration) {
+    return null;
+  }
+  
+  const entitlementsPath = getEntitlementsPathFromBuildConfiguration(
+    projectRoot,
+    xcBuildConfiguration
+  );
+  
+  return entitlementsPath && fs.existsSync(entitlementsPath) ? entitlementsPath : null;
+}
+```
+
+## Helper: createEntitlementsPlugin
+
+Simplify entitlements plugin creation:
+
+```ts
+import { createEntitlementsPlugin } from '@expo/config-plugins';
+
+const withMyEntitlement = createEntitlementsPlugin(
+  (config, entitlements) => {
+    if (config.myFeature?.enabled) {
+      entitlements['com.apple.developer.my-feature'] = true;
+    }
+    return entitlements;
+  },
+  'withMyEntitlement'
+);
+```
+
+## Combining multiple entitlements
+
+Create a comprehensive plugin:
+
+```ts
+import { withEntitlementsPlist, withInfoPlist, withPlugins, ConfigPlugin } from '@expo/config-plugins';
+
+type Props = {
+  enableHealthKit?: boolean;
+  enableApplePay?: boolean;
+  merchantIds?: string[];
+  associatedDomains?: string[];
+  appGroups?: string[];
+};
+
+const withAdvancedFeatures: ConfigPlugin<Props> = (config, props = {}) => {
+  const {
+    enableHealthKit,
+    enableApplePay,
+    merchantIds = [],
+    associatedDomains = [],
+    appGroups = [],
+  } = props;
+  
+  return withPlugins(config, [
+    // Add entitlements
+    [
+      withEntitlementsPlist,
+      (config) => {
+        if (enableHealthKit) {
+          config.modResults['com.apple.developer.healthkit'] = true;
+        }
+        
+        if (enableApplePay && merchantIds.length > 0) {
+          config.modResults['com.apple.developer.in-app-payments'] = merchantIds;
+        }
+        
+        if (associatedDomains.length > 0) {
+          config.modResults['com.apple.developer.associated-domains'] = associatedDomains;
+        }
+        
+        if (appGroups.length > 0) {
+          config.modResults['com.apple.security.application-groups'] = appGroups;
+        }
+        
+        return config;
+      },
+    ],
+    // Add required Info.plist keys
+    [
+      withInfoPlist,
+      (config) => {
+        if (enableHealthKit) {
+          config.modResults.NSHealthShareUsageDescription = 'Read health data';
+          config.modResults.NSHealthUpdateUsageDescription = 'Write health data';
+        }
+        return config;
+      },
+    ],
+  ]);
+};
+
+export default withAdvancedFeatures;
+```
+
+## Testing entitlements
+
+Test that entitlements are correctly added:
+
+```ts
+import { withEntitlementsPlist } from '@expo/config-plugins';
+
+const withTestEntitlement = (config) => {
+  return withEntitlementsPlist(config, (config) => {
+    config.modResults['com.apple.developer.associated-domains'] = [
+      'applinks:example.com',
+    ];
+    return config;
+  });
+};
+
+describe('withTestEntitlement', () => {
+  it('should add associated domains', () => {
+    let config: any = { name: 'Test' };
+    config = withTestEntitlement(config);
+    
+    const result = config.mods.ios.entitlements({
+      ...config,
+      modResults: {},
+      modRequest: {
+        projectRoot: '/test',
+        platformProjectRoot: '/test/ios',
+        platform: 'ios',
+        modName: 'entitlements',
+        introspect: false,
+      },
+    });
+    
+    expect(result.modResults['com.apple.developer.associated-domains']).toEqual([
+      'applinks:example.com',
+    ]);
+  });
+});
+```
+
+## Apple Developer Portal requirements
+
+Many entitlements require configuration in the Apple Developer Portal:
+
+1. **App ID Capabilities**: Enable capabilities for your App ID
+2. **Provisioning Profiles**: Create profiles that include the capabilities
+3. **Identifiers**: Register App Groups, Merchant IDs, etc.
+
+Expo EAS Build handles this automatically when using managed credentials.
+
+## Best practices
+
+### 1. Only add needed entitlements
+
+Each entitlement increases app review complexity. Only add what you actually use.
+
+### 2. Use variables for dynamic values
+
+```ts
+config.modResults['keychain-access-groups'] = [
+  '$(AppIdentifierPrefix)$(CFBundleIdentifier)',
+];
+```
+
+### 3. Validate entitlements
+
+```ts
+const withValidatedEntitlements: ConfigPlugin<Props> = (config, props) => {
+  if (props.enableApplePay && !props.merchantIds?.length) {
+    throw new Error('merchantIds are required when enableApplePay is true');
+  }
+  
+  return config;
+};
+```
+
+### 4. Document required Apple Developer setup
+
+Include README instructions for developers about required Apple Developer Portal configuration.
+
+## Next steps
+
+- [Android Permissions](/config-plugins/android-permissions) - Android equivalent
+- [Modifying native projects](/config-plugins/modifying-native-projects) - More iOS modifications
+- [Plugin API reference](/config-plugins/plugin-api) - Complete API docs

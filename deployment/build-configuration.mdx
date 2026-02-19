@@ -1,0 +1,830 @@
+---
+title: Build Configuration
+description: Comprehensive guide to configuring EAS Build with eas.json including profiles, environment variables, and platform-specific settings.
+---
+
+import { Warning } from '~/components/Warning';
+import { Tabs, Tab } from '~/components/Tabs';
+
+# Build Configuration
+
+The **eas.json** file in your project root defines how EAS Build compiles your app. This guide covers all configuration options for creating optimized builds.
+
+## eas.json Structure
+
+```json eas.json
+{
+  "cli": {
+    "version": ">= 0.52.0",
+    "requireCommit": true,
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": { /* development profile */ },
+    "preview": { /* preview profile */ },
+    "production": { /* production profile */ }
+  },
+  "submit": {
+    "production": { /* submission config */ }
+  }
+}
+```
+
+### Top-Level Sections
+
+- **cli**: EAS CLI behavior and requirements
+- **build**: Build profiles for different environments
+- **submit**: App store submission configuration
+
+## CLI Configuration
+
+Control EAS CLI behavior globally:
+
+```json eas.json
+{
+  "cli": {
+    "version": ">= 0.52.0",
+    "requireCommit": true,
+    "appVersionSource": "remote",
+    "promptToConfigurePushNotifications": false
+  }
+}
+```
+
+**Options:**
+- `version`: Minimum required EAS CLI version
+- `requireCommit`: Require clean git state before builds
+- `appVersionSource`: `"local"` | `"remote"` - Where to get app version
+- `promptToConfigurePushNotifications`: Auto-configure push notifications
+
+## Build Profiles
+
+Profiles define different build configurations for various use cases.
+
+### Default Profiles
+
+When you run `eas build:configure`, these profiles are created:
+
+```json eas.json
+{
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {}
+  }
+}
+```
+
+### Profile Inheritance
+
+Extend profiles to reduce duplication:
+
+```json eas.json
+{
+  "build": {
+    "base": {
+      "node": "18.17.0",
+      "env": {
+        "ENVIRONMENT": "production"
+      }
+    },
+    "production": {
+      "extends": "base",
+      "channel": "production"
+    },
+    "staging": {
+      "extends": "base",
+      "channel": "staging",
+      "env": {
+        "API_URL": "https://staging.api.example.com"
+      }
+    }
+  }
+}
+```
+
+## Common Build Options
+
+Options available for all platforms:
+
+### Distribution
+
+```json
+{
+  "distribution": "store"  // or "internal"
+}
+```
+
+- `"store"`: For app store submission (AAB for Android, IPA for iOS)
+- `"internal"`: For internal distribution (APK for Android, Ad Hoc for iOS)
+
+### EAS Update Channel
+
+```json
+{
+  "channel": "production"
+}
+```
+
+Links builds to EAS Update channels for over-the-air updates.
+
+### Development Client
+
+```json
+{
+  "developmentClient": true
+}
+```
+
+Builds a development client with expo-dev-client for debugging.
+
+### Environment Variables
+
+```json
+{
+  "env": {
+    "API_URL": "https://api.example.com",
+    "FEATURE_FLAG_NEW_UI": "true"
+  }
+}
+```
+
+Environment variables available during build and in the app runtime (if prefixed with `EXPO_PUBLIC_`).
+
+### Node.js Version
+
+```json
+{
+  "node": "20.11.0"
+}
+```
+
+Specifies Node.js version for the build.
+
+### Credentials Source
+
+```json
+{
+  "credentialsSource": "remote"  // or "local"
+}
+```
+
+- `"remote"`: Use credentials from EAS servers
+- `"local"`: Use credentials from credentials.json
+
+### Resource Class
+
+```json
+{
+  "android": {
+    "resourceClass": "large"
+  },
+  "ios": {
+    "resourceClass": "large"
+  }
+}
+```
+
+Options: `"default"` | `"medium"` | `"large"` - Larger classes provide more CPU/memory.
+
+### Cache Configuration
+
+```json
+{
+  "cache": {
+    "disabled": false,
+    "key": "custom-cache-key",
+    "paths": [
+      "node_modules",
+      ".expo"
+    ]
+  }
+}
+```
+
+Control build caching to speed up subsequent builds.
+
+## Android-Specific Options
+
+Configure Android builds:
+
+### Build Type
+
+```json
+{
+  "android": {
+    "buildType": "apk"  // or "app-bundle"
+  }
+}
+```
+
+- `"app-bundle"` (default): Creates AAB for Play Store
+- `"apk"`: Creates APK for direct installation
+
+### Gradle Command
+
+```json
+{
+  "android": {
+    "gradleCommand": ":app:bundleRelease"
+  }
+}
+```
+
+Custom Gradle command to run. Common commands:
+- `:app:assembleRelease` - Build release APK
+- `:app:bundleRelease` - Build release AAB
+- `:app:assembleDebug` - Build debug APK
+
+### Build Image
+
+```json
+{
+  "android": {
+    "image": "sdk-54"  // or "sdk-53", "sdk-52"
+  }
+}
+```
+
+EAS Build image version (includes Android SDK, NDK, and tools).
+
+### Auto-Increment Version Code
+
+```json
+{
+  "android": {
+    "autoIncrement": "versionCode"  // or true
+  }
+}
+```
+
+Automatically increments `versionCode` for each build.
+
+### NDK Version
+
+```json
+{
+  "android": {
+    "ndk": "26.1.10909125"
+  }
+}
+```
+
+Specific Android NDK version for native code compilation.
+
+### Without Credentials
+
+```json
+{
+  "android": {
+    "withoutCredentials": true
+  }
+}
+```
+
+Build without code signing (for testing unsigned builds).
+
+### Complete Android Example
+
+```json eas.json
+{
+  "build": {
+    "production-android": {
+      "android": {
+        "buildType": "app-bundle",
+        "gradleCommand": ":app:bundleRelease",
+        "image": "sdk-54",
+        "resourceClass": "large",
+        "autoIncrement": "versionCode",
+        "env": {
+          "EAS_BUILD_PLATFORM": "android"
+        }
+      },
+      "distribution": "store",
+      "channel": "production"
+    }
+  }
+}
+```
+
+## iOS-Specific Options
+
+Configure iOS builds:
+
+### Simulator Build
+
+```json
+{
+  "ios": {
+    "simulator": true
+  }
+}
+```
+
+Builds for iOS Simulator (development only, no code signing needed).
+
+### Build Configuration
+
+```json
+{
+  "ios": {
+    "buildConfiguration": "Release"  // or "Debug"
+  }
+}
+```
+
+Xcode build configuration to use.
+
+### Scheme
+
+```json
+{
+  "ios": {
+    "scheme": "MyApp"  // Xcode scheme name
+  }
+}
+```
+
+Specifies which Xcode scheme to build.
+
+### Build Image
+
+```json
+{
+  "ios": {
+    "image": "sdk-54"  // or "sdk-53", "sdk-52"
+  }
+}
+```
+
+EAS Build image version (includes Xcode and related tools).
+
+### CocoaPods Version
+
+```json
+{
+  "ios": {
+    "cocoapods": "1.16.2"
+  }
+}
+```
+
+Specific CocoaPods version for dependency management.
+
+### Auto-Increment Build Number
+
+```json
+{
+  "ios": {
+    "autoIncrement": "buildNumber"  // or true
+  }
+}
+```
+
+Automatically increments `CFBundleVersion` for each build.
+
+### Bundle Identifier
+
+```json
+{
+  "ios": {
+    "bundleIdentifier": "com.example.myapp"
+  }
+}
+```
+
+Override bundle identifier for this profile (useful for multi-flavor apps).
+
+### Enterprise Provisioning
+
+```json
+{
+  "ios": {
+    "enterpriseProvisioning": "universal"  // or "adhoc"
+  }
+}
+```
+
+For Apple Developer Enterprise Program accounts.
+
+### Complete iOS Example
+
+```json eas.json
+{
+  "build": {
+    "production-ios": {
+      "ios": {
+        "buildConfiguration": "Release",
+        "scheme": "MyApp",
+        "image": "sdk-54",
+        "cocoapods": "1.16.2",
+        "resourceClass": "large",
+        "autoIncrement": "buildNumber",
+        "simulator": false
+      },
+      "distribution": "store",
+      "channel": "production"
+    }
+  }
+}
+```
+
+## Multi-Platform Configurations
+
+Configure both platforms with different settings:
+
+```json eas.json
+{
+  "build": {
+    "production": {
+      "channel": "production",
+      "distribution": "store",
+      "env": {
+        "API_URL": "https://api.example.com"
+      },
+      "android": {
+        "buildType": "app-bundle",
+        "image": "sdk-54",
+        "resourceClass": "large",
+        "autoIncrement": "versionCode"
+      },
+      "ios": {
+        "image": "sdk-54",
+        "resourceClass": "medium",
+        "autoIncrement": "buildNumber",
+        "bundleIdentifier": "com.company.app"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      },
+      "ios": {
+        "simulator": false
+      }
+    },
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleDebug"
+      },
+      "ios": {
+        "simulator": true,
+        "buildConfiguration": "Debug"
+      }
+    }
+  }
+}
+```
+
+## Environment Variables
+
+### Build-Time Variables
+
+Available during the build process only:
+
+```json
+{
+  "env": {
+    "BUILD_NUMBER": "123",
+    "CI": "true"
+  }
+}
+```
+
+### Runtime Variables (EXPO_PUBLIC_)
+
+Available in your app code:
+
+```json
+{
+  "env": {
+    "EXPO_PUBLIC_API_URL": "https://api.example.com",
+    "EXPO_PUBLIC_ANALYTICS_ID": "UA-12345678"
+  }
+}
+```
+
+Access in your app:
+
+```javascript
+const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+```
+
+### Secret Variables
+
+For sensitive values, use EAS Secrets:
+
+```bash
+# Set a secret
+eas secret:create --name API_SECRET_KEY --value "your-secret-key"
+
+# List secrets
+eas secret:list
+
+# Delete a secret
+eas secret:delete --name API_SECRET_KEY
+```
+
+Secrets are available as environment variables during build:
+
+```json
+{
+  "env": {
+    "API_KEY": "$API_SECRET_KEY"
+  }
+}
+```
+
+### Platform-Specific Environment Variables
+
+```json eas.json
+{
+  "build": {
+    "production": {
+      "env": {
+        "GLOBAL_VAR": "value"
+      },
+      "android": {
+        "env": {
+          "ANDROID_ONLY_VAR": "android-value"
+        }
+      },
+      "ios": {
+        "env": {
+          "IOS_ONLY_VAR": "ios-value"
+        }
+      }
+    }
+  }
+}
+```
+
+## Advanced Configurations
+
+### Custom Build Functions
+
+Run custom JavaScript during the build:
+
+Create **eas-hooks/custom-build.js**:
+
+```javascript
+module.exports = async function ({ platform }) {
+  console.log(`Running custom build logic for ${platform}`);
+  
+  // Your custom build logic here
+  if (platform === 'android') {
+    // Android-specific logic
+  } else if (platform === 'ios') {
+    // iOS-specific logic
+  }
+};
+```
+
+Reference in eas.json:
+
+```json
+{
+  "build": {
+    "production": {
+      "config": "eas-hooks/custom-build.js"
+    }
+  }
+}
+```
+
+### Monorepo Configuration
+
+For monorepo projects:
+
+```json eas.json
+{
+  "cli": {
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "production": {
+      "node": "20.11.0",
+      "env": {
+        "EXPO_MONOREPO_ROOT": "../.."
+      },
+      "cache": {
+        "paths": [
+          "../../node_modules",
+          "node_modules"
+        ]
+      }
+    }
+  }
+}
+```
+
+### Build Variants (Android)
+
+Build different flavors of your Android app:
+
+```json eas.json
+{
+  "build": {
+    "production-free": {
+      "android": {
+        "gradleCommand": ":app:bundleFreeRelease",
+        "env": {
+          "APP_VARIANT": "free"
+        }
+      }
+    },
+    "production-premium": {
+      "android": {
+        "gradleCommand": ":app:bundlePremiumRelease",
+        "env": {
+          "APP_VARIANT": "premium"
+        }
+      }
+    }
+  }
+}
+```
+
+### Multiple Build Configurations
+
+Real-world example with multiple environments:
+
+```json eas.json
+{
+  "cli": {
+    "version": ">= 0.52.0",
+    "requireCommit": true
+  },
+  "build": {
+    "base": {
+      "node": "20.11.0",
+      "android": {
+        "image": "sdk-54"
+      },
+      "ios": {
+        "image": "sdk-54",
+        "cocoapods": "1.16.2"
+      }
+    },
+    "development": {
+      "extends": "base",
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://localhost:3000",
+        "EXPO_PUBLIC_ENV": "development"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": true
+      }
+    },
+    "preview": {
+      "extends": "base",
+      "distribution": "internal",
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://preview-api.example.com",
+        "EXPO_PUBLIC_ENV": "preview"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "staging": {
+      "extends": "base",
+      "distribution": "store",
+      "channel": "staging",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://staging-api.example.com",
+        "EXPO_PUBLIC_ENV": "staging"
+      },
+      "android": {
+        "buildType": "app-bundle",
+        "autoIncrement": "versionCode"
+      },
+      "ios": {
+        "autoIncrement": "buildNumber"
+      }
+    },
+    "production": {
+      "extends": "base",
+      "distribution": "store",
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.example.com",
+        "EXPO_PUBLIC_ENV": "production"
+      },
+      "android": {
+        "buildType": "app-bundle",
+        "resourceClass": "large",
+        "autoIncrement": "versionCode"
+      },
+      "ios": {
+        "resourceClass": "large",
+        "autoIncrement": "buildNumber"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "./secrets/google-service-account.json",
+        "track": "production"
+      },
+      "ios": {
+        "ascAppId": "1234567890"
+      }
+    }
+  }
+}
+```
+
+## Troubleshooting
+
+### Invalid eas.json
+
+<Warning>
+EAS CLI validates eas.json against a schema. Use proper JSON syntax and valid option values.
+</Warning>
+
+**Common errors:**
+- Missing commas between properties
+- Trailing commas in objects/arrays
+- Invalid property names
+- Wrong value types (string vs boolean)
+
+**Validate your eas.json:**
+
+```bash
+eas build --platform android --profile production --dry-run
+```
+
+### Profile Not Found
+
+```
+Error: Build profile "staging" does not exist in eas.json
+```
+
+**Solution:** Ensure profile exists in eas.json:
+
+```bash
+eas build --platform android --profile staging
+```
+
+Profile must be defined:
+
+```json
+{
+  "build": {
+    "staging": { /* ... */ }
+  }
+}
+```
+
+### Environment Variables Not Available
+
+If `process.env.EXPO_PUBLIC_API_URL` is undefined:
+
+1. Ensure variable is prefixed with `EXPO_PUBLIC_`
+2. Rebuild the app (env vars are embedded at build time)
+3. Check eas.json has the variable in the correct profile
+
+### Inheritance Issues
+
+When using `extends`, child profiles override parent values:
+
+```json
+{
+  "base": {
+    "env": { "A": "1", "B": "2" }
+  },
+  "production": {
+    "extends": "base",
+    "env": { "B": "3" }  // Only B is overridden, A is inherited
+  }
+}
+```
+
+Result: Production has `A=1` and `B=3`.
+
+## Next Steps
+
+- [Building Standalone Apps](/deployment/building-standalone) - Create your builds
+- [App Signing](/deployment/app-signing) - Configure credentials
+- [Internal Distribution](/deployment/internal-distribution) - Share builds with team
+- [Over-the-Air Updates](/deployment/over-the-air-updates) - Deploy updates without rebuilding

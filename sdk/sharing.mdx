@@ -1,0 +1,349 @@
+---
+title: expo-sharing
+description: Share files directly with other compatible applications on the device
+---
+
+# expo-sharing
+
+**Version:** 55.0.7
+
+Provides a way to share files directly with other compatible applications. Uses the native share sheet on iOS and Android to allow users to share content with apps like Messages, Mail, social media, and more.
+
+## Installation
+
+```bash
+npx expo install expo-sharing
+```
+
+## Usage
+
+```typescript
+import * as Sharing from 'expo-sharing';
+import { Button, View } from 'react-native';
+
+export default function App() {
+  const shareFile = async () => {
+    const isAvailable = await Sharing.isAvailableAsync();
+    if (!isAvailable) {
+      alert('Sharing is not available on this platform');
+      return;
+    }
+
+    await Sharing.shareAsync('file:///path/to/file.pdf', {
+      dialogTitle: 'Share this file',
+      mimeType: 'application/pdf',
+    });
+  };
+
+  return (
+    <View>
+      <Button title="Share File" onPress={shareFile} />
+    </View>
+  );
+}
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="isAvailableAsync()" type="() => Promise<boolean>">
+  Checks if sharing is available on the current platform
+  
+  Returns `false` on web and simulators/emulators
+  
+  ```typescript
+  const available = await Sharing.isAvailableAsync();
+  if (available) {
+    // Sharing is supported
+  }
+  ```
+</ParamField>
+
+<ParamField path="shareAsync(url, options)" type="(url: string, options?: SharingOptions) => Promise<void>">
+  Opens the native share sheet to share a file
+  
+  **Parameters:**
+  - `url` (string): Local file URI to share (must start with `file://`)
+  - `options` (SharingOptions): Optional configuration
+  
+  ```typescript
+  await Sharing.shareAsync('file:///path/to/image.jpg', {
+    dialogTitle: 'Share this photo',
+    mimeType: 'image/jpeg',
+    UTI: 'public.jpeg',
+  });
+  ```
+</ParamField>
+
+### Types
+
+#### SharingOptions
+
+<ParamField path="dialogTitle" type="string">
+  Title for the share dialog (Android only)
+  
+  ```typescript
+  { dialogTitle: 'Share this document' }
+  ```
+</ParamField>
+
+<ParamField path="mimeType" type="string">
+  MIME type of the file being shared
+  
+  ```typescript
+  { mimeType: 'application/pdf' }
+  ```
+</ParamField>
+
+<ParamField path="UTI" type="string">
+  iOS Uniform Type Identifier for the file
+  
+  ```typescript
+  { UTI: 'public.pdf' }
+  ```
+</ParamField>
+
+## Examples
+
+### Share an Image
+
+```typescript
+import * as Sharing from 'expo-sharing';
+
+async function shareImage(imageUri: string) {
+  if (!(await Sharing.isAvailableAsync())) {
+    alert('Sharing is not available');
+    return;
+  }
+
+  try {
+    await Sharing.shareAsync(imageUri, {
+      dialogTitle: 'Share this photo',
+      mimeType: 'image/jpeg',
+    });
+  } catch (error) {
+    console.error('Error sharing image:', error);
+  }
+}
+```
+
+### Share a PDF Document
+
+```typescript
+import * as Sharing from 'expo-sharing';
+
+async function sharePDF(pdfUri: string) {
+  if (!(await Sharing.isAvailableAsync())) {
+    alert('Sharing not available');
+    return;
+  }
+
+  await Sharing.shareAsync(pdfUri, {
+    dialogTitle: 'Share PDF',
+    mimeType: 'application/pdf',
+    UTI: 'com.adobe.pdf',
+  });
+}
+```
+
+### Share Downloaded File
+
+```typescript
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
+
+async function downloadAndShare(url: string) {
+  // Download file first
+  const fileUri = FileSystem.documentDirectory + 'download.pdf';
+  const { uri } = await FileSystem.downloadAsync(url, fileUri);
+
+  // Share the downloaded file
+  if (await Sharing.isAvailableAsync()) {
+    await Sharing.shareAsync(uri, {
+      dialogTitle: 'Share downloaded file',
+      mimeType: 'application/pdf',
+    });
+  }
+}
+```
+
+### Share Camera Photo
+
+```typescript
+import * as Sharing from 'expo-sharing';
+import * as ImagePicker from 'expo-image-picker';
+
+async function takeAndShare() {
+  // Take photo
+  const result = await ImagePicker.launchCameraAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    quality: 1,
+  });
+
+  if (!result.canceled) {
+    const photoUri = result.assets[0].uri;
+    
+    // Share the photo
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(photoUri, {
+        dialogTitle: 'Share your photo',
+        mimeType: 'image/jpeg',
+      });
+    }
+  }
+}
+```
+
+### Share JSON Data as File
+
+```typescript
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
+
+async function shareData(data: object) {
+  // Create JSON file
+  const fileUri = FileSystem.documentDirectory + 'data.json';
+  await FileSystem.writeAsStringAsync(
+    fileUri,
+    JSON.stringify(data, null, 2)
+  );
+
+  // Share the file
+  if (await Sharing.isAvailableAsync()) {
+    await Sharing.shareAsync(fileUri, {
+      dialogTitle: 'Share data',
+      mimeType: 'application/json',
+    });
+  }
+}
+```
+
+### Share with Error Handling
+
+```typescript
+import * as Sharing from 'expo-sharing';
+
+async function shareWithFallback(fileUri: string) {
+  const available = await Sharing.isAvailableAsync();
+  
+  if (!available) {
+    // Fallback for web or unavailable platforms
+    console.log('Sharing not available, using alternative method');
+    // Implement web share or download link
+    return;
+  }
+
+  try {
+    await Sharing.shareAsync(fileUri, {
+      dialogTitle: 'Share file',
+    });
+    console.log('File shared successfully');
+  } catch (error) {
+    console.error('Sharing failed:', error);
+    alert('Failed to share file');
+  }
+}
+```
+
+### Complete Sharing Example
+
+```tsx
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
+import { useState } from 'react';
+import { View, Button, Text, StyleSheet } from 'react-native';
+
+export default function SharingExample() {
+  const [canShare, setCanShare] = useState<boolean>(false);
+
+  useEffect(() => {
+    checkSharing();
+  }, []);
+
+  const checkSharing = async () => {
+    const available = await Sharing.isAvailableAsync();
+    setCanShare(available);
+  };
+
+  const createAndShare = async () => {
+    // Create a text file
+    const fileUri = FileSystem.documentDirectory + 'shared-file.txt';
+    const content = `Shared on ${new Date().toLocaleString()}`;
+    
+    await FileSystem.writeAsStringAsync(fileUri, content);
+
+    // Share it
+    if (canShare) {
+      try {
+        await Sharing.shareAsync(fileUri, {
+          dialogTitle: 'Share this file',
+          mimeType: 'text/plain',
+        });
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.status}>
+        Sharing {canShare ? 'available' : 'not available'}
+      </Text>
+      
+      <Button
+        title="Create and Share File"
+        onPress={createAndShare}
+        disabled={!canShare}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, justifyContent: 'center', padding: 20, gap: 20 },
+  status: { fontSize: 16, textAlign: 'center' },
+});
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ❌       |
+
+<Note>
+Sharing is not available on web browsers. On iOS simulators and Android emulators, `isAvailableAsync()` may return `false`.
+</Note>
+
+## Common MIME Types
+
+| File Type | MIME Type | iOS UTI |
+|-----------|-----------|---------|
+| PDF | `application/pdf` | `com.adobe.pdf` |
+| JPEG | `image/jpeg` | `public.jpeg` |
+| PNG | `image/png` | `public.png` |
+| Text | `text/plain` | `public.plain-text` |
+| JSON | `application/json` | `public.json` |
+| Video (MP4) | `video/mp4` | `public.mpeg-4` |
+| Audio (MP3) | `audio/mpeg` | `public.mp3` |
+
+## Best Practices
+
+1. **Check Availability**: Always call `isAvailableAsync()` before sharing
+2. **Local Files Only**: Only share local file URIs (starting with `file://`)
+3. **MIME Types**: Provide correct MIME type for better app compatibility
+4. **Error Handling**: Wrap `shareAsync()` in try/catch for robust error handling
+5. **File Persistence**: Ensure files exist before sharing
+
+<Warning>
+Only local file URIs can be shared. Remote URLs must be downloaded first using `expo-file-system`.
+</Warning>
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/sharing/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-sharing)

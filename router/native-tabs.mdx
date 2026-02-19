@@ -1,0 +1,566 @@
+---
+title: Native Tabs
+description: Use native iOS UITabBar and Android Material BottomNavigation with Expo Router
+---
+
+# Native Tabs
+
+Native tabs provide platform-native bottom tab navigation using iOS UITabBar and Android Material BottomNavigation components via `react-native-screens`.
+
+<Warning>
+  Native tabs are currently in preview. The API may change. Use `expo-router/unstable-native-tabs`.
+</Warning>
+
+## Installation
+
+Ensure you have the required dependencies:
+
+```bash
+npx expo install react-native-screens
+```
+
+## Basic Native Tabs
+
+Import from the unstable package:
+
+```tsx app/(tabs)/_layout.tsx
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
+
+export default function TabLayout() {
+  return (
+    <NativeTabs>
+      <NativeTabs.Trigger name="home" />
+      <NativeTabs.Trigger name="explore" />
+      <NativeTabs.Trigger name="profile" />
+    </NativeTabs>
+  );
+}
+```
+
+From the source (`NativeTabs.tsx:9-36`):
+
+```typescript
+/**
+ * The component used to create native tabs layout.
+ *
+ * @example
+ * import { NativeTabs } from 'expo-router/unstable-native-tabs';
+ *
+ * export default function Layout() {
+ *   return (
+ *     <NativeTabs>
+ *       <NativeTabs.Trigger name="home" />
+ *       <NativeTabs.Trigger name="settings" />
+ *     </NativeTabs>
+ *   );
+ * }
+ */
+export const NativeTabs = Object.assign(
+  (props: NativeTabsProps) => {
+    return <NativeTabsNavigatorWrapper {...props} />;
+  },
+  { Trigger: NativeTabTrigger, BottomAccessory }
+);
+```
+
+From `CLAUDE.md:241-253`:
+
+```
+### Native Tabs
+
+Native tabs provide native bottom tab navigation using iOS UITabBar 
+and Android Material BottomNavigation via `react-native-screens`.
+
+- `NativeTabs` - Layout component using `useNavigationBuilder`
+- `NativeTabs.Trigger` - Tab configuration (icon, label, badge)
+- `NativeTabs.BottomAccessory` - iOS 26+ bottom accessory
+- Icons: `sf` (SF Symbols), `drawable` (Android), `md` (Material), `src` (images)
+- iOS-specific: blur effects, transparency, sidebar adaptable
+- Android-specific: Material Design 3, dynamic colors, ripple effects
+```
+
+## Configure Tabs
+
+### With Labels and Icons
+
+```tsx app/(tabs)/_layout.tsx
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
+
+export default function TabLayout() {
+  return (
+    <NativeTabs>
+      <NativeTabs.Trigger name="home">
+        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon platform="ios" name="house" />
+        <NativeTabs.Trigger.Icon platform="android" name="home" />
+      </NativeTabs.Trigger>
+      
+      <NativeTabs.Trigger name="explore">
+        <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon platform="ios" name="safari" />
+        <NativeTabs.Trigger.Icon platform="android" name="explore" />
+      </NativeTabs.Trigger>
+      
+      <NativeTabs.Trigger name="profile">
+        <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon platform="ios" name="person" />
+        <NativeTabs.Trigger.Icon platform="android" name="person" />
+      </NativeTabs.Trigger>
+    </NativeTabs>
+  );
+}
+```
+
+## Icon Types
+
+### SF Symbols (iOS)
+
+```tsx
+<NativeTabs.Trigger.Icon
+  platform="ios"
+  type="sf"
+  name="house.fill"
+/>
+```
+
+### Material Icons (Android)
+
+```tsx
+<NativeTabs.Trigger.Icon
+  platform="android"
+  type="md"
+  name="home"
+/>
+```
+
+### Android Drawables
+
+```tsx
+<NativeTabs.Trigger.Icon
+  platform="android"
+  type="drawable"
+  name="ic_home"
+/>
+```
+
+### Image Source
+
+```tsx
+<NativeTabs.Trigger.Icon
+  type="src"
+  source={require('./home-icon.png')}
+/>
+```
+
+## Badges
+
+Add notification badges:
+
+```tsx
+<NativeTabs.Trigger name="notifications">
+  <NativeTabs.Trigger.Label>Notifications</NativeTabs.Trigger.Label>
+  <NativeTabs.Trigger.Icon platform="ios" name="bell" />
+  <NativeTabs.Trigger.Badge>5</NativeTabs.Trigger.Badge>
+</NativeTabs.Trigger>
+```
+
+With dynamic count:
+
+```tsx
+export default function TabLayout() {
+  const [unreadCount, setUnreadCount] = useState(0);
+  
+  return (
+    <NativeTabs>
+      <NativeTabs.Trigger name="messages">
+        <NativeTabs.Trigger.Label>Messages</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon platform="ios" name="message" />
+        {unreadCount > 0 && (
+          <NativeTabs.Trigger.Badge>{unreadCount}</NativeTabs.Trigger.Badge>
+        )}
+      </NativeTabs.Trigger>
+    </NativeTabs>
+  );
+}
+```
+
+## iOS-Specific Features
+
+### Blur Effects
+
+```tsx
+<NativeTabs
+  appearance={{
+    ios: {
+      style: 'defaultBlur', // or 'opaqueBlur', 'transparent'
+    },
+  }}
+/>
+```
+
+### Scroll Edge Appearance
+
+```tsx
+<NativeTabs
+  appearance={{
+    ios: {
+      scrollEdgeAppearance: {
+        style: 'opaqueBlur',
+      },
+    },
+  }}
+/>
+```
+
+### Sidebar Adaptable (iPadOS 18+)
+
+```tsx
+<NativeTabs
+  appearance={{
+    ios: {
+      sidebarAdaptable: true,
+    },
+  }}
+/>
+```
+
+## Android-Specific Features
+
+### Material Design 3
+
+```tsx
+<NativeTabs
+  appearance={{
+    android: {
+      elevation: 8,
+      rippleColor: '#f4511e',
+    },
+  }}
+/>
+```
+
+### Dynamic Colors
+
+```tsx
+<NativeTabs
+  appearance={{
+    android: {
+      useDynamicColors: true,
+    },
+  }}
+/>
+```
+
+### Indicator Style
+
+```tsx
+<NativeTabs
+  appearance={{
+    android: {
+      indicatorStyle: 'pill', // or 'line'
+    },
+  }}
+/>
+```
+
+## Bottom Accessory (iOS 26+)
+
+Add accessory content below tabs:
+
+```tsx
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
+
+export default function TabLayout() {
+  const placement = NativeTabs.BottomAccessory.usePlacement();
+  
+  return (
+    <NativeTabs>
+      <NativeTabs.Trigger name="home" />
+      <NativeTabs.Trigger name="profile" />
+      
+      <NativeTabs.BottomAccessory>
+        <View style={{ padding: 16, backgroundColor: '#f0f0f0' }}>
+          <Text>Accessory Content</Text>
+          <Text>Placement: {placement}</Text>
+        </View>
+      </NativeTabs.BottomAccessory>
+    </NativeTabs>
+  );
+}
+```
+
+## Hide Tabs
+
+Hide tabs on specific screens:
+
+```tsx app/details.tsx
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
+
+export default function Details() {
+  return (
+    <>
+      <NativeTabs.Screen options={{ tabBarHidden: true }} />
+      <View>
+        <Text>Details Screen</Text>
+      </View>
+    </>
+  );
+}
+```
+
+## Nested Navigation
+
+Combine with Stack:
+
+```
+app/
+  (tabs)/
+    _layout.tsx
+    home/
+      _layout.tsx     # Stack
+      index.tsx
+      details.tsx
+```
+
+```tsx app/(tabs)/home/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function HomeStack() {
+  return <Stack />;
+}
+```
+
+## Platform-Specific Tabs
+
+Show different tabs per platform:
+
+```tsx
+import { Platform } from 'react-native';
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
+
+export default function TabLayout() {
+  return (
+    <NativeTabs>
+      <NativeTabs.Trigger name="home">
+        <NativeTabs.Trigger.Icon
+          platform="ios"
+          name="house.fill"
+        />
+        <NativeTabs.Trigger.Icon
+          platform="android"
+          name="home"
+        />
+      </NativeTabs.Trigger>
+      
+      {Platform.OS === 'ios' && (
+        <NativeTabs.Trigger name="ios-only">
+          <NativeTabs.Trigger.Label>iOS Only</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+      )}
+    </NativeTabs>
+  );
+}
+```
+
+## Tab Configuration
+
+### Initial Tab
+
+```tsx
+export const unstable_settings = {
+  initialRouteName: 'home',
+};
+
+export default function TabLayout() {
+  return (
+    <NativeTabs>
+      <NativeTabs.Trigger name="home" />
+      <NativeTabs.Trigger name="profile" />
+    </NativeTabs>
+  );
+}
+```
+
+### Tab Order
+
+Tabs appear in the order they're defined:
+
+```tsx
+<NativeTabs>
+  <NativeTabs.Trigger name="first" />   {/* Left/Top */}
+  <NativeTabs.Trigger name="second" />
+  <NativeTabs.Trigger name="third" />   {/* Right/Bottom */}
+</NativeTabs>
+```
+
+## Common Patterns
+
+### Conditional Tab Badge
+
+```tsx
+export default function TabLayout() {
+  const { hasUpdates } = useNotifications();
+  
+  return (
+    <NativeTabs>
+      <NativeTabs.Trigger name="updates">
+        <NativeTabs.Trigger.Label>Updates</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon platform="ios" name="bell" />
+        {hasUpdates && (
+          <NativeTabs.Trigger.Badge />
+        )}
+      </NativeTabs.Trigger>
+    </NativeTabs>
+  );
+}
+```
+
+### Dynamic Icon
+
+```tsx
+export default function TabLayout() {
+  const { isOnline } = useConnection();
+  
+  return (
+    <NativeTabs>
+      <NativeTabs.Trigger name="status">
+        <NativeTabs.Trigger.Label>Status</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          platform="ios"
+          name={isOnline ? 'wifi' : 'wifi.slash'}
+        />
+      </NativeTabs.Trigger>
+    </NativeTabs>
+  );
+}
+```
+
+### Theme-Based Appearance
+
+```tsx
+export default function TabLayout() {
+  const { theme } = useTheme();
+  
+  return (
+    <NativeTabs
+      appearance={{
+        ios: {
+          style: theme === 'dark' ? 'opaqueBlur' : 'defaultBlur',
+        },
+        android: {
+          useDynamicColors: theme === 'auto',
+        },
+      }}
+    >
+      <NativeTabs.Trigger name="home" />
+    </NativeTabs>
+  );
+}
+```
+
+## Migration from Tabs
+
+### Before (Regular Tabs)
+
+```tsx
+import { Tabs } from 'expo-router';
+
+export default function TabLayout() {
+  return (
+    <Tabs>
+      <Tabs.Screen
+        name="home"
+        options={{
+          tabBarIcon: ({ color }) => <Icon name="home" color={color} />,
+        }}
+      />
+    </Tabs>
+  );
+}
+```
+
+### After (Native Tabs)
+
+```tsx
+import { NativeTabs } from 'expo-router/unstable-native-tabs';
+
+export default function TabLayout() {
+  return (
+    <NativeTabs>
+      <NativeTabs.Trigger name="home">
+        <NativeTabs.Trigger.Icon platform="ios" name="house" />
+        <NativeTabs.Trigger.Icon platform="android" name="home" />
+      </NativeTabs.Trigger>
+    </NativeTabs>
+  );
+}
+```
+
+## Best Practices
+
+### Use Native Icons
+
+```tsx
+// Good: Platform-native icons
+<NativeTabs.Trigger.Icon platform="ios" type="sf" name="house" />
+<NativeTabs.Trigger.Icon platform="android" type="md" name="home" />
+
+// Avoid: Custom images when native icons exist
+<NativeTabs.Trigger.Icon type="src" source={require('./home.png')} />
+```
+
+### Provide Platform-Specific Icons
+
+```tsx
+// Good: Optimized for each platform
+<NativeTabs.Trigger name="home">
+  <NativeTabs.Trigger.Icon platform="ios" name="house.fill" />
+  <NativeTabs.Trigger.Icon platform="android" name="home" />
+</NativeTabs.Trigger>
+
+// Avoid: Single icon for all platforms
+<NativeTabs.Trigger name="home">
+  <NativeTabs.Trigger.Icon type="src" source={require('./icon.png')} />
+</NativeTabs.Trigger>
+```
+
+### Keep Tab Count Reasonable
+
+```tsx
+// Good: 3-5 tabs
+<NativeTabs>
+  <NativeTabs.Trigger name="home" />
+  <NativeTabs.Trigger name="search" />
+  <NativeTabs.Trigger name="profile" />
+</NativeTabs>
+
+// Avoid: Too many tabs
+<NativeTabs>
+  {/* 6+ tabs */}
+</NativeTabs>
+```
+
+## Limitations
+
+- Currently in preview - API may change
+- Requires `react-native-screens` 4.0+
+- Some features require iOS 26+ or Android 12+
+- Bottom accessory only works on iOS 26+
+- Sidebar adaptable only on iPadOS 18+
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Tab Navigation" icon="table-cells" href="/router/tab-navigation">
+    Compare with regular tabs
+  </Card>
+  <Card title="Stack Navigation" icon="layer-group" href="/router/stack-navigation">
+    Combine with stacks
+  </Card>
+  <Card title="Layouts" icon="folder" href="/router/layouts">
+    Understand layouts
+  </Card>
+  <Card title="Navigation" icon="compass" href="/router/navigation">
+    Navigate between tabs
+  </Card>
+</CardGroup>

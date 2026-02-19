@@ -1,0 +1,102 @@
+---
+title: expo-web-browser
+description: Open web browsers and handle OAuth redirects
+---
+
+# expo-web-browser
+
+**Version:** 55.0.6
+
+Provides access to the system's web browser and supports handling redirects. Uses SFSafariViewController on iOS and Chrome Custom Tabs on Android.
+
+## Installation
+
+```bash
+npx expo install expo-web-browser
+```
+
+## Usage
+
+```typescript
+import * as WebBrowser from 'expo-web-browser';
+
+// Open URL
+await WebBrowser.openBrowserAsync('https://expo.dev');
+
+// For OAuth flows
+WebBrowser.maybeCompleteAuthSession();
+
+// Open with auth
+const result = await WebBrowser.openAuthSessionAsync(
+  'https://myapp.com/auth',
+  'myapp://redirect'
+);
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="openBrowserAsync(url, options)" type="(url: string, options?: WebBrowserOpenOptions) => Promise<WebBrowserResult>">
+  Opens URL in browser
+  
+  ```typescript
+  const result = await WebBrowser.openBrowserAsync('https://expo.dev', {
+    controlsColor: '#00ff00',
+    toolbarColor: '#000000',
+  });
+  ```
+</ParamField>
+
+<ParamField path="openAuthSessionAsync(url, redirectUrl, options)" type="(url: string, redirectUrl?: string, options?: WebBrowserAuthSessionOptions) => Promise<WebBrowserAuthSessionResult>">
+  Opens browser for auth
+  
+  ```typescript
+  const result = await WebBrowser.openAuthSessionAsync(
+    'https://auth.example.com/login',
+    'myapp://oauth-callback'
+  );
+  
+  if (result.type === 'success') {
+    console.log('URL:', result.url);
+  }
+  ```
+</ParamField>
+
+<ParamField path="dismissBrowser()" type="() => void">
+  Dismisses open browser (iOS only)
+  
+  ```typescript
+  WebBrowser.dismissBrowser();
+  ```
+</ParamField>
+
+<ParamField path="warmUpAsync()" type="() => Promise<void>">
+  Warms up browser (Android)
+</ParamField>
+
+<ParamField path="coolDownAsync()" type="() => Promise<void>">
+  Cools down browser (Android)
+</ParamField>
+
+<ParamField path="maybeCompleteAuthSession()" type="() => void">
+  Completes auth session
+  
+  Call at app root for OAuth flows:
+  ```typescript
+  WebBrowser.maybeCompleteAuthSession();
+  ```
+</ParamField>
+
+## Platform Support
+
+| Platform | Supported | Implementation |
+|----------|----------|----------------|
+| iOS      | ✅       | SFSafariViewController |
+| Android  | ✅       | Chrome Custom Tabs |
+| Web      | ✅       | window.open |
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/webbrowser/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-web-browser)

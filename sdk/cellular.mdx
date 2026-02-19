@@ -1,0 +1,120 @@
+---
+title: expo-cellular
+description: Get information about the user's cellular service provider
+---
+
+# expo-cellular
+
+**Version:** 55.0.6
+
+Provides information about the user's cellular service provider, such as carrier name and country.
+
+## Installation
+
+```bash
+npx expo install expo-cellular
+```
+
+## Usage
+
+```typescript
+import * as Cellular from 'expo-cellular';
+
+const carrier = await Cellular.getCarrierNameAsync();
+const isoCountryCode = await Cellular.getIsoCountryCodeAsync();
+const mobileCountryCode = await Cellular.getMobileCountryCodeAsync();
+
+console.log('Carrier:', carrier);
+console.log('Country:', isoCountryCode);
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="Cellular.getCarrierNameAsync()" type="() => Promise<string | null>">
+  Gets the carrier/network operator name
+  
+  ```typescript
+  const carrier = await Cellular.getCarrierNameAsync();
+  console.log(carrier); // "Verizon", "T-Mobile", etc.
+  ```
+</ParamField>
+
+<ParamField path="Cellular.getIsoCountryCodeAsync()" type="() => Promise<string | null>">
+  Gets the ISO country code
+  
+  ```typescript
+  const country = await Cellular.getIsoCountryCodeAsync();
+  console.log(country); // "us", "gb", "jp", etc.
+  ```
+</ParamField>
+
+<ParamField path="Cellular.getMobileCountryCodeAsync()" type="() => Promise<string | null>">
+  Gets the mobile country code (MCC)
+</ParamField>
+
+<ParamField path="Cellular.getMobileNetworkCodeAsync()" type="() => Promise<string | null>">
+  Gets the mobile network code (MNC)
+</ParamField>
+
+<ParamField path="Cellular.allowsVoip" type="boolean | null">
+  **iOS only**: Whether the carrier allows VoIP calls
+</ParamField>
+
+### Constants
+
+<ResponseField name="Cellular.Cellular" type="Cellular" platform="ios">
+  Enum for cellular generation:
+  - `Cellular.Cellular.UNKNOWN`
+  - `Cellular.Cellular.CELLULAR_2G`
+  - `Cellular.Cellular.CELLULAR_3G`
+  - `Cellular.Cellular.CELLULAR_4G`
+  - `Cellular.Cellular.CELLULAR_5G`
+</ResponseField>
+
+## Examples
+
+### Display Carrier Info
+
+```tsx
+import * as Cellular from 'expo-cellular';
+import { useEffect, useState } from 'react';
+import { Text, View } from 'react-native';
+
+function CarrierInfo() {
+  const [info, setInfo] = useState<{
+    carrier: string | null;
+    country: string | null;
+  }>({ carrier: null, country: null });
+
+  useEffect(() => {
+    async function loadCarrierInfo() {
+      const carrier = await Cellular.getCarrierNameAsync();
+      const country = await Cellular.getIsoCountryCodeAsync();
+      setInfo({ carrier, country });
+    }
+    loadCarrierInfo();
+  }, []);
+
+  return (
+    <View>
+      <Text>Carrier: {info.carrier || 'Unknown'}</Text>
+      <Text>Country: {info.country?.toUpperCase() || 'Unknown'}</Text>
+    </View>
+  );
+}
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ❌       |
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/cellular/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-cellular)

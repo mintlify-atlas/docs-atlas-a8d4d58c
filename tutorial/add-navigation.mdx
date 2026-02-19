@@ -1,0 +1,850 @@
+---
+title: "Add Navigation"
+description: "Learn to navigate between screens using Expo Router's file-based routing"
+icon: "route"
+---
+
+In this tutorial, you'll learn how to add multiple screens to your app and navigate between them using Expo Router. You'll create a multi-screen app with tab navigation and understand how file-based routing works.
+
+## What You'll Build
+
+A multi-screen app with:
+
+- Home screen
+- Profile screen
+- Settings screen
+- Tab navigation between screens
+- Dynamic routes for user profiles
+
+**Time required:** 15-20 minutes
+
+## Prerequisites
+
+<Check>
+  Complete the [Create Your First Project](/tutorial/create-project) tutorial first.
+</Check>
+
+## Understanding File-Based Routing
+
+Expo Router uses your file structure to create routes automatically. Files in the `app/` directory become screens:
+
+```bash
+app/
+  index.tsx           # Route: /
+  about.tsx           # Route: /about
+  profile/
+    index.tsx         # Route: /profile
+    [id].tsx          # Route: /profile/:id
+  (tabs)/             # Group (not in URL)
+    home.tsx          # Route: /home
+    settings.tsx      # Route: /settings
+```
+
+<Info>
+  No route configuration needed - just create files and they become routes!
+</Info>
+
+## Step 1: Create Additional Screens
+
+Let's add two new screens to your app.
+
+### Create Profile Screen
+
+Create `app/profile.tsx`:
+
+```tsx app/profile.tsx
+import { StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Link } from 'expo-router';
+
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+
+export default function ProfileScreen() {
+  return (
+    <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <ThemedView style={styles.content}>
+          <ThemedText type="title">Profile Screen</ThemedText>
+          
+          <ThemedText style={styles.info}>
+            This is your profile page.
+          </ThemedText>
+
+          <Link href="/" style={styles.link}>
+            <ThemedText type="link">Go back home</ThemedText>
+          </Link>
+        </ThemedView>
+      </SafeAreaView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+    gap: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  info: {
+    textAlign: 'center',
+  },
+  link: {
+    marginTop: 16,
+  },
+});
+```
+
+### Create Settings Screen
+
+Create `app/settings.tsx`:
+
+```tsx app/settings.tsx
+import { StyleSheet, Switch } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Link } from 'expo-router';
+import { useState } from 'react';
+
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+
+export default function SettingsScreen() {
+  const [notifications, setNotifications] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
+
+  return (
+    <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <ThemedView style={styles.content}>
+          <ThemedText type="title">Settings</ThemedText>
+
+          <ThemedView style={styles.settingRow}>
+            <ThemedText>Enable Notifications</ThemedText>
+            <Switch
+              value={notifications}
+              onValueChange={setNotifications}
+            />
+          </ThemedView>
+
+          <ThemedView style={styles.settingRow}>
+            <ThemedText>Dark Mode</ThemedText>
+            <Switch
+              value={darkMode}
+              onValueChange={setDarkMode}
+            />
+          </ThemedView>
+
+          <Link href="/" style={styles.link}>
+            <ThemedText type="link">Go back home</ThemedText>
+          </Link>
+        </ThemedView>
+      </SafeAreaView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+    gap: 16,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(128, 128, 128, 0.1)',
+  },
+  link: {
+    marginTop: 16,
+    alignSelf: 'center',
+  },
+});
+```
+
+Save both files and keep your dev server running.
+
+## Step 2: Add Navigation Links
+
+Update your home screen to link to the new screens:
+
+```tsx app/index.tsx
+import { StyleSheet, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Link } from 'expo-router';
+
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+
+export default function HomeScreen() {
+  return (
+    <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <ThemedView style={styles.content}>
+          <ThemedText type="title" style={styles.title}>
+            Welcome to Expo Router
+          </ThemedText>
+
+          <ThemedText style={styles.subtitle}>
+            Navigate between screens:
+          </ThemedText>
+
+          <ThemedView style={styles.navigation}>
+            <Link href="/profile" asChild>
+              <Pressable style={styles.button}>
+                <ThemedText type="subtitle" style={styles.buttonText}>
+                  View Profile
+                </ThemedText>
+              </Pressable>
+            </Link>
+
+            <Link href="/settings" asChild>
+              <Pressable style={styles.button}>
+                <ThemedText type="subtitle" style={styles.buttonText}>
+                  Open Settings
+                </ThemedText>
+              </Pressable>
+            </Link>
+          </ThemedView>
+        </ThemedView>
+      </SafeAreaView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+    gap: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    textAlign: 'center',
+  },
+  subtitle: {
+    textAlign: 'center',
+    opacity: 0.7,
+  },
+  navigation: {
+    gap: 16,
+    width: '100%',
+    maxWidth: 300,
+  },
+  button: {
+    padding: 16,
+    borderRadius: 8,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#FFFFFF',
+  },
+});
+```
+
+<Check>
+  Save and test! Tap the buttons to navigate between screens.
+</Check>
+
+## Step 3: Add Tab Navigation
+
+Let's create a tab bar at the bottom of the app.
+
+### Create Tabs Group
+
+Create a new folder and layout:
+
+```bash
+mkdir -p app/\(tabs\)
+```
+
+Create `app/(tabs)/_layout.tsx`:
+
+```tsx app/(tabs)/_layout.tsx
+import { Tabs } from 'expo-router';
+import { Platform } from 'react-native';
+
+export default function TabLayout() {
+  return (
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: '#007AFF',
+        tabBarStyle: {
+          backgroundColor: Platform.OS === 'ios' ? 'transparent' : '#FFFFFF',
+        },
+        headerShown: false,
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ color }) => <HomeIcon color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="explore"
+        options={{
+          title: 'Explore',
+          tabBarIcon: ({ color }) => <ExploreIcon color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <ProfileIcon color={color} />,
+        }}
+      />
+    </Tabs>
+  );
+}
+
+// Simple icon components
+function HomeIcon({ color }: { color: string }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill={color}>
+      <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+    </svg>
+  );
+}
+
+function ExploreIcon({ color }: { color: string }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill={color}>
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+    </svg>
+  );
+}
+
+function ProfileIcon({ color }: { color: string }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill={color}>
+      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+    </svg>
+  );
+}
+```
+
+<Info>
+  The `(tabs)` folder name uses parentheses to create a route group that doesn't affect the URL path.
+</Info>
+
+### Move Screens to Tabs
+
+Move your screens into the tabs group:
+
+```bash
+mv app/index.tsx app/\(tabs\)/index.tsx
+mv app/explore.tsx app/\(tabs\)/explore.tsx
+mv app/profile.tsx app/\(tabs\)/profile.tsx
+```
+
+Update your root layout `app/_layout.tsx`:
+
+```tsx app/_layout.tsx
+import { Stack } from 'expo-router';
+import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
+import { useColorScheme } from 'react-native';
+
+export default function RootLayout() {
+  const colorScheme = useColorScheme();
+
+  return (
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="settings" />
+      </Stack>
+    </ThemeProvider>
+  );
+}
+```
+
+<Check>
+  Now you have a tab bar at the bottom! Try switching between tabs.
+</Check>
+
+## Step 4: Add Dynamic Routes
+
+Dynamic routes let you create pages based on parameters (like user IDs).
+
+Create `app/(tabs)/profile/[id].tsx`:
+
+```bash
+mkdir app/\(tabs\)/profile
+mv app/\(tabs\)/profile.tsx app/\(tabs\)/profile/index.tsx
+```
+
+Create `app/(tabs)/profile/[id].tsx`:
+
+```tsx app/(tabs)/profile/[id].tsx
+import { StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLocalSearchParams, router } from 'expo-router';
+
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { Pressable } from 'react-native';
+
+export default function UserProfileScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+
+  return (
+    <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <ThemedView style={styles.content}>
+          <ThemedText type="title">User Profile</ThemedText>
+          
+          <ThemedText style={styles.userId}>
+            Viewing profile for user: {id}
+          </ThemedText>
+
+          <ThemedText style={styles.info}>
+            This is a dynamic route. The ID comes from the URL!
+          </ThemedText>
+
+          <Pressable
+            style={styles.button}
+            onPress={() => router.back()}
+          >
+            <ThemedText style={styles.buttonText}>Go Back</ThemedText>
+          </Pressable>
+        </ThemedView>
+      </SafeAreaView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+    gap: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userId: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  info: {
+    textAlign: 'center',
+    opacity: 0.7,
+  },
+  button: {
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 8,
+    backgroundColor: '#007AFF',
+  },
+  buttonText: {
+    color: '#FFFFFF',
+  },
+});
+```
+
+Update `app/(tabs)/profile/index.tsx` to link to dynamic routes:
+
+```tsx app/(tabs)/profile/index.tsx
+import { StyleSheet, Pressable, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Link } from 'expo-router';
+
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+
+const USERS = [
+  { id: '1', name: 'Alice Johnson' },
+  { id: '2', name: 'Bob Smith' },
+  { id: '3', name: 'Carol Williams' },
+];
+
+export default function ProfileScreen() {
+  return (
+    <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView contentContainerStyle={styles.content}>
+          <ThemedText type="title">Profile</ThemedText>
+          
+          <ThemedText style={styles.subtitle}>
+            Select a user to view their profile:
+          </ThemedText>
+
+          <ThemedView style={styles.userList}>
+            {USERS.map((user) => (
+              <Link
+                key={user.id}
+                href={`/profile/${user.id}`}
+                asChild
+              >
+                <Pressable style={styles.userCard}>
+                  <ThemedText type="subtitle">{user.name}</ThemedText>
+                  <ThemedText style={styles.arrow}>→</ThemedText>
+                </Pressable>
+              </Link>
+            ))}
+          </ThemedView>
+        </ScrollView>
+      </SafeAreaView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  content: {
+    padding: 16,
+    gap: 16,
+  },
+  subtitle: {
+    opacity: 0.7,
+  },
+  userList: {
+    gap: 12,
+  },
+  userCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(128, 128, 128, 0.1)',
+  },
+  arrow: {
+    opacity: 0.5,
+  },
+});
+```
+
+<Check>
+  Tap on a user to navigate to their dynamic profile page!
+</Check>
+
+## Navigation Methods
+
+Expo Router provides multiple ways to navigate:
+
+### Using Link Component
+
+```tsx
+import { Link } from 'expo-router';
+
+<Link href="/profile">Go to Profile</Link>
+
+// With params
+<Link href="/profile/123">User 123</Link>
+
+// With query params
+<Link href={{ pathname: '/profile', params: { id: '123', tab: 'posts' } }}>
+  Profile
+</Link>
+```
+
+### Using router Object
+
+```tsx
+import { router } from 'expo-router';
+
+// Push (add to stack)
+router.push('/profile');
+
+// Replace (replace current)
+router.replace('/login');
+
+// Go back
+router.back();
+
+// Navigate with params
+router.push({
+  pathname: '/profile/[id]',
+  params: { id: '123' }
+});
+```
+
+### Programmatic Navigation
+
+```tsx
+import { router } from 'expo-router';
+import { Pressable } from 'react-native';
+
+function NavigateButton() {
+  const handlePress = () => {
+    // Do something first
+    console.log('Navigating...');
+    
+    // Then navigate
+    router.push('/profile');
+  };
+
+  return (
+    <Pressable onPress={handlePress}>
+      <Text>Go to Profile</Text>
+    </Pressable>
+  );
+}
+```
+
+## Advanced Routing Patterns
+
+### Modal Routes
+
+Create a modal by adding it to the root stack:
+
+```tsx app/_layout.tsx
+<Stack>
+  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+  <Stack.Screen
+    name="modal"
+    options={{
+      presentation: 'modal',
+      title: 'Modal Screen',
+    }}
+  />
+</Stack>
+```
+
+### Nested Navigators
+
+Create complex hierarchies:
+
+```bash
+app/
+  (tabs)/
+    _layout.tsx       # Tab navigator
+    index.tsx
+    profile/
+      _layout.tsx     # Stack navigator for profile
+      index.tsx
+      [id].tsx
+      edit.tsx
+```
+
+### Catch-All Routes
+
+Handle 404s with `+not-found.tsx`:
+
+```tsx app/+not-found.tsx
+import { Link } from 'expo-router';
+import { ThemedView } from '@/components/themed-view';
+import { ThemedText } from '@/components/themed-text';
+
+export default function NotFoundScreen() {
+  return (
+    <ThemedView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+      <ThemedText type="title">Page Not Found</ThemedText>
+      <Link href="/">
+        <ThemedText type="link">Go home</ThemedText>
+      </Link>
+    </ThemedView>
+  );
+}
+```
+
+## Type-Safe Routes
+
+Expo Router generates types for all your routes:
+
+```tsx
+import { Href } from 'expo-router';
+
+// Type-safe route
+const profileRoute: Href = '/profile/123';
+
+// TypeScript error for invalid route
+const invalidRoute: Href = '/nonexistent'; // Error!
+```
+
+## Navigation Best Practices
+
+<AccordionGroup>
+
+<Accordion title="Use descriptive file names" icon="file">
+  
+File names become routes, so make them clear:
+
+```bash
+# Good
+app/user-profile.tsx          # /user-profile
+app/settings/notifications.tsx # /settings/notifications
+
+# Avoid
+app/up.tsx                     # /up (unclear)
+app/page1.tsx                  # /page1 (generic)
+```
+
+</Accordion>
+
+<Accordion title="Group related routes" icon="folder">
+  
+Use route groups for organization:
+
+```bash
+app/
+  (auth)/              # Group: authentication
+    login.tsx
+    register.tsx
+  (main)/              # Group: main app
+    (tabs)/            # Nested group: tabs
+      home.tsx
+      profile.tsx
+```
+
+</Accordion>
+
+<Accordion title="Handle navigation state" icon="arrows-rotate">
+  
+Always handle back navigation:
+
+```tsx
+import { router } from 'expo-router';
+
+function BackButton() {
+  return (
+    <Pressable onPress={() => router.back()}>
+      <Text>← Back</Text>
+    </Pressable>
+  );
+}
+```
+
+</Accordion>
+
+<Accordion title="Deep link friendly URLs" icon="link">
+  
+Design URLs that work as deep links:
+
+```bash
+# Good
+/product/123
+/user/profile/settings
+/cart/checkout
+
+# Avoid
+/p/123              # Not descriptive
+/screen2            # Generic
+```
+
+</Accordion>
+
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+
+<Accordion title="Screen not appearing">
+  
+Check:
+1. File is in `app/` directory
+2. File exports a default component
+3. Dev server restarted after adding file
+
+</Accordion>
+
+<Accordion title="Navigation doesn't work">
+  
+Verify:
+1. Using correct href format
+2. Route exists in file structure
+3. No typos in route path
+
+```tsx
+// Correct
+<Link href="/profile">Profile</Link>
+
+// Wrong
+<Link href="profile">Profile</Link>  // Missing /
+```
+
+</Accordion>
+
+<Accordion title="Dynamic route params undefined">
+  
+Use `useLocalSearchParams` correctly:
+
+```tsx
+import { useLocalSearchParams } from 'expo-router';
+
+function Screen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  
+  if (!id) {
+    return <Text>Loading...</Text>;
+  }
+  
+  return <Text>User: {id}</Text>;
+}
+```
+
+</Accordion>
+
+</AccordionGroup>
+
+## Next Steps
+
+Congratulations! You've learned:
+
+- File-based routing basics
+- Creating multiple screens
+- Tab navigation
+- Dynamic routes
+- Navigation methods
+- Best practices
+
+<CardGroup cols={2}>
+  <Card title="Build & Deploy" icon="rocket" href="/tutorial/build-and-deploy">
+    Ship your app to production
+  </Card>
+  
+  <Card title="Router Documentation" icon="book" href="https://docs.expo.dev/router/introduction/">
+    Advanced routing features
+  </Card>
+  
+  <Card title="SDK Modules" icon="puzzle-piece" href="https://docs.expo.dev/versions/latest/">
+    Add more features to your app
+  </Card>
+  
+  <Card title="Core Concepts" icon="graduation-cap" href="/core-concepts/architecture">
+    Understand Expo architecture
+  </Card>
+</CardGroup>

@@ -1,0 +1,226 @@
+---
+title: expo-haptics
+description: Trigger haptic feedback and vibration patterns on iOS and Android
+---
+
+# expo-haptics
+
+**Version:** 55.0.6
+
+Provides access to the system's haptics engine on iOS, vibration effects on Android, and Web Vibration API on web.
+
+## Installation
+
+```bash
+npx expo install expo-haptics
+```
+
+## Usage
+
+```typescript
+import * as Haptics from 'expo-haptics';
+
+// Light impact
+await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+// Success notification
+await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+// Selection feedback
+await Haptics.selectionAsync();
+```
+
+## API Reference
+
+### Impact Feedback
+
+<ParamField path="Haptics.impactAsync(style)" type="(style: ImpactFeedbackStyle) => Promise<void>">
+  Triggers impact haptic feedback
+  
+  **Styles:**
+  - `Haptics.ImpactFeedbackStyle.Light`
+  - `Haptics.ImpactFeedbackStyle.Medium`
+  - `Haptics.ImpactFeedbackStyle.Heavy`
+  - `Haptics.ImpactFeedbackStyle.Rigid` (iOS 13+)
+  - `Haptics.ImpactFeedbackStyle.Soft` (iOS 13+)
+  
+  ```typescript
+  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  ```
+</ParamField>
+
+### Notification Feedback
+
+<ParamField path="Haptics.notificationAsync(type)" type="(type: NotificationFeedbackType) => Promise<void>">
+  Triggers notification haptic feedback
+  
+  **Types:**
+  - `Haptics.NotificationFeedbackType.Success`
+  - `Haptics.NotificationFeedbackType.Warning`
+  - `Haptics.NotificationFeedbackType.Error`
+  
+  ```typescript
+  await Haptics.notificationAsync(
+    Haptics.NotificationFeedbackType.Success
+  );
+  ```
+</ParamField>
+
+### Selection Feedback
+
+<ParamField path="Haptics.selectionAsync()" type="() => Promise<void>">
+  Triggers selection change haptic feedback
+  
+  ```typescript
+  // Use when user changes a selection (e.g., picker wheel)
+  await Haptics.selectionAsync();
+  ```
+</ParamField>
+
+## Examples
+
+### Button Press Feedback
+
+```tsx
+import * as Haptics from 'expo-haptics';
+import { TouchableOpacity, Text } from 'react-native';
+
+function HapticButton() {
+  const handlePress = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Handle button action
+  };
+
+  return (
+    <TouchableOpacity onPress={handlePress}>
+      <Text>Press Me</Text>
+    </TouchableOpacity>
+  );
+}
+```
+
+### Form Validation Feedback
+
+```tsx
+import * as Haptics from 'expo-haptics';
+import { useState } from 'react';
+import { TextInput, Button } from 'react-native';
+
+function Form() {
+  const [email, setEmail] = useState('');
+
+  const handleSubmit = async () => {
+    if (!email.includes('@')) {
+      await Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Error
+      );
+      alert('Invalid email');
+      return;
+    }
+
+    await Haptics.notificationAsync(
+      Haptics.NotificationFeedbackType.Success
+    );
+    // Submit form
+  };
+
+  return (
+    <>
+      <TextInput value={email} onChangeText={setEmail} />
+      <Button title="Submit" onPress={handleSubmit} />
+    </>
+  );
+}
+```
+
+### Picker Selection
+
+```tsx
+import * as Haptics from 'expo-haptics';
+import { useState } from 'react';
+import { Picker } from '@react-native-picker/picker';
+
+function PickerWithHaptics() {
+  const [selected, setSelected] = useState('option1');
+
+  const handleValueChange = async (value: string) => {
+    await Haptics.selectionAsync();
+    setSelected(value);
+  };
+
+  return (
+    <Picker selectedValue={selected} onValueChange={handleValueChange}>
+      <Picker.Item label="Option 1" value="option1" />
+      <Picker.Item label="Option 2" value="option2" />
+      <Picker.Item label="Option 3" value="option3" />
+    </Picker>
+  );
+}
+```
+
+### Different Impact Levels
+
+```tsx
+import * as Haptics from 'expo-haptics';
+import { View, Button } from 'react-native';
+
+function HapticDemo() {
+  return (
+    <View style={{ gap: 10 }}>
+      <Button
+        title="Light Impact"
+        onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+      />
+      <Button
+        title="Medium Impact"
+        onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
+      />
+      <Button
+        title="Heavy Impact"
+        onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)}
+      />
+      <Button
+        title="Success"
+        onPress={() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)}
+      />
+      <Button
+        title="Warning"
+        onPress={() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)}
+      />
+      <Button
+        title="Error"
+        onPress={() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)}
+      />
+    </View>
+  );
+}
+```
+
+## Platform Support
+
+| Platform | Haptics | Vibration |
+|----------|---------|----------|
+| iOS      | ✅ UIFeedbackGenerator | ✅ |
+| Android  | ✅ VibrationEffect | ✅ |
+| Web      | ✅ Vibration API | ✅ |
+
+<Note>
+**iOS**: Uses `UIImpactFeedbackGenerator`, `UINotificationFeedbackGenerator`, and `UISelectionFeedbackGenerator`
+
+**Android**: Uses `VibrationEffect` (API 26+) or `Vibrator` for older versions
+
+**Web**: Uses the Vibration API where supported
+</Note>
+
+## Best Practices
+
+1. **Use Sparingly**: Overuse can be annoying
+2. **Match Interaction**: Use appropriate feedback type for the interaction
+3. **Respect Settings**: Haptics honor system settings (vibration off, etc.)
+4. **Light for UI**: Use `Light` impact for most UI interactions
+5. **Notifications for States**: Use notification feedback for success/error states
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/haptics/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-haptics)

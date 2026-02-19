@@ -1,0 +1,462 @@
+---
+title: "Deep Linking"
+description: "Implement deep linking in your Expo app to handle external URLs and universal links"
+---
+
+## Overview
+
+Deep linking allows external URLs to open specific screens in your app. Expo Router provides built-in support for deep linking with automatic route matching.
+
+## URL Schemes
+
+### Configure your scheme
+
+Add a URL scheme to your `app.json`:
+
+```json app.json
+{
+  "expo": {
+    "scheme": "myapp",
+    "ios": {
+      "bundleIdentifier": "com.company.myapp"
+    },
+    "android": {
+      "package": "com.company.myapp"
+    }
+  }
+}
+```
+
+This allows URLs like `myapp://` to open your app.
+
+### Multiple schemes
+
+```json app.json
+{
+  "expo": {
+    "scheme": ["myapp", "com.company.myapp"]
+  }
+}
+```
+
+## Universal Links (iOS) and App Links (Android)
+
+Universal links allow HTTPS URLs to open your app.
+
+<Tabs>
+  <Tab title="iOS - Universal Links">
+    <Steps>
+      <Step title="Configure app.json">
+        ```json app.json
+        {
+          "expo": {
+            "ios": {
+              "associatedDomains": [
+                "applinks:myapp.com",
+                "applinks:www.myapp.com"
+              ]
+            }
+          }
+        }
+        ```
+      </Step>
+
+      <Step title="Create apple-app-site-association file">
+        Host this at `https://myapp.com/.well-known/apple-app-site-association`:
+
+        ```json
+        {
+          "applinks": {
+            "apps": [],
+            "details": [
+              {
+                "appID": "TEAMID.com.company.myapp",
+                "paths": [
+                  "/products/*",
+                  "/user/*",
+                  "/post/*"
+                ]
+              }
+            ]
+          }
+        }
+        ```
+
+        <Warning>
+          This file must be served with `Content-Type: application/json` and accessible over HTTPS.
+        </Warning>
+      </Step>
+
+      <Step title="Find your Team ID">
+        ```bash
+        eas credentials
+        ```
+        
+        Or check your [Apple Developer account](https://developer.apple.com/account).
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="Android - App Links">
+    <Steps>
+      <Step title="Configure app.json">
+        ```json app.json
+        {
+          "expo": {
+            "android": {
+              "intentFilters": [
+                {
+                  "action": "VIEW",
+                  "autoVerify": true,
+                  "data": [
+                    {
+                      "scheme": "https",
+                      "host": "myapp.com",
+                      "pathPrefix": "/products"
+                    },
+                    {
+                      "scheme": "https",
+                      "host": "myapp.com",
+                      "pathPrefix": "/user"
+                    }
+                  ],
+                  "category": ["BROWSABLE", "DEFAULT"]
+                }
+              ]
+            }
+          }
+        }
+        ```
+      </Step>
+
+      <Step title="Create assetlinks.json file">
+        Host this at `https://myapp.com/.well-known/assetlinks.json`:
+
+        ```json
+        [
+          {
+            "relation": ["delegate_permission/common.handle_all_urls"],
+            "target": {
+              "namespace": "android_app",
+              "package_name": "com.company.myapp",
+              "sha256_cert_fingerprints": [
+                "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99"
+              ]
+            }
+          }
+        ]
+        ```
+      </Step>
+
+      <Step title="Get SHA-256 fingerprint">
+        ```bash
+        eas credentials
+        ```
+        
+        Select your Android app and view the certificate fingerprint.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Handling Deep Links with Expo Router
+
+### Automatic route matching
+
+Expo Router automatically handles deep links based on your file structure:
+
+```
+app/
+├── index.tsx                 # myapp://
+├── products/
+│   └── [id].tsx             # myapp://products/123
+├── user/
+│   └── [username].tsx       # myapp://user/john
+└── post/
+    └── [id].tsx             # myapp://post/456
+```
+
+### Access URL parameters
+
+```typescript app/products/[id].tsx
+import { useLocalSearchParams } from 'expo-router';
+
+export default function ProductScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+
+  return (
+    <View>
+      <Text>Product ID: {id}</Text>
+    </View>
+  );
+}
+```
+
+### Handle query parameters
+
+```typescript
+// URL: myapp://products/123?source=email&campaign=summer
+import { useLocalSearchParams } from 'expo-router';
+
+export default function ProductScreen() {
+  const { id, source, campaign } = useLocalSearchParams<{
+    id: string;
+    source?: string;
+    campaign?: string;
+  }>();
+
+  useEffect(() => {
+    if (source === 'email') {
+      analytics.track('Opened from email', { campaign });
+    }
+  }, [source, campaign]);
+
+  return <ProductDetails id={id} />;
+}
+```
+
+## Advanced Deep Linking
+
+### Programmatic navigation
+
+```typescript
+import { router } from 'expo-router';
+import * as Linking from 'expo-linking';
+
+// Listen for URL events
+function useDeepLinking() {
+  useEffect(() => {
+    const handleUrl = ({ url }: { url: string }) => {
+      const { path, queryParams } = Linking.parse(url);
+      
+      if (path === 'reset-password') {
+        router.push({
+          pathname: '/reset-password',
+          params: { token: queryParams?.token },
+        });
+      }
+    };
+
+    // Handle initial URL
+    Linking.getInitialURL().then(url => {
+      if (url) handleUrl({ url });
+    });
+
+    // Handle URLs while app is running
+    const subscription = Linking.addEventListener('url', handleUrl);
+
+    return () => subscription.remove();
+  }, []);
+}
+```
+
+### Custom URL parsing
+
+```typescript
+import * as Linking from 'expo-linking';
+
+const url = 'myapp://products/123?color=blue&size=large';
+
+const parsed = Linking.parse(url);
+console.log(parsed);
+// {
+//   scheme: 'myapp',
+//   path: 'products/123',
+//   queryParams: { color: 'blue', size: 'large' }
+// }
+
+// Create URLs
+const newUrl = Linking.createURL('products/456', {
+  queryParams: { featured: 'true' },
+});
+console.log(newUrl);
+// 'myapp://products/456?featured=true'
+```
+
+### Deferred deep linking
+
+Handle deep links after authentication:
+
+```typescript app/_layout.tsx
+import { useEffect, useState } from 'react';
+import { router, useSegments } from 'expo-router';
+import * as Linking from 'expo-linking';
+
+export default function RootLayout() {
+  const [initialUrl, setInitialUrl] = useState<string | null>(null);
+  const segments = useSegments();
+  const { user } = useAuth();
+
+  // Store initial URL
+  useEffect(() => {
+    Linking.getInitialURL().then(url => {
+      if (url) setInitialUrl(url);
+    });
+  }, []);
+
+  // Redirect after authentication
+  useEffect(() => {
+    if (user && initialUrl) {
+      const { path, queryParams } = Linking.parse(initialUrl);
+      router.push({ pathname: `/${path}`, params: queryParams });
+      setInitialUrl(null);
+    }
+  }, [user, initialUrl]);
+
+  return <Slot />;
+}
+```
+
+## Testing Deep Links
+
+<Tabs>
+  <Tab title="iOS">
+    ### Using xcrun
+
+    ```bash
+    # Custom scheme
+    xcrun simctl openurl booted "myapp://products/123"
+
+    # Universal link
+    xcrun simctl openurl booted "https://myapp.com/products/123"
+    ```
+
+    ### Using Safari
+    Open Safari on your simulator/device and enter the URL in the address bar.
+
+    ### Using Notes app
+    1. Open Notes app
+    2. Create a new note
+    3. Type your deep link URL
+    4. Tap the link
+  </Tab>
+
+  <Tab title="Android">
+    ### Using adb
+
+    ```bash
+    # Custom scheme
+    adb shell am start -W -a android.intent.action.VIEW -d "myapp://products/123" com.company.myapp
+
+    # App link
+    adb shell am start -W -a android.intent.action.VIEW -d "https://myapp.com/products/123" com.company.myapp
+    ```
+
+    ### Using Chrome
+    Open Chrome on your emulator/device and enter the URL in the address bar.
+  </Tab>
+
+  <Tab title="Expo Go">
+    ```bash
+    # Using npx
+    npx uri-scheme open myapp://products/123 --ios
+    npx uri-scheme open myapp://products/123 --android
+
+    # In development
+    npx expo start
+    # Then press 'o' and enter your deep link
+    ```
+  </Tab>
+</Tabs>
+
+## Debugging
+
+### Log all deep links
+
+```typescript
+import * as Linking from 'expo-linking';
+
+function useDeepLinkLogger() {
+  useEffect(() => {
+    const handleUrl = ({ url }: { url: string }) => {
+      console.log('Deep link received:', url);
+      const parsed = Linking.parse(url);
+      console.log('Parsed:', JSON.stringify(parsed, null, 2));
+    };
+
+    Linking.getInitialURL().then(url => {
+      if (url) {
+        console.log('Initial URL:', url);
+        handleUrl({ url });
+      }
+    });
+
+    const subscription = Linking.addEventListener('url', handleUrl);
+    return () => subscription.remove();
+  }, []);
+}
+```
+
+### Test universal links validation
+
+<Tabs>
+  <Tab title="iOS">
+    Test your apple-app-site-association file:
+    ```bash
+    curl https://myapp.com/.well-known/apple-app-site-association
+    ```
+
+    Or use [Apple's validator](https://search.developer.apple.com/appsearch-validation-tool/).
+  </Tab>
+
+  <Tab title="Android">
+    Test your assetlinks.json file:
+    ```bash
+    curl https://myapp.com/.well-known/assetlinks.json
+    ```
+
+    Or use [Google's validator](https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://myapp.com&relation=delegate_permission/common.handle_all_urls).
+  </Tab>
+</Tabs>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Universal links not working">
+    - Verify your association files are accessible over HTTPS
+    - Check that the JSON is valid and properly formatted
+    - Ensure the Content-Type header is `application/json`
+    - Clear iOS cache: Delete app, restart device, reinstall
+    - For Android: Check SHA-256 fingerprint matches your app certificate
+  </Accordion>
+
+  <Accordion title="Links open in browser instead of app">
+    - On iOS: Universal links only work from external sources (Safari, Messages, Mail)
+    - Tapping links within your app's WebView won't trigger universal links
+    - Long-press the link and verify your app appears in the options
+  </Accordion>
+
+  <Accordion title="Parameters not being received">
+    - Check that you're using `useLocalSearchParams()` from expo-router
+    - Verify the URL is properly formatted with query parameters
+    - Log the received URL to inspect its structure
+  </Accordion>
+
+  <Accordion title="App not opening on custom scheme">
+    - Rebuild your app after changing the scheme in app.json
+    - Verify the scheme doesn't conflict with other apps
+    - Check for typos in your URL scheme
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  Changes to URL schemes and associated domains require a rebuild. Run `npx expo prebuild` and rebuild your app.
+</Warning>
+
+## Best Practices
+
+- **Use universal links in production**: They provide a better user experience than custom schemes
+- **Handle missing parameters gracefully**: Not all deep links will include all expected parameters
+- **Validate deep link data**: Don't trust user-provided data in URLs
+- **Support both authenticated and unauthenticated routes**: Store deep links if authentication is required
+- **Test on physical devices**: Universal links don't work reliably in simulators
+- **Use analytics**: Track which deep links drive the most engagement
+- **Provide fallbacks**: Handle cases where the linked content no longer exists
+- **Document your URL structure**: Maintain a clear mapping of URLs to app screens
+
+## Related Resources
+
+- [Expo Linking documentation](https://docs.expo.dev/versions/latest/sdk/linking/)
+- [Expo Router deep linking](https://docs.expo.dev/router/reference/linking/)
+- [Apple Universal Links](https://developer.apple.com/ios/universal-links/)
+- [Android App Links](https://developer.android.com/training/app-links)

@@ -1,0 +1,726 @@
+---
+title: "Create Your First Project"
+description: "Step-by-step tutorial: creating a new Expo project and understanding its structure"
+icon: "folder-plus"
+---
+
+In this tutorial, you'll create your first Expo app, explore the project structure, run it on your device, and make your first changes. By the end, you'll understand the foundation of every Expo app.
+
+## What You'll Build
+
+A simple "Hello World" app that:
+
+- Displays a welcome screen
+- Uses Expo Router for navigation
+- Runs on iOS, Android, and web
+- Updates instantly with Fast Refresh
+
+**Time required:** 10-15 minutes
+
+## Prerequisites
+
+<Check>
+  Before starting, make sure you have:
+  - Node.js 18+ installed
+  - A code editor (VS Code recommended)
+  - A phone with Expo Go installed OR iOS Simulator / Android Emulator
+</Check>
+
+If you need help with installation, see the [Installation Guide](/installation).
+
+## Step 1: Create the Project
+
+Open your terminal and run:
+
+<CodeGroup>
+
+```bash npm
+npx create-expo-app my-first-app
+```
+
+```bash yarn
+yarn create expo-app my-first-app
+```
+
+```bash pnpm
+pnpm create expo-app my-first-app
+```
+
+</CodeGroup>
+
+You'll see output like this:
+
+```bash
+✔ Downloaded and extracted project files.
+✔ Installed JavaScript dependencies.
+
+✓ Your project is ready!
+
+To run your project, navigate to the directory and run one of the following commands:
+- cd my-first-app
+- npx expo start
+```
+
+<Info>
+  This creates a new Expo project with Expo Router pre-configured for file-based routing.
+</Info>
+
+## Step 2: Explore the Project Structure
+
+Navigate into your project and open it in your editor:
+
+```bash
+cd my-first-app
+code .
+```
+
+Let's understand the structure:
+
+```bash
+my-first-app/
+├── app/                    # Your app screens (file-based routing)
+│   ├── _layout.tsx        # Root layout
+│   ├── index.tsx          # Home screen (route: /)
+│   └── explore.tsx        # Explore screen (route: /explore)
+│
+├── assets/                # Images, fonts, and other static files
+│   ├── fonts/
+│   └── images/
+│
+├── components/            # Reusable React components
+│   ├── themed-text.tsx
+│   └── themed-view.tsx
+│
+├── constants/             # App-wide constants (colors, spacing)
+│   └── theme.ts
+│
+├── app.json               # Expo configuration
+├── package.json           # Dependencies and scripts
+├── tsconfig.json          # TypeScript configuration
+└── README.md
+```
+
+### Key Files Explained
+
+<AccordionGroup>
+
+<Accordion title="app.json - App Configuration">
+
+This file configures your app:
+
+```json app.json
+{
+  "expo": {
+    "name": "my-first-app",
+    "slug": "my-first-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "myapp",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourcompany.myfirstapp"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.yourcompany.myfirstapp"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    }
+  }
+}
+```
+
+**Key settings:**
+- `name`: App display name
+- `slug`: URL-friendly identifier
+- `version`: App version
+- `icon`: App icon (1024x1024px)
+- `scheme`: Deep linking URL scheme
+- `bundleIdentifier` (iOS) / `package` (Android): Unique app identifier
+
+</Accordion>
+
+<Accordion title="package.json - Dependencies">
+
+```json package.json
+{
+  "name": "my-first-app",
+  "main": "expo-router/entry",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "expo start",
+    "reset-project": "node ./scripts/reset-project.js",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "lint": "expo lint"
+  },
+  "dependencies": {
+    "expo": "~55.0.0",
+    "expo-router": "~55.0.0",
+    "expo-status-bar": "~55.0.0",
+    "react": "19.2.0",
+    "react-native": "0.83.2",
+    "react-native-safe-area-context": "~5.6.2",
+    "react-native-screens": "~4.23.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~5.9.2"
+  }
+}
+```
+
+**Important:**
+- `main`: Entry point (Expo Router)
+- `scripts`: Common commands
+- `dependencies`: Runtime libraries
+
+</Accordion>
+
+<Accordion title="app/_layout.tsx - Root Layout">
+
+The root layout wraps all screens:
+
+```tsx app/_layout.tsx
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import React from 'react';
+import { useColorScheme } from 'react-native';
+
+import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import AppTabs from '@/components/app-tabs';
+
+export default function TabLayout() {
+  const colorScheme = useColorScheme();
+  return (
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <AnimatedSplashOverlay />
+      <AppTabs />
+    </ThemeProvider>
+  );
+}
+```
+
+This:
+- Detects light/dark mode
+- Provides theme to all screens
+- Shows animated splash screen
+- Sets up tab navigation
+
+</Accordion>
+
+<Accordion title="app/index.tsx - Home Screen">
+
+The main screen of your app:
+
+```tsx app/index.tsx
+import * as Device from 'expo-device';
+import { Platform, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { AnimatedIcon } from '@/components/animated-icon';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+
+export default function HomeScreen() {
+  return (
+    <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <ThemedView style={styles.heroSection}>
+          <AnimatedIcon />
+          <ThemedText type="title" style={styles.title}>
+            Welcome to Expo
+          </ThemedText>
+        </ThemedView>
+      </SafeAreaView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    flexDirection: 'row',
+  },
+  safeArea: {
+    flex: 1,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  heroSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  title: {
+    textAlign: 'center',
+  },
+});
+```
+
+</Accordion>
+
+</AccordionGroup>
+
+## Step 3: Start the Development Server
+
+Run the development server:
+
+```bash
+npx expo start
+```
+
+You'll see:
+
+```bash
+› Metro waiting on exp://192.168.1.100:8081
+› Scan the QR code above with Expo Go (Android) or the Camera app (iOS)
+
+› Press a │ open Android
+› Press i │ open iOS simulator
+› Press w │ open web
+
+› Press r │ reload app
+› Press m │ toggle menu
+› Press o │ open project code in your editor
+```
+
+<Info>
+  The server will continue running. Leave this terminal open and use a new terminal for other commands.
+</Info>
+
+## Step 4: Run on Your Device
+
+<Tabs>
+  <Tab title="Physical Device">
+    
+    ### Using Your Phone
+
+    1. **Install Expo Go:**
+       - iOS: [App Store](https://apps.apple.com/app/expo-go/id982107779)
+       - Android: [Play Store](https://play.google.com/store/apps/details?id=host.exp.exponent)
+
+    2. **Scan QR code:**
+       - iOS: Use Camera app
+       - Android: Use Expo Go app
+
+    3. **App loads:**
+       Your app opens in Expo Go!
+
+    <Warning>
+      Your phone and computer must be on the same WiFi network. If scanning doesn't work, try:
+      ```bash
+      npx expo start --tunnel
+      ```
+    </Warning>
+
+  </Tab>
+  
+  <Tab title="iOS Simulator">
+    
+    ### Using iOS Simulator (Mac only)
+
+    Press `i` in the terminal where `expo start` is running.
+
+    Expo will:
+    1. Open Xcode Simulator
+    2. Install Expo Go automatically
+    3. Launch your app
+
+    <Info>
+      If you don't have Xcode installed, download it from the Mac App Store (free, but large download).
+    </Info>
+
+  </Tab>
+  
+  <Tab title="Android Emulator">
+    
+    ### Using Android Emulator
+
+    1. **Start an emulator** in Android Studio
+    
+    2. **Press `a`** in the terminal
+
+    Expo will:
+    1. Detect the running emulator
+    2. Install Expo Go
+    3. Launch your app
+
+    <Accordion title="Don't have an emulator?">
+      
+      Create one in Android Studio:
+      1. Open Android Studio
+      2. Tools → Device Manager
+      3. Create Device
+      4. Select Pixel 6 (or any device)
+      5. Download system image (e.g., Android 14)
+      6. Finish and start the emulator
+
+    </Accordion>
+
+  </Tab>
+  
+  <Tab title="Web Browser">
+    
+    ### Using Web Browser
+
+    Press `w` in the terminal.
+
+    Your default browser opens with your app running!
+
+    <Info>
+      Web support is built-in with Metro bundler. No additional configuration needed.
+    </Info>
+
+  </Tab>
+</Tabs>
+
+## Step 5: Make Your First Change
+
+With your app running, let's make a change:
+
+<Steps>
+
+<Step title="Open app/index.tsx">
+  Open the file in your editor
+</Step>
+
+<Step title="Change the title">
+  Find this line:
+  
+  ```tsx app/index.tsx
+  <ThemedText type="title" style={styles.title}>
+    Welcome to Expo
+  </ThemedText>
+  ```
+
+  Change it to:
+
+  ```tsx app/index.tsx
+  <ThemedText type="title" style={styles.title}>
+    Hello, I built this!
+  </ThemedText>
+  ```
+</Step>
+
+<Step title="Save the file">
+  Save (Cmd+S or Ctrl+S)
+</Step>
+
+<Step title="See instant update">
+  Watch your app update automatically without losing any state!
+</Step>
+
+</Steps>
+
+<Check>
+  This is **Fast Refresh** in action - one of Expo's most powerful development features.
+</Check>
+
+## Step 6: Add a Button
+
+Let's add some interactivity:
+
+```tsx app/index.tsx
+import { useState } from 'react';
+import { Button, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+
+export default function HomeScreen() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <ThemedView style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <ThemedView style={styles.content}>
+          <ThemedText type="title" style={styles.title}>
+            Hello, I built this!
+          </ThemedText>
+          
+          <ThemedView style={styles.counterSection}>
+            <ThemedText type="subtitle">
+              You pressed the button {count} times
+            </ThemedText>
+            
+            <Button
+              title="Press me!"
+              onPress={() => setCount(count + 1)}
+            />
+          </ThemedView>
+        </ThemedView>
+      </SafeAreaView>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+    padding: 16,
+  },
+  content: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 32,
+  },
+  title: {
+    textAlign: 'center',
+  },
+  counterSection: {
+    gap: 16,
+    alignItems: 'center',
+  },
+});
+```
+
+Save and watch the button appear instantly!
+
+<Info>
+  Notice how the `count` state persists when you make changes? That's Fast Refresh preserving your component state.
+</Info>
+
+## Understanding What You Built
+
+### File-Based Routing
+
+Your project uses **Expo Router** for navigation. Files in the `app/` directory automatically become routes:
+
+```bash
+app/
+  index.tsx       # Route: /
+  explore.tsx     # Route: /explore
+  profile.tsx     # Route: /profile (if you create it)
+```
+
+No need to manually configure routes!
+
+### Themed Components
+
+The template includes themed components that automatically adapt to light/dark mode:
+
+- `<ThemedView>` - View that changes background
+- `<ThemedText>` - Text that changes color
+
+Check `components/` to see how they work.
+
+### Safe Areas
+
+`SafeAreaView` ensures content doesn't overlap with:
+- iPhone notch
+- Android navigation buttons
+- Status bars
+
+Always wrap your screen content in `SafeAreaView`.
+
+## Common Mistakes to Avoid
+
+<AccordionGroup>
+
+<Accordion title="Forgetting SafeAreaView" icon="triangle-exclamation">
+  
+Without `SafeAreaView`, content can be hidden behind the notch or status bar:
+
+```tsx
+// ❌ Bad
+export default function Screen() {
+  return (
+    <View>
+      <Text>This might be hidden!</Text>
+    </View>
+  );
+}
+
+// ✓ Good
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+export default function Screen() {
+  return (
+    <SafeAreaView>
+      <Text>This is visible!</Text>
+    </SafeAreaView>
+  );
+}
+```
+
+</Accordion>
+
+<Accordion title="Not using flex layouts" icon="table-cells">
+  
+React Native uses Flexbox for layout. Always set `flex: 1` on containers:
+
+```tsx
+// ❌ Bad - content might not fill screen
+const styles = StyleSheet.create({
+  container: {
+    // Missing flex: 1
+  }
+});
+
+// ✓ Good
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  }
+});
+```
+
+</Accordion>
+
+<Accordion title="Mixing styles" icon="palette">
+  
+Keep styles in `StyleSheet.create()` for better performance:
+
+```tsx
+// ❌ Bad - inline styles
+<View style={{ padding: 20, margin: 10 }}>
+  <Text style={{ fontSize: 24, color: 'blue' }}>Hello</Text>
+</View>
+
+// ✓ Good - StyleSheet
+const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+    margin: 10,
+  },
+  text: {
+    fontSize: 24,
+    color: 'blue',
+  },
+});
+
+<View style={styles.container}>
+  <Text style={styles.text}>Hello</Text>
+</View>
+```
+
+</Accordion>
+
+</AccordionGroup>
+
+## Project Customization
+
+### Change App Name
+
+Edit `app.json`:
+
+```json app.json
+{
+  "expo": {
+    "name": "My Awesome App",  // Change this
+    "slug": "my-awesome-app"
+  }
+}
+```
+
+### Change App Icon
+
+1. Create a 1024x1024px PNG image
+2. Save as `assets/images/icon.png`
+3. It's already configured in `app.json`:
+
+```json
+{
+  "expo": {
+    "icon": "./assets/images/icon.png"
+  }
+}
+```
+
+### Add Custom Fonts
+
+The template already loads fonts in `app/_layout.tsx`. To add more:
+
+```tsx app/_layout.tsx
+import { useFonts } from 'expo-font';
+
+const [fontsLoaded] = useFonts({
+  'Inter-Black': require('../assets/fonts/Inter-Black.otf'),
+  'MyFont-Regular': require('../assets/fonts/MyFont-Regular.ttf'),
+});
+```
+
+## Next Steps
+
+Congratulations! You've created your first Expo app and learned:
+
+- Project structure
+- File-based routing
+- Fast Refresh
+- Running on multiple platforms
+- Making changes and seeing updates
+
+<CardGroup cols={2}>
+  <Card title="Add Navigation" icon="route" href="/tutorial/add-navigation">
+    Learn to navigate between screens
+  </Card>
+  
+  <Card title="Core Concepts" icon="book" href="/core-concepts/architecture">
+    Understand how Expo works
+  </Card>
+  
+  <Card title="SDK Modules" icon="puzzle-piece" href="https://docs.expo.dev/versions/latest/">
+    Explore camera, location, and more
+  </Card>
+  
+  <Card title="Build & Deploy" icon="rocket" href="/tutorial/build-and-deploy">
+    Ship your app to production
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+
+<Accordion title="Can't connect to dev server">
+  
+Try these solutions:
+
+1. Ensure same WiFi network
+2. Use tunnel mode: `npx expo start --tunnel`
+3. Check firewall settings
+4. Restart dev server
+
+</Accordion>
+
+<Accordion title="Metro bundler errors">
+  
+Clear the cache:
+
+```bash
+npx expo start --clear
+```
+
+</Accordion>
+
+<Accordion title="TypeScript errors">
+  
+Install types:
+
+```bash
+npm install --save-dev @types/react @types/react-native
+```
+
+</Accordion>
+
+</AccordionGroup>

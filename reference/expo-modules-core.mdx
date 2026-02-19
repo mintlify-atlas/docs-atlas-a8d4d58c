@@ -1,0 +1,492 @@
+---
+title: Expo Modules Core
+description: API reference for expo-modules-core, the foundation of the Expo Modules architecture.
+---
+
+The `expo-modules-core` package is the foundation of Expo Modules architecture, providing the infrastructure for creating native modules with a modern, type-safe API.
+
+## Installation
+
+```bash
+npx expo install expo-modules-core
+```
+
+<Note>
+  This package is typically installed automatically as a dependency of the `expo` package.
+</Note>
+
+## Overview
+
+Expo Modules Core provides:
+
+- A modern API for writing native modules
+- Type-safe bridge between JavaScript and native code
+- Event emitting capabilities
+- Shared objects for cross-JSI communication
+- Platform abstractions
+- Permission management interfaces
+
+## Core APIs
+
+### EventEmitter
+
+A class for creating objects that emit events to JavaScript. Native modules and shared objects can emit events that React components can listen to.
+
+#### Type Definition
+
+```tsx
+type EventsMap = {
+  [eventName: string]: (...args: any[]) => void;
+};
+
+class EventEmitter<TEventsMap extends EventsMap = Record<never, never>> {
+  addListener<EventName extends keyof TEventsMap>(
+    eventName: EventName,
+    listener: TEventsMap[EventName]
+  ): EventSubscription;
+  
+  removeListener<EventName extends keyof TEventsMap>(
+    eventName: EventName,
+    listener: TEventsMap[EventName]
+  ): void;
+  
+  removeAllListeners<EventName extends keyof TEventsMap>(
+    eventName: EventName
+  ): void;
+  
+  emit<EventName extends keyof TEventsMap>(
+    eventName: EventName,
+    ...args: Parameters<TEventsMap[EventName]>
+  ): void;
+}
+```
+
+#### Usage
+
+```tsx
+import { EventEmitter } from 'expo-modules-core';
+
+type MyEventsMap = {
+  onChange: (value: string) => void;
+  onError: (error: Error) => void;
+};
+
+const emitter = new EventEmitter<MyEventsMap>();
+
+// Add listener
+const subscription = emitter.addListener('onChange', (value) => {
+  console.log('Changed:', value);
+});
+
+// Emit event (typically done from native side)
+emitter.emit('onChange', 'new value');
+
+// Remove listener
+subscription.remove();
+```
+
+#### EventSubscription
+
+Returned by `addListener()`, provides a way to remove the listener.
+
+<ResponseField name="remove" type="() => void">
+  Removes the event listener. After calling this, the listener will no longer receive events.
+</ResponseField>
+
+### NativeModule
+
+Base class for native modules, providing the foundation for Expo's module system. Native modules written with Expo Modules API automatically inherit from this class.
+
+#### Accessing Native Modules
+
+```tsx
+import { requireNativeModule } from 'expo-modules-core';
+
+interface MyModuleInterface {
+  someMethod(): Promise<string>;
+  someValue: number;
+}
+
+const MyModule = requireNativeModule<MyModuleInterface>('MyModule');
+
+const result = await MyModule.someMethod();
+console.log(MyModule.someValue);
+```
+
+### SharedObject
+
+Represents an instance of a native shared object that exists in the native memory and can be passed between different independent libraries. Allows for sharing native object instances across the JSI boundary.
+
+#### Key Features
+
+- Lives in native memory
+- Can be passed to any native module
+- Supports event emitting
+- Automatic lifecycle management
+- Type-safe in TypeScript
+
+#### Usage
+
+```tsx
+import { SharedObject } from 'expo-modules-core';
+
+// SharedObjects are typically created by native modules
+const videoPlayer = VideoModule.createPlayer();
+
+// They can be passed to other native modules
+VideoRenderer.setPlayer(videoPlayer);
+
+// And can emit events
+videoPlayer.addListener('statusChange', (status) => {
+  console.log('Player status:', status);
+});
+```
+
+### SharedRef
+
+A mutable ref that holds a reference to a shared object. Unlike SharedObject, the reference itself can be updated.
+
+```tsx
+import { SharedRef } from 'expo-modules-core';
+
+const ref = new SharedRef<MySharedObject>(initialObject);
+
+// Update the reference
+ref.current = newObject;
+
+// Access the current value
+console.log(ref.current);
+```
+
+## Module Registration
+
+### requireNativeModule
+
+Imports a native module by name. Throws an error if the module is not found.
+
+<ParamField path="moduleName" type="string" required>
+  Name of the native module to import.
+</ParamField>
+
+<ResponseField name="return" type="ModuleType">
+  The native module object with all its methods and properties.
+</ResponseField>
+
+```tsx
+import { requireNativeModule } from 'expo-modules-core';
+
+try {
+  const MyModule = requireNativeModule('MyModule');
+  MyModule.doSomething();
+} catch (error) {
+  console.error('Module not found:', error);
+}
+```
+
+<Warning>
+  This function throws an error if the module cannot be found. Use `requireOptionalNativeModule` for optional dependencies.
+</Warning>
+
+### requireOptionalNativeModule
+
+Imports a native module by name. Returns `null` if the module is not found instead of throwing.
+
+<ParamField path="moduleName" type="string" required>
+  Name of the native module to import.
+</ParamField>
+
+<ResponseField name="return" type="ModuleType | null">
+  The native module object or `null` if not found.
+</ResponseField>
+
+```tsx
+import { requireOptionalNativeModule } from 'expo-modules-core';
+
+const OptionalModule = requireOptionalNativeModule('OptionalModule');
+
+if (OptionalModule) {
+  OptionalModule.useFeature();
+} else {
+  console.log('Optional feature not available');
+}
+```
+
+### requireNativeViewManager
+
+Requires a native view manager for creating native UI components.
+
+<ParamField path="viewName" type="string" required>
+  Name of the native view manager.
+</ParamField>
+
+```tsx
+import { requireNativeViewManager } from 'expo-modules-core';
+
+const NativeMyView = requireNativeViewManager('MyView');
+
+function MyView(props) {
+  return <NativeMyView {...props} />;
+}
+```
+
+### registerWebModule
+
+Registers a web-specific implementation of a module.
+
+<ParamField path="moduleName" type="string" required>
+  Name of the module to register.
+</ParamField>
+
+<ParamField path="moduleImplementation" type="object" required>
+  The web implementation of the module.
+</ParamField>
+
+```tsx
+import { registerWebModule } from 'expo-modules-core';
+
+registerWebModule('MyModule', {
+  async doSomething() {
+    // Web-specific implementation
+    return 'done';
+  },
+});
+```
+
+## Platform Utilities
+
+### Platform
+
+Provides information about the current platform.
+
+```tsx
+import { Platform } from 'expo-modules-core';
+
+if (Platform.OS === 'ios') {
+  // iOS-specific code
+} else if (Platform.OS === 'android') {
+  // Android-specific code
+} else if (Platform.OS === 'web') {
+  // Web-specific code
+}
+
+console.log('Platform version:', Platform.Version);
+```
+
+<ResponseField name="Platform.OS" type="'ios' | 'android' | 'web'">
+  The current platform operating system.
+</ResponseField>
+
+<ResponseField name="Platform.Version" type="string | number">
+  The OS version.
+</ResponseField>
+
+<ResponseField name="Platform.select" type="function">
+  Selects a value based on the platform.
+</ResponseField>
+
+```tsx
+const styles = Platform.select({
+  ios: { paddingTop: 20 },
+  android: { paddingTop: 25 },
+  web: { paddingTop: 0 },
+});
+```
+
+## Permission Management
+
+### PermissionsInterface
+
+Interface for implementing permission requests in native modules.
+
+```tsx
+import type { PermissionsInterface } from 'expo-modules-core';
+
+interface MyModule extends PermissionsInterface {
+  requestPermissionsAsync(): Promise<PermissionResponse>;
+  getPermissionsAsync(): Promise<PermissionResponse>;
+}
+```
+
+### usePermissions
+
+React hook for managing permissions.
+
+```tsx
+import { usePermissions } from 'expo-modules-core';
+import MyModule from './MyModule';
+
+function MyComponent() {
+  const [permission, requestPermission] = usePermissions(MyModule);
+  
+  if (!permission) {
+    return <Text>Loading...</Text>;
+  }
+  
+  if (!permission.granted) {
+    return (
+      <Button onPress={requestPermission}>
+        Request Permission
+      </Button>
+    );
+  }
+  
+  return <Text>Permission granted!</Text>;
+}
+```
+
+## Error Classes
+
+### CodedError
+
+Error class with an error code for better error handling.
+
+```tsx
+import { CodedError } from 'expo-modules-core';
+
+throw new CodedError('ERR_INVALID_INPUT', 'The input value is invalid');
+```
+
+<ParamField path="code" type="string" required>
+  Unique error code.
+</ParamField>
+
+<ParamField path="message" type="string" required>
+  Human-readable error message.
+</ParamField>
+
+### UnavailabilityError
+
+Thrown when a native module or feature is unavailable on the current platform.
+
+```tsx
+import { UnavailabilityError } from 'expo-modules-core';
+
+if (!nativeModule) {
+  throw new UnavailabilityError('MyModule', 'doSomething');
+}
+```
+
+## Reload Utilities
+
+### reloadAppAsync
+
+Reloads the JavaScript bundle without restarting the native app.
+
+```tsx
+import { reloadAppAsync } from 'expo-modules-core';
+
+await reloadAppAsync();
+```
+
+## UUID Generation
+
+### uuid
+
+Generates a UUID (Universally Unique Identifier).
+
+```tsx
+import uuid from 'expo-modules-core/uuid';
+
+const id = uuid.v4();
+console.log(id); // e.g., '110ec58a-a0f2-4ac4-8393-c866d813b8d1'
+```
+
+## Type Definitions
+
+### ProxyNativeModule
+
+Type for native modules accessed through the bridge proxy.
+
+```tsx
+import type { ProxyNativeModule } from 'expo-modules-core';
+
+const module: ProxyNativeModule = NativeModulesProxy.MyModule;
+```
+
+### Typed Arrays
+
+Support for typed arrays across the JSI bridge:
+
+- `Int8Array`
+- `Int16Array`
+- `Int32Array`
+- `Uint8Array`
+- `Uint8ClampedArray`
+- `Uint16Array`
+- `Uint32Array`
+- `Float32Array`
+- `Float64Array`
+
+## Writing Native Modules
+
+While `expo-modules-core` provides the JavaScript APIs, native modules are written using the Expo Modules API on iOS (Swift) and Android (Kotlin).
+
+### Module Definition (iOS - Swift)
+
+```swift
+import ExpoModulesCore
+
+public class MyModule: Module {
+  public func definition() -> ModuleDefinition {
+    Name("MyModule")
+    
+    Function("doSomething") { (value: String) -> String in
+      return "Received: \(value)"
+    }
+    
+    AsyncFunction("fetchData") { (promise: Promise) in
+      // Async operation
+      promise.resolve("data")
+    }
+  }
+}
+```
+
+### Module Definition (Android - Kotlin)
+
+```kotlin
+import expo.modules.kotlin.modules.Module
+import expo.modules.kotlin.modules.ModuleDefinition
+
+class MyModule : Module() {
+  override fun definition() = ModuleDefinition {
+    Name("MyModule")
+    
+    Function("doSomething") { value: String ->
+      "Received: $value"
+    }
+    
+    AsyncFunction("fetchData") { promise: Promise ->
+      // Async operation
+      promise.resolve("data")
+    }
+  }
+}
+```
+
+## Legacy APIs
+
+### LegacyEventEmitter
+
+Deprecated event emitter API. Use `EventEmitter` instead.
+
+### NativeModulesProxy
+
+Direct access to the native modules proxy. Generally, you should use `requireNativeModule` instead.
+
+```tsx
+import NativeModulesProxy from 'expo-modules-core';
+
+const module = NativeModulesProxy.MyModule;
+```
+
+## Source Code
+
+View the source code on GitHub:
+[expo-modules-core](https://github.com/expo/expo/tree/main/packages/expo-modules-core)
+
+## Related Documentation
+
+- [expo Package Reference](/reference/expo-package)
+- [Creating Native Modules](https://docs.expo.dev/modules/overview/)
+- [Module API](https://docs.expo.dev/modules/module-api/)

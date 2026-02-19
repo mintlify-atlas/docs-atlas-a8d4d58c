@@ -1,0 +1,505 @@
+---
+title: Tab Navigation
+description: Create bottom tab navigation for your app with Expo Router
+---
+
+# Tab Navigation
+
+Tab navigation displays a tab bar at the bottom of the screen, allowing users to quickly switch between top-level screens.
+
+## Basic Tabs
+
+Create a tab layout:
+
+```tsx app/(tabs)/_layout.tsx
+import { Tabs } from 'expo-router';
+
+export default function TabLayout() {
+  return <Tabs />;
+}
+```
+
+Add tab screens:
+
+```
+app/
+  (tabs)/
+    _layout.tsx
+    index.tsx       # Home tab
+    explore.tsx     # Explore tab
+    profile.tsx     # Profile tab
+```
+
+From the source (`Tabs.tsx:1-9`):
+
+```typescript
+import Tabs from './TabsClient';
+import { Screen } from '../views/Screen';
+
+Tabs.Screen = Screen;
+
+export { Tabs };
+export default Tabs;
+```
+
+## Configure Tabs
+
+Customize tab appearance:
+
+```tsx app/(tabs)/_layout.tsx
+import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+
+export default function TabLayout() {
+  return (
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: '#f4511e',
+        tabBarStyle: {
+          backgroundColor: '#fff',
+        },
+        headerShown: false,
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="explore"
+        options={{
+          title: 'Explore',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="search" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person" size={size} color={color} />
+          ),
+        }}
+      />
+    </Tabs>
+  );
+}
+```
+
+## Tab Icons
+
+### Using Icon Libraries
+
+```tsx
+import { Ionicons, MaterialIcons, FontAwesome } from '@expo/vector-icons';
+
+<Tabs.Screen
+  name="home"
+  options={{
+    tabBarIcon: ({ color, size }) => (
+      <Ionicons name="home" size={size} color={color} />
+    ),
+  }}
+/>
+
+<Tabs.Screen
+  name="search"
+  options={{
+    tabBarIcon: ({ color, size }) => (
+      <MaterialIcons name="search" size={size} color={color} />
+    ),
+  }}
+/>
+```
+
+### Custom Icons
+
+```tsx
+import { Image } from 'react-native';
+
+<Tabs.Screen
+  name="home"
+  options={{
+    tabBarIcon: ({ color, focused }) => (
+      <Image
+        source={focused ? require('./icon-active.png') : require('./icon.png')}
+        style={{ width: 24, height: 24, tintColor: color }}
+      />
+    ),
+  }}
+/>
+```
+
+## Tab Badge
+
+Show notification badges:
+
+```tsx app/(tabs)/_layout.tsx
+import { Tabs } from 'expo-router';
+import { useState, useEffect } from 'react';
+
+export default function TabLayout() {
+  const [unreadCount, setUnreadCount] = useState(0);
+  
+  useEffect(() => {
+    // Fetch unread notifications
+    fetchUnreadCount().then(setUnreadCount);
+  }, []);
+  
+  return (
+    <Tabs>
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          title: 'Notifications',
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="notifications" size={24} color={color} />
+          ),
+        }}
+      />
+    </Tabs>
+  );
+}
+```
+
+## Hide Tab Bar
+
+### Hide on Specific Screens
+
+```tsx app/details.tsx
+import { Tabs } from 'expo-router';
+
+export default function Details() {
+  return (
+    <>
+      <Tabs.Screen options={{ href: null }} />
+      <View>
+        <Text>Details Screen</Text>
+      </View>
+    </>
+  );
+}
+```
+
+### Hide Programmatically
+
+```tsx
+import { Tabs } from 'expo-router';
+import { useEffect, useState } from 'react';
+
+export default function Screen() {
+  const [showTabs, setShowTabs] = useState(true);
+  
+  return (
+    <>
+      <Tabs.Screen
+        options={{
+          tabBarStyle: showTabs ? undefined : { display: 'none' },
+        }}
+      />
+      <ScrollView
+        onScroll={(e) => {
+          // Hide tabs when scrolling down
+          const scrollY = e.nativeEvent.contentOffset.y;
+          setShowTabs(scrollY < 50);
+        }}
+      >
+        {/* Content */}
+      </ScrollView>
+    </>
+  );
+}
+```
+
+## Tab Press Handling
+
+### Custom Tab Press
+
+```tsx
+import { Tabs } from 'expo-router';
+import { router } from 'expo-router';
+
+export default function TabLayout() {
+  return (
+    <Tabs>
+      <Tabs.Screen
+        name="search"
+        options={{
+          tabBarIcon: ({ color }) => <Ionicons name="search" />,
+        }}
+        listeners={{
+          tabPress: (e) => {
+            e.preventDefault();
+            // Custom action
+            router.push('/search-modal');
+          },
+        }}
+      />
+    </Tabs>
+  );
+}
+```
+
+## Nested Navigation
+
+Add stacks within tabs:
+
+```
+app/
+  (tabs)/
+    _layout.tsx
+    home/
+      _layout.tsx     # Stack in home tab
+      index.tsx
+      details.tsx
+    profile/
+      _layout.tsx     # Stack in profile tab
+      index.tsx
+      settings.tsx
+```
+
+```tsx app/(tabs)/home/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function HomeStack() {
+  return (
+    <Stack>
+      <Stack.Screen
+        name="index"
+        options={{ title: 'Home' }}
+      />
+      <Stack.Screen
+        name="details"
+        options={{ title: 'Details' }}
+      />
+    </Stack>
+  );
+}
+```
+
+## Dynamic Tabs
+
+### Conditional Tabs
+
+```tsx app/(tabs)/_layout.tsx
+import { Tabs } from 'expo-router';
+import { useAuth } from '../../context/auth';
+
+export default function TabLayout() {
+  const { user } = useAuth();
+  
+  return (
+    <Tabs>
+      <Tabs.Screen name="home" />
+      <Tabs.Screen name="explore" />
+      
+      {user?.isPremium && (
+        <Tabs.Screen
+          name="premium"
+          options={{ title: 'Premium' }}
+        />
+      )}
+      
+      <Tabs.Screen name="profile" />
+    </Tabs>
+  );
+}
+```
+
+## Tab Bar Styling
+
+### Position and Appearance
+
+```tsx
+<Tabs
+  screenOptions={{
+    tabBarStyle: {
+      backgroundColor: '#fff',
+      borderTopColor: '#e0e0e0',
+      borderTopWidth: 1,
+      height: 60,
+      paddingBottom: 8,
+      paddingTop: 8,
+    },
+    tabBarActiveTintColor: '#f4511e',
+    tabBarInactiveTintColor: '#999',
+    tabBarLabelStyle: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+  }}
+/>
+```
+
+### Hide Labels
+
+```tsx
+<Tabs
+  screenOptions={{
+    tabBarShowLabel: false,
+  }}
+/>
+```
+
+### Custom Tab Bar
+
+```tsx
+import { Tabs } from 'expo-router';
+import { View, Pressable, Text } from 'react-native';
+
+function CustomTabBar({ state, descriptors, navigation }) {
+  return (
+    <View style={{ flexDirection: 'row' }}>
+      {state.routes.map((route, index) => {
+        const { options } = descriptors[route.key];
+        const isFocused = state.index === index;
+        
+        return (
+          <Pressable
+            key={route.key}
+            onPress={() => navigation.navigate(route.name)}
+            style={{ flex: 1, alignItems: 'center', padding: 16 }}
+          >
+            {options.tabBarIcon?.({ focused: isFocused })}
+            <Text>{options.title}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+export default function TabLayout() {
+  return (
+    <Tabs tabBar={(props) => <CustomTabBar {...props} />}>
+      <Tabs.Screen name="home" />
+      <Tabs.Screen name="profile" />
+    </Tabs>
+  );
+}
+```
+
+## Common Patterns
+
+### Tab with Modal
+
+```tsx app/(tabs)/_layout.tsx
+import { Tabs } from 'expo-router';
+
+export default function TabLayout() {
+  return (
+    <Tabs>
+      <Tabs.Screen name="home" />
+      <Tabs.Screen
+        name="create"
+        options={{
+          tabBarIcon: ({ color }) => <Ionicons name="add" />,
+        }}
+        listeners={{
+          tabPress: (e) => {
+            e.preventDefault();
+            router.push('/create-modal');
+          },
+        }}
+      />
+      <Tabs.Screen name="profile" />
+    </Tabs>
+  );
+}
+```
+
+### Scrolling Header in Tab
+
+```tsx app/(tabs)/home/index.tsx
+import { useState } from 'react';
+import { ScrollView } from 'react-native';
+import { Tabs } from 'expo-router';
+
+export default function Home() {
+  const [headerShown, setHeaderShown] = useState(true);
+  
+  return (
+    <>
+      <Tabs.Screen
+        options={{
+          headerShown,
+        }}
+      />
+      <ScrollView
+        onScroll={(e) => {
+          const y = e.nativeEvent.contentOffset.y;
+          setHeaderShown(y < 50);
+        }}
+      >
+        {/* Content */}
+      </ScrollView>
+    </>
+  );
+}
+```
+
+## Best Practices
+
+### Limit Tab Count
+
+```tsx
+// Good: 3-5 tabs
+<Tabs>
+  <Tabs.Screen name="home" />
+  <Tabs.Screen name="search" />
+  <Tabs.Screen name="notifications" />
+  <Tabs.Screen name="profile" />
+</Tabs>
+
+// Avoid: Too many tabs
+<Tabs>
+  {/* 7+ tabs - consider using drawer */}
+</Tabs>
+```
+
+### Use Clear Icons
+
+```tsx
+// Good: Standard, recognizable icons
+tabBarIcon: () => <Ionicons name="home" />
+tabBarIcon: () => <Ionicons name="search" />
+
+// Avoid: Unclear or custom icons
+tabBarIcon: () => <CustomIcon name="unclear" />
+```
+
+### Consistent Tab Order
+
+```tsx
+// Good: Consistent order
+<Tabs>
+  <Tabs.Screen name="home" />      {/* Always first */}
+  <Tabs.Screen name="search" />
+  <Tabs.Screen name="profile" />  {/* Always last */}
+</Tabs>
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Stack Navigation" icon="layer-group" href="/router/stack-navigation">
+    Add stack navigation in tabs
+  </Card>
+  <Card title="Native Tabs" icon="mobile" href="/router/native-tabs">
+    Use native iOS/Android tabs
+  </Card>
+  <Card title="Drawer Navigation" icon="bars-staggered" href="/router/drawer-navigation">
+    Alternative to tabs
+  </Card>
+  <Card title="Layouts" icon="folder" href="/router/layouts">
+    Understand tab layouts
+  </Card>
+</CardGroup>

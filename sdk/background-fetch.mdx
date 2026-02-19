@@ -1,0 +1,194 @@
+---
+title: expo-background-fetch
+description: Perform periodic tasks in the background on iOS and Android
+---
+
+# expo-background-fetch
+
+**Version:** 55.0.6
+
+Expo universal module for BackgroundFetch API. Allows you to register background tasks that run periodically even when the app is closed or in the background.
+
+## Installation
+
+```bash
+npx expo install expo-background-fetch expo-task-manager
+```
+
+## Usage
+
+```typescript
+import * as BackgroundFetch from 'expo-background-fetch';
+import * as TaskManager from 'expo-task-manager';
+
+const BACKGROUND_FETCH_TASK = 'background-fetch-task';
+
+// Define task
+TaskManager.defineTask(BACKGROUND_FETCH_TASK, async () => {
+  const now = Date.now();
+  console.log(`Background fetch executed at ${new Date(now).toISOString()}`);
+  
+  // Perform your background work here
+  await fetchDataFromAPI();
+  
+  return BackgroundFetch.BackgroundFetchResult.NewData;
+});
+
+// Register task
+async function registerBackgroundFetch() {
+  return BackgroundFetch.registerTaskAsync(BACKGROUND_FETCH_TASK, {
+    minimumInterval: 60 * 15, // 15 minutes
+    stopOnTerminate: false,
+    startOnBoot: true,
+  });
+}
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="registerTaskAsync(taskName, options)" type="(taskName: string, options?: BackgroundFetchOptions) => Promise<void>">
+  Registers a background fetch task
+  
+  ```typescript
+  await BackgroundFetch.registerTaskAsync('my-task', {
+    minimumInterval: 900, // 15 minutes in seconds
+  });
+  ```
+</ParamField>
+
+<ParamField path="unregisterTaskAsync(taskName)" type="(taskName: string) => Promise<void>">
+  Unregisters a background fetch task
+  
+  ```typescript
+  await BackgroundFetch.unregisterTaskAsync('my-task');
+  ```
+</ParamField>
+
+<ParamField path="getStatusAsync()" type="() => Promise<BackgroundFetchStatus>">
+  Gets background fetch status
+  
+  ```typescript
+  const status = await BackgroundFetch.getStatusAsync();
+  console.log('Status:', status);
+  ```
+</ParamField>
+
+<ParamField path="setMinimumIntervalAsync(seconds)" type="(seconds: number) => Promise<void>">
+  Sets minimum fetch interval (iOS only)
+  
+  ```typescript
+  await BackgroundFetch.setMinimumIntervalAsync(60 * 30); // 30 minutes
+  ```
+</ParamField>
+
+### Types
+
+#### BackgroundFetchOptions
+
+<ParamField path="minimumInterval" type="number">
+  Minimum interval in seconds between fetches. Default: 900 (15 min)
+</ParamField>
+
+<ParamField path="stopOnTerminate" type="boolean">
+  Whether to stop task when app is terminated. Default: true
+</ParamField>
+
+<ParamField path="startOnBoot" type="boolean">
+  Whether to start task on device boot (Android). Default: false
+</ParamField>
+
+#### BackgroundFetchResult
+
+```typescript
+enum BackgroundFetchResult {
+  NoData = 1,
+  NewData = 2,
+  Failed = 3,
+}
+```
+
+## Examples
+
+### Sync Data in Background
+
+```typescript
+import * as BackgroundFetch from 'expo-background-fetch';
+import * as TaskManager from 'expo-task-manager';
+
+const SYNC_TASK = 'background-sync';
+
+TaskManager.defineTask(SYNC_TASK, async () => {
+  try {
+    // Fetch new data
+    const response = await fetch('https://api.example.com/data');
+    const data = await response.json();
+    
+    // Store locally
+    await AsyncStorage.setItem('cached-data', JSON.stringify(data));
+    
+    return BackgroundFetch.BackgroundFetchResult.NewData;
+  } catch (error) {
+    console.error('Background sync failed:', error);
+    return BackgroundFetch.BackgroundFetchResult.Failed;
+  }
+});
+
+// Register on app start
+async function setupBackgroundSync() {
+  const status = await BackgroundFetch.getStatusAsync();
+  
+  if (status === BackgroundFetch.BackgroundFetchStatus.Available) {
+    await BackgroundFetch.registerTaskAsync(SYNC_TASK, {
+      minimumInterval: 60 * 60, // 1 hour
+    });
+  }
+}
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ❌       |
+
+## Configuration
+
+### app.json
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "expo-background-fetch",
+        {
+          "android": {
+            "minInterval": 15
+          }
+        }
+      ]
+    ]
+  }
+}
+```
+
+## Best Practices
+
+1. **Battery Efficiency**: Keep background tasks short
+2. **Minimum Interval**: Respect system-imposed minimum intervals
+3. **Error Handling**: Always handle errors gracefully
+4. **Return Values**: Return appropriate BackgroundFetchResult
+5. **Testing**: Test on real devices, not simulators
+
+<Warning>
+Background fetch intervals are not guaranteed. The system may adjust intervals based on battery, usage patterns, and other factors.
+</Warning>
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/background-fetch/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-background-fetch)

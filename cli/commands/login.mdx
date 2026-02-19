@@ -1,0 +1,464 @@
+---
+title: expo login
+description: Authenticate with your Expo account.
+---
+
+The `expo login` command authenticates you with your Expo account, allowing you to use services like EAS Build, EAS Submit, and EAS Update.
+
+## Usage
+
+```bash
+npx expo login [options]
+```
+
+## Options
+
+<ParamField path="--username" type="string">
+  Your Expo account username or email. Alias: `-u`
+</ParamField>
+
+<ParamField path="--password" type="string">
+  Your Expo account password. Alias: `-p`
+</ParamField>
+
+<ParamField path="--otp" type="string">
+  One-time password from your two-factor authentication device.
+</ParamField>
+
+<ParamField path="--sso" type="boolean">
+  Log in using Single Sign-On (SSO). Alias: `-s`
+</ParamField>
+
+<ParamField path="--browser" type="boolean">
+  Log in using your web browser. Alias: `-b`
+</ParamField>
+
+## Authentication Methods
+
+### Interactive Login (Default)
+
+The simplest way to log in:
+
+```bash
+npx expo login
+```
+
+This prompts you for:
+1. Username or email
+2. Password
+3. OTP code (if 2FA is enabled)
+
+### Browser-Based Login
+
+Log in using your web browser:
+
+```bash
+npx expo login --browser
+```
+
+This:
+1. Opens your default browser
+2. Redirects to Expo authentication page
+3. Returns authentication token to CLI
+4. Completes login automatically
+
+Benefits:
+- More secure (no password in terminal)
+- Supports SSO providers
+- Works with password managers
+- Better for shared machines
+
+### SSO Login
+
+For organizations using Single Sign-On:
+
+```bash
+npx expo login --sso
+```
+
+Supports:
+- SAML-based SSO
+- Enterprise identity providers
+- Organization-managed accounts
+
+### Command-Line Credentials
+
+Provide credentials directly (useful for automation):
+
+```bash
+npx expo login --username myuser --password mypass
+```
+
+**Warning:** This is less secure as credentials may be visible in:
+- Shell history
+- Process lists
+- CI/CD logs
+
+### With Two-Factor Authentication
+
+If you have 2FA enabled:
+
+```bash
+npx expo login --username myuser --password mypass --otp 123456
+```
+
+Or interactively:
+```bash
+npx expo login
+# Enter username and password
+# CLI prompts for OTP code
+```
+
+## Examples
+
+### Interactive Login
+
+```bash
+npx expo login
+```
+
+Output:
+```
+? Username or email: myuser@example.com
+? Password: [hidden]
+? One-time password: 123456
+
+Logged in as myuser
+```
+
+### Browser Login
+
+```bash
+npx expo login --browser
+```
+
+Output:
+```
+Opening browser for authentication...
+? Waiting for authentication in browser...
+
+Logged in as myuser
+```
+
+### SSO Login
+
+```bash
+npx expo login --sso
+```
+
+Output:
+```
+Opening SSO login page...
+? Select your identity provider
+? Authenticate with your organization
+
+Logged in as myuser@company.com
+```
+
+### Automated Login (CI/CD)
+
+For automation, use access tokens instead:
+
+```bash
+export EXPO_TOKEN=your-access-token
+npx expo whoami
+```
+
+Generate access tokens at: https://expo.dev/accounts/[username]/settings/access-tokens
+
+## Where Credentials Are Stored
+
+After successful login, credentials are stored in:
+
+- **macOS**: Keychain
+- **Linux**: Encrypted file in `~/.expo`
+- **Windows**: Credential Manager
+
+### Viewing Stored Credentials
+
+Check if you're logged in:
+
+```bash
+npx expo whoami
+```
+
+## Account Requirements
+
+### Creating an Account
+
+If you don't have an Expo account:
+
+```bash
+npx expo register
+```
+
+Or create one at: https://expo.dev/signup
+
+### Account Types
+
+- **Personal** - Free tier for individuals
+- **Team** - Collaborative features for teams
+- **Enterprise** - Advanced features for organizations
+
+## Common Use Cases
+
+### First-Time Setup
+
+```bash
+# Create account
+npx expo register
+
+# Log in
+npx expo login
+```
+
+### Switching Accounts
+
+```bash
+# Log out current account
+npx expo logout
+
+# Log in with different account
+npx expo login
+```
+
+### Team Collaboration
+
+Each team member logs in with their own account:
+
+```bash
+npx expo login
+# Authenticate with your account
+```
+
+Projects can be shared via Expo organizations.
+
+### CI/CD Authentication
+
+Use access tokens instead of `expo login`:
+
+```bash
+# Set token as environment variable
+export EXPO_TOKEN=your-token
+
+# Commands work without login
+npx eas build
+```
+
+## Two-Factor Authentication
+
+### Why Enable 2FA
+
+Two-factor authentication adds security by requiring:
+1. Your password (something you know)
+2. OTP code (something you have)
+
+### Enabling 2FA
+
+1. Go to https://expo.dev/settings/security
+2. Enable two-factor authentication
+3. Scan QR code with authenticator app
+4. Save backup codes
+
+### Logging In with 2FA
+
+```bash
+npx expo login
+# Enter username and password
+# CLI prompts for 6-digit OTP code
+# Enter code from authenticator app
+```
+
+Or provide OTP directly:
+
+```bash
+npx expo login --otp 123456
+```
+
+## Troubleshooting
+
+### Invalid Credentials
+
+```
+Error: Invalid username or password
+```
+
+Solutions:
+- Verify username/email
+- Check password (case-sensitive)
+- Reset password at https://expo.dev/reset-password
+- Try `--browser` login method
+
+### 2FA Issues
+
+```
+Error: Invalid one-time password
+```
+
+Solutions:
+- Ensure device time is synchronized
+- Use backup codes if authenticator unavailable
+- Regenerate 2FA codes in account settings
+
+### Network Errors
+
+```
+Error: Network request failed
+```
+
+Solutions:
+- Check internet connection
+- Verify firewall settings
+- Try again with: `npx expo login --browser`
+- Check Expo status: https://status.expo.dev
+
+### Already Logged In
+
+```
+You are already logged in as myuser
+```
+
+To switch accounts:
+```bash
+npx expo logout
+npx expo login
+```
+
+### SSO Not Available
+
+```
+Error: SSO not enabled for this account
+```
+
+Solutions:
+- Contact organization administrator
+- Use regular login method
+- Verify organization has SSO enabled
+
+## Security Best Practices
+
+### Use Browser Login
+
+Prefer browser-based authentication:
+
+```bash
+npx expo login --browser
+```
+
+Benefits:
+- No password in terminal
+- No credentials in history
+- Supports password managers
+
+### Enable 2FA
+
+Protect your account with two-factor authentication:
+1. Enable at https://expo.dev/settings/security
+2. Use authenticator app (not SMS)
+3. Save backup codes securely
+
+### Use Access Tokens for CI/CD
+
+Never store passwords in CI/CD:
+
+```yaml
+# GitHub Actions example
+- name: Setup Expo
+  env:
+    EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+  run: npx eas build
+```
+
+Generate tokens at: https://expo.dev/accounts/[username]/settings/access-tokens
+
+### Logout on Shared Machines
+
+Always logout after using shared computers:
+
+```bash
+npx expo logout
+```
+
+### Rotate Access Tokens
+
+Regularly rotate access tokens:
+1. Revoke old tokens
+2. Generate new tokens
+3. Update CI/CD secrets
+
+## Access Tokens
+
+### What Are Access Tokens
+
+Access tokens are:
+- Long-lived authentication credentials
+- Alternative to username/password
+- Ideal for automation and CI/CD
+- Can be revoked independently
+
+### Creating Access Tokens
+
+1. Go to https://expo.dev/accounts/[username]/settings/access-tokens
+2. Click "Create Token"
+3. Name your token
+4. Copy token (shown only once)
+
+### Using Access Tokens
+
+Set as environment variable:
+
+```bash
+export EXPO_TOKEN=your-token-here
+```
+
+Or in CI/CD:
+
+```yaml
+# .github/workflows/build.yml
+env:
+  EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+```
+
+### Token Permissions
+
+Tokens can:
+- Build with EAS Build
+- Submit to app stores
+- Publish with EAS Update
+- Access project resources
+
+### Revoking Tokens
+
+Revoke compromised or unused tokens:
+1. Go to token settings
+2. Click "Revoke"
+3. Generate new token if needed
+
+## Organizations
+
+### Joining an Organization
+
+After logging in, access organization resources:
+
+```bash
+npx expo login
+# Projects owned by organization become accessible
+```
+
+### Organization Accounts
+
+Organizations provide:
+- Shared projects
+- Team collaboration
+- Centralized billing
+- Access control
+
+## Related Commands
+
+After logging in, you can use:
+
+- `expo whoami` - Check current user
+- `expo logout` - Sign out
+- `eas build` - Build with EAS Build
+- `eas submit` - Submit to app stores
+- `eas update` - Publish OTA updates

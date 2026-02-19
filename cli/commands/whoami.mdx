@@ -1,0 +1,400 @@
+---
+title: expo whoami
+description: Check your current Expo authentication status.
+---
+
+The `expo whoami` command displays the username of the currently authenticated Expo account, or indicates if you're not logged in.
+
+## Usage
+
+```bash
+npx expo whoami
+```
+
+## What It Shows
+
+The command displays:
+- Your Expo username (if logged in)
+- A message indicating you're not logged in (if not authenticated)
+
+## Examples
+
+### Check Login Status
+
+```bash
+npx expo whoami
+```
+
+**When logged in:**
+```
+myusername
+```
+
+**When not logged in:**
+```
+Not logged in
+```
+
+### Use in Scripts
+
+Check authentication in shell scripts:
+
+```bash
+#!/bin/bash
+
+USER=$(npx expo whoami 2>/dev/null)
+
+if [ "$USER" = "Not logged in" ]; then
+  echo "Please log in first"
+  npx expo login
+  exit 1
+fi
+
+echo "Logged in as: $USER"
+```
+
+### CI/CD Verification
+
+Verify authentication before building:
+
+```yaml
+# GitHub Actions example
+- name: Check Expo authentication
+  run: |
+    if npx expo whoami | grep -q "Not logged in"; then
+      echo "Not authenticated with Expo"
+      exit 1
+    fi
+```
+
+## Common Use Cases
+
+### Verify Login
+
+After running `expo login`, confirm success:
+
+```bash
+npx expo login
+npx expo whoami
+```
+
+### Switch Accounts
+
+Check which account is active when switching:
+
+```bash
+# Current account
+npx expo whoami
+
+# Logout
+npx expo logout
+
+# Login with different account
+npx expo login
+
+# Verify new account
+npx expo whoami
+```
+
+### Team Collaboration
+
+Confirm you're using the correct account:
+
+```bash
+npx expo whoami
+# Ensure it shows your team account
+```
+
+### CI/CD Debugging
+
+Troubleshoot authentication issues in CI:
+
+```bash
+# Check if EXPO_TOKEN is working
+npx expo whoami
+```
+
+## Exit Codes
+
+The command returns:
+- **0** - Success (logged in or not)
+- **Non-zero** - Error occurred
+
+### Checking in Scripts
+
+```bash
+if npx expo whoami > /dev/null 2>&1; then
+  echo "Authentication check successful"
+else
+  echo "Authentication check failed"
+  exit 1
+fi
+```
+
+## Authentication Methods
+
+### Interactive Login
+
+```bash
+npx expo login
+npx expo whoami
+```
+
+### Access Token
+
+Using environment variable:
+
+```bash
+export EXPO_TOKEN=your-access-token
+npx expo whoami
+```
+
+### Browser Login
+
+```bash
+npx expo login --browser
+npx expo whoami
+```
+
+## Output Format
+
+The command outputs:
+- Plain text username
+- No additional formatting
+- Suitable for parsing in scripts
+
+### Example Output
+
+```bash
+$ npx expo whoami
+myusername
+```
+
+## Troubleshooting
+
+### "Not logged in" When You Should Be
+
+If you expect to be logged in but see "Not logged in":
+
+1. **Check credentials storage:**
+   ```bash
+   # macOS: Check Keychain
+   # Linux: Check ~/.expo
+   # Windows: Check Credential Manager
+   ```
+
+2. **Try logging in again:**
+   ```bash
+   npx expo logout
+   npx expo login
+   ```
+
+3. **Verify access token:**
+   ```bash
+   echo $EXPO_TOKEN
+   # Should show your token if set
+   ```
+
+4. **Check token validity:**
+   - Tokens may expire
+   - Revoked tokens don't work
+   - Generate new token at: https://expo.dev/settings/access-tokens
+
+### Network Errors
+
+If the command fails with network error:
+
+```bash
+npx expo whoami
+# Error: Network request failed
+```
+
+Solutions:
+- Check internet connection
+- Verify Expo services status: https://status.expo.dev
+- Check firewall/proxy settings
+- Try again after a moment
+
+### Permission Errors
+
+If you get permission errors:
+
+```bash
+# Linux/macOS: Check ~/.expo permissions
+ls -la ~/.expo
+
+# Fix permissions if needed
+chmod 700 ~/.expo
+```
+
+## CI/CD Usage
+
+### GitHub Actions
+
+```yaml
+name: Build
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Expo
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          npm install -g expo-cli
+          npx expo whoami
+```
+
+### GitLab CI
+
+```yaml
+build:
+  script:
+    - export EXPO_TOKEN=$EXPO_ACCESS_TOKEN
+    - npx expo whoami
+    - npx eas build --platform android
+```
+
+### Travis CI
+
+```yaml
+script:
+  - npx expo whoami
+  - npx eas build
+```
+
+## Comparison with Other Commands
+
+| Command | Purpose | Output |
+|---------|---------|--------|
+| `expo whoami` | Check current user | Username or "Not logged in" |
+| `expo login` | Authenticate | Login prompt |
+| `expo logout` | Sign out | Confirmation message |
+| `expo register` | Create account | Registration prompt |
+
+## Programmatic Usage
+
+### Node.js Script
+
+```javascript
+const { exec } = require('child_process');
+
+exec('npx expo whoami', (error, stdout, stderr) => {
+  if (error) {
+    console.error(`Error: ${error.message}`);
+    return;
+  }
+  
+  const username = stdout.trim();
+  if (username === 'Not logged in') {
+    console.log('Please log in to continue');
+  } else {
+    console.log(`Logged in as: ${username}`);
+  }
+});
+```
+
+### Python Script
+
+```python
+import subprocess
+
+result = subprocess.run(
+    ['npx', 'expo', 'whoami'],
+    capture_output=True,
+    text=True
+)
+
+username = result.stdout.strip()
+if username == 'Not logged in':
+    print('Please log in to continue')
+else:
+    print(f'Logged in as: {username}')
+```
+
+## Security Considerations
+
+### Safe to Run
+
+The `expo whoami` command:
+- Only displays your username
+- Doesn't expose sensitive information
+- Doesn't modify any data
+- Safe to run in any environment
+
+### No Credentials Exposed
+
+The command doesn't reveal:
+- Your password
+- Access tokens
+- Email address (unless it's your username)
+- Account details
+
+## Best Practices
+
+### Verify Before Operations
+
+Check authentication before critical operations:
+
+```bash
+#!/bin/bash
+
+# Verify login
+if ! npx expo whoami > /dev/null 2>&1; then
+  echo "Not logged in. Please authenticate first."
+  exit 1
+fi
+
+# Proceed with build
+npx eas build --platform all
+```
+
+### Log in CI/CD
+
+Log authentication status in CI logs:
+
+```yaml
+- name: Check authentication
+  run: |
+    echo "Current user:"
+    npx expo whoami
+```
+
+### Team Workflows
+
+Document expected account in team workflows:
+
+```bash
+# Check you're using team account
+CURRENT_USER=$(npx expo whoami)
+EXPECTED_USER="team-account"
+
+if [ "$CURRENT_USER" != "$EXPECTED_USER" ]; then
+  echo "Warning: Expected $EXPECTED_USER but got $CURRENT_USER"
+fi
+```
+
+## Related Commands
+
+- [`expo login`](/cli/commands/login) - Authenticate with Expo
+- [`expo logout`](/cli/commands/logout) - Sign out of your account
+- [`expo register`](/cli/commands/register) - Create a new account
+
+## Quick Reference
+
+```bash
+# Check who is logged in
+npx expo whoami
+
+# If not logged in
+npx expo login
+
+# Logout
+npx expo logout
+
+# Login with different account
+npx expo logout && npx expo login
+```

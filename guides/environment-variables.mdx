@@ -1,0 +1,544 @@
+---
+title: "Environment Variables"
+description: "Manage environment variables, secrets, and configuration in your Expo app across development, staging, and production"
+---
+
+## Overview
+
+Environment variables let you configure your app for different environments without changing code. Expo provides built-in support for environment variables with special security considerations for mobile apps.
+
+## Types of Environment Variables
+
+### Public variables
+
+Embedded in your app bundle, accessible at runtime:
+
+```bash
+EXPO_PUBLIC_API_URL=https://api.example.com
+EXPO_PUBLIC_API_KEY=pk_live_1234567890
+```
+
+### Build-time variables
+
+Used during the build process, not included in the bundle:
+
+```bash
+EAS_PROJECT_ID=your-project-id
+APPLE_TEAM_ID=1234567890
+```
+
+<Warning>
+  Never put sensitive secrets in `EXPO_PUBLIC_*` variables. They're embedded in your app bundle and can be extracted by users.
+</Warning>
+
+## Using .env Files
+
+### Install dotenv
+
+```bash
+npm install dotenv
+```
+
+### Create .env file
+
+```bash .env
+# API Configuration
+EXPO_PUBLIC_API_URL=https://api.example.com
+EXPO_PUBLIC_API_TIMEOUT=30000
+
+# Feature Flags
+EXPO_PUBLIC_ENABLE_ANALYTICS=true
+EXPO_PUBLIC_DEBUG_MODE=false
+
+# Third-party Services
+EXPO_PUBLIC_SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
+```
+
+### Load variables
+
+```javascript app.config.js
+require('dotenv').config();
+
+module.exports = {
+  expo: {
+    name: 'My App',
+    slug: 'my-app',
+    extra: {
+      apiUrl: process.env.EXPO_PUBLIC_API_URL,
+      enableAnalytics: process.env.EXPO_PUBLIC_ENABLE_ANALYTICS === 'true',
+    },
+  },
+};
+```
+
+### Access in your app
+
+```typescript utils/config.ts
+export const config = {
+  apiUrl: process.env.EXPO_PUBLIC_API_URL,
+  apiTimeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '30000'),
+  enableAnalytics: process.env.EXPO_PUBLIC_ENABLE_ANALYTICS === 'true',
+  debugMode: process.env.EXPO_PUBLIC_DEBUG_MODE === 'true',
+  sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+} as const;
+```
+
+## Multiple Environments
+
+### Environment-specific files
+
+```
+.env                  # Default
+.env.development      # Development
+.env.staging          # Staging
+.env.production       # Production
+```
+
+### Setup for each environment
+
+<Tabs>
+  <Tab title="Development">
+    ```bash .env.development
+    EXPO_PUBLIC_API_URL=http://localhost:3000/api
+    EXPO_PUBLIC_DEBUG_MODE=true
+    EXPO_PUBLIC_ENABLE_ANALYTICS=false
+    ```
+  </Tab>
+
+  <Tab title="Staging">
+    ```bash .env.staging
+    EXPO_PUBLIC_API_URL=https://staging-api.example.com
+    EXPO_PUBLIC_DEBUG_MODE=true
+    EXPO_PUBLIC_ENABLE_ANALYTICS=true
+    ```
+  </Tab>
+
+  <Tab title="Production">
+    ```bash .env.production
+    EXPO_PUBLIC_API_URL=https://api.example.com
+    EXPO_PUBLIC_DEBUG_MODE=false
+    EXPO_PUBLIC_ENABLE_ANALYTICS=true
+    ```
+  </Tab>
+</Tabs>
+
+### Load environment-specific config
+
+```javascript app.config.js
+const ENV = process.env.APP_ENV || 'development';
+require('dotenv').config({
+  path: `.env.${ENV}`,
+});
+
+module.exports = {
+  expo: {
+    name: ENV === 'production' ? 'My App' : `My App (${ENV})`,
+    slug: 'my-app',
+    extra: {
+      env: ENV,
+      apiUrl: process.env.EXPO_PUBLIC_API_URL,
+    },
+  },
+};
+```
+
+### Build with environment
+
+```bash
+# Development
+APP_ENV=development npx expo start
+
+# Staging
+APP_ENV=staging eas build --profile staging
+
+# Production
+APP_ENV=production eas build --profile production
+```
+
+## EAS Build Configuration
+
+### Configure eas.json
+
+```json eas.json
+{
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "env": {
+        "APP_ENV": "development"
+      }
+    },
+    "staging": {
+      "distribution": "internal",
+      "env": {
+        "APP_ENV": "staging"
+      }
+    },
+    "production": {
+      "env": {
+        "APP_ENV": "production"
+      }
+    }
+  }
+}
+```
+
+### Store secrets in EAS
+
+```bash
+# Add secret to EAS
+eas secret:create --scope project --name API_SECRET --value your-secret-value
+
+# Use in eas.json
+```
+
+```json eas.json
+{
+  "build": {
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.example.com",
+        "API_SECRET": "@API_SECRET"
+      }
+    }
+  }
+}
+```
+
+<Note>
+  Secrets prefixed with `@` are read from EAS Secret Storage.
+</Note>
+
+## Type-Safe Configuration
+
+### Define types
+
+```typescript types/env.d.ts
+declare global {
+  namespace NodeJS {
+    interface ProcessEnv {
+      EXPO_PUBLIC_API_URL: string;
+      EXPO_PUBLIC_API_TIMEOUT?: string;
+      EXPO_PUBLIC_ENABLE_ANALYTICS?: string;
+      EXPO_PUBLIC_DEBUG_MODE?: string;
+      EXPO_PUBLIC_SENTRY_DSN?: string;
+    }
+  }
+}
+
+export {};
+```
+
+### Create config object
+
+```typescript utils/config.ts
+function getEnvVar(key: string, defaultValue?: string): string {
+  const value = process.env[key];
+  if (!value && !defaultValue) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+  return value || defaultValue!;
+}
+
+function getBooleanEnv(key: string, defaultValue: boolean = false): boolean {
+  const value = process.env[key];
+  if (value === undefined) return defaultValue;
+  return value === 'true';
+}
+
+function getNumberEnv(key: string, defaultValue: number): number {
+  const value = process.env[key];
+  if (value === undefined) return defaultValue;
+  return parseInt(value, 10);
+}
+
+export const config = {
+  api: {
+    url: getEnvVar('EXPO_PUBLIC_API_URL'),
+    timeout: getNumberEnv('EXPO_PUBLIC_API_TIMEOUT', 30000),
+  },
+  features: {
+    analytics: getBooleanEnv('EXPO_PUBLIC_ENABLE_ANALYTICS'),
+    debugMode: getBooleanEnv('EXPO_PUBLIC_DEBUG_MODE'),
+  },
+  sentry: {
+    dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  },
+} as const;
+
+// Type-safe access
+export type Config = typeof config;
+```
+
+### Validate on startup
+
+```typescript app/_layout.tsx
+import { config } from '@/utils/config';
+import { useEffect } from 'react';
+
+export default function RootLayout() {
+  useEffect(() => {
+    // Validate required config
+    if (!config.api.url) {
+      throw new Error('API URL is required');
+    }
+
+    if (__DEV__) {
+      console.log('Config loaded:', {
+        apiUrl: config.api.url,
+        analytics: config.features.analytics,
+      });
+    }
+  }, []);
+
+  return <Slot />;
+}
+```
+
+## Runtime vs Build-time
+
+### Build-time configuration
+
+Evaluated when building your app:
+
+```javascript app.config.js
+module.exports = {
+  expo: {
+    name: process.env.APP_NAME || 'My App',
+    version: process.env.APP_VERSION || '1.0.0',
+    icon: `./assets/icon-${process.env.APP_ENV}.png`,
+  },
+};
+```
+
+### Runtime configuration
+
+Available in your JavaScript code:
+
+```typescript
+const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+const isDev = __DEV__;
+```
+
+## Security Best Practices
+
+### Don't commit secrets
+
+```gitignore .gitignore
+# Environment files
+.env
+.env.local
+.env.development
+.env.staging
+.env.production
+.env*.local
+```
+
+### Provide example file
+
+```bash .env.example
+# API Configuration
+EXPO_PUBLIC_API_URL=https://api.example.com
+EXPO_PUBLIC_API_TIMEOUT=30000
+
+# Feature Flags
+EXPO_PUBLIC_ENABLE_ANALYTICS=true
+
+# Third-party Services (get from respective dashboards)
+EXPO_PUBLIC_SENTRY_DSN=
+```
+
+### Separate public and private
+
+```typescript
+// ✅ Good - Public API key
+const STRIPE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_STRIPE_KEY;
+
+// ❌ Bad - Secret key in client app
+const STRIPE_SECRET_KEY = process.env.EXPO_PUBLIC_STRIPE_SECRET;
+
+// ✅ Good - Secret on backend
+// Keep secrets on your backend server
+```
+
+### Use EAS Secrets for sensitive data
+
+```bash
+# Store in EAS, use in builds
+eas secret:create --scope project --name GOOGLE_SERVICES_JSON --value "$(cat google-services.json)"
+```
+
+## Advanced Patterns
+
+### Dynamic configuration
+
+```typescript utils/config.ts
+type Environment = 'development' | 'staging' | 'production';
+
+function getConfig(env: Environment) {
+  const configs = {
+    development: {
+      apiUrl: 'http://localhost:3000',
+      logLevel: 'debug',
+    },
+    staging: {
+      apiUrl: 'https://staging-api.example.com',
+      logLevel: 'info',
+    },
+    production: {
+      apiUrl: 'https://api.example.com',
+      logLevel: 'error',
+    },
+  };
+
+  return configs[env];
+}
+
+const ENV = (process.env.EXPO_PUBLIC_ENV || 'development') as Environment;
+export const config = getConfig(ENV);
+```
+
+### Feature flags
+
+```typescript utils/features.ts
+export const features = {
+  newUI: process.env.EXPO_PUBLIC_FEATURE_NEW_UI === 'true',
+  betaFeatures: process.env.EXPO_PUBLIC_BETA_FEATURES === 'true',
+  payments: process.env.EXPO_PUBLIC_ENABLE_PAYMENTS === 'true',
+} as const;
+```
+
+Usage:
+
+```typescript
+import { features } from '@/utils/features';
+
+if (features.newUI) {
+  return <NewUI />;
+}
+
+return <OldUI />;
+```
+
+### Remote configuration
+
+Fetch configuration from a server at runtime:
+
+```typescript utils/remoteConfig.ts
+import { useEffect, useState } from 'react';
+
+type RemoteConfig = {
+  maintenanceMode: boolean;
+  minAppVersion: string;
+  features: Record<string, boolean>;
+};
+
+export function useRemoteConfig() {
+  const [config, setConfig] = useState<RemoteConfig | null>(null);
+
+  useEffect(() => {
+    fetch(`${process.env.EXPO_PUBLIC_API_URL}/config`)
+      .then(res => res.json())
+      .then(setConfig)
+      .catch(console.error);
+  }, []);
+
+  return config;
+}
+```
+
+## Debugging
+
+### Log configuration
+
+```typescript
+if (__DEV__) {
+  console.log('Environment variables:', {
+    apiUrl: process.env.EXPO_PUBLIC_API_URL,
+    env: process.env.EXPO_PUBLIC_ENV,
+    // Don't log secrets!
+  });
+}
+```
+
+### Validation helper
+
+```typescript utils/validateEnv.ts
+export function validateEnv() {
+  const required = [
+    'EXPO_PUBLIC_API_URL',
+  ];
+
+  const missing = required.filter(key => !process.env[key]);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required environment variables:\n${missing.join('\n')}`
+    );
+  }
+}
+```
+
+Call on app start:
+
+```typescript
+import { validateEnv } from '@/utils/validateEnv';
+
+if (__DEV__) {
+  validateEnv();
+}
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Environment variables not updating">
+    ```bash
+    # Clear Metro cache
+    npx expo start --clear
+    
+    # For native changes, rebuild
+    npx expo prebuild --clean
+    npx expo run:ios
+    ```
+  </Accordion>
+
+  <Accordion title="Variables undefined in app">
+    - Ensure variables are prefixed with `EXPO_PUBLIC_`
+    - Check .env file is in project root
+    - Restart dev server after changing .env
+    - Verify dotenv is installed and configured
+  </Accordion>
+
+  <Accordion title="Different values in development vs build">
+    Check which environment file is being loaded:
+    ```javascript
+    const ENV = process.env.APP_ENV || 'development';
+    require('dotenv').config({ path: `.env.${ENV}` });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  Always restart your development server after modifying .env files. Environment variables are loaded at startup.
+</Warning>
+
+## Best Practices
+
+- **Prefix public variables**: Use `EXPO_PUBLIC_` for client-accessible variables
+- **Never commit secrets**: Add .env files to .gitignore
+- **Provide .env.example**: Document required variables
+- **Use EAS Secrets**: Store sensitive build-time secrets in EAS
+- **Validate on startup**: Check required variables are present
+- **Type your config**: Use TypeScript for type-safe configuration
+- **Separate by environment**: Use different files for dev/staging/prod
+- **Document variables**: Comment what each variable is for
+- **Use sensible defaults**: Provide fallback values where appropriate
+- **Keep secrets on backend**: Don't embed API secrets in your app
+
+## Related Resources
+
+- [Expo environment variables](https://docs.expo.dev/guides/environment-variables/)
+- [EAS Secrets](https://docs.expo.dev/build-reference/variables/)
+- [dotenv documentation](https://github.com/motdotla/dotenv)
+- [12 Factor App - Config](https://12factor.net/config)

@@ -1,0 +1,606 @@
+---
+title: Prebuild Workflow
+description: Generate and customize native projects with npx expo prebuild.
+---
+
+Prebuild generates the `ios/` and `android/` directories from your `app.json` configuration and installed packages. It's like a bundler for native code.
+
+## What is Prebuild?
+
+Prebuild transforms your Expo project configuration into native iOS and Android projects:
+
+```bash
+# Before prebuild
+my-app/
+├── app/
+├── app.json
+└── package.json
+
+# After prebuild
+my-app/
+├── app/
+├── app.json
+├── package.json
+├── ios/              # Generated
+└── android/          # Generated
+```
+
+## Why Use Prebuild?
+
+### Advantages
+
+- **Reproducible**: Same `app.json` = same native projects
+- **Version control**: Can ignore `ios/` and `android/` in git
+- **Easy updates**: Regenerate when config changes
+- **Config plugins**: Modify native code declaratively
+- **Clean slate**: Reset native projects anytime
+
+### When to Use
+
+1. **Development builds**: Generate native code for custom modules
+2. **CI/CD**: Reproducible native projects in CI
+3. **Config changes**: When updating `app.json` plugins
+4. **Clean start**: Reset corrupted native projects
+
+## Running Prebuild
+
+### Basic Usage
+
+```bash
+# Generate both platforms
+npx expo prebuild
+
+# Generate specific platform
+npx expo prebuild --platform ios
+npx expo prebuild --platform android
+
+# Clean and regenerate
+npx expo prebuild --clean
+```
+
+### Options
+
+```bash
+# Skip installing dependencies
+npx expo prebuild --skip-dependency-update
+
+# Use custom template
+npx expo prebuild --template expo-template-bare-minimum
+
+# Specify template version
+npx expo prebuild --template expo-template-bare-minimum@49.0.0
+
+# Non-interactive mode
+npx expo prebuild --no-install
+```
+
+## Prebuild Process
+
+<Steps>
+
+<Step title="1. Read configuration">
+
+Prebuild reads your `app.json` and evaluates config plugins:
+
+```json title="app.json"
+{
+  "expo": {
+    "name": "My App",
+    "slug": "my-app",
+    "version": "1.0.0",
+    "ios": {
+      "bundleIdentifier": "com.mycompany.myapp"
+    },
+    "android": {
+      "package": "com.mycompany.myapp"
+    },
+    "plugins": [
+      "expo-camera",
+      ["expo-build-properties", {
+        "android": { "minSdkVersion": 24 }
+      }]
+    ]
+  }
+}
+```
+
+</Step>
+
+<Step title="2. Generate base projects">
+
+Creates native projects from template:
+
+```bash
+› Generating native code for ios
+› Generating native code for android
+```
+
+</Step>
+
+<Step title="3. Apply config plugins">
+
+Runs plugins to modify native code:
+
+```bash
+› Running expo-camera plugin
+› Running expo-build-properties plugin
+```
+
+</Step>
+
+<Step title="4. Install dependencies">
+
+Installs native dependencies:
+
+```bash
+› Installing CocoaPods
+› Syncing Gradle dependencies
+```
+
+</Step>
+
+</Steps>
+
+## Clean vs Modified Projects
+
+### Clean Projects
+
+Native projects that can be regenerated from config:
+
+```bash
+# .gitignore
+ios/
+android/
+```
+
+**Pros:**
+- Always in sync with config
+- No merge conflicts in native code
+- Easy to update SDK versions
+
+**Cons:**
+- Must run prebuild before building
+- Can't make manual native changes
+- Requires CI to run prebuild
+
+### Modified Projects
+
+Projects with manual native modifications:
+
+```bash
+# .gitignore (DON'T ignore native directories)
+# ios/
+# android/
+```
+
+**Pros:**
+- Can make any native changes
+- No prebuild step needed
+- Direct control over native code
+
+**Cons:**
+- Hard to keep in sync with config
+- Merge conflicts in native code
+- Manual SDK updates
+
+## Config Plugins
+
+Plugins modify native projects declaratively.
+
+### Using Plugins
+
+```json title="app.json"
+{
+  "expo": {
+    "plugins": [
+      // Simple plugin
+      "expo-camera",
+
+      // Plugin with config
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access photos"
+        }
+      ],
+
+      // Custom plugin
+      "./plugins/withCustomConfig.js"
+    ]
+  }
+}
+```
+
+### Creating Custom Plugins
+
+```javascript title="plugins/withCustomConfig.js"
+const { withInfoPlist, withAndroidManifest } = require('@expo/config-plugins');
+
+function withCustomConfig(config) {
+  // Modify iOS Info.plist
+  config = withInfoPlist(config, (config) => {
+    config.modResults.MyCustomKey = 'MyCustomValue';
+    return config;
+  });
+
+  // Modify Android Manifest
+  config = withAndroidManifest(config, (config) => {
+    const mainApplication = config.modResults.manifest.application[0];
+    mainApplication.$['android:usesCleartextTraffic'] = 'true';
+    return config;
+  });
+
+  return config;
+}
+
+module.exports = withCustomConfig;
+```
+
+### Plugin Examples
+
+#### Modify iOS Entitlements
+
+```javascript
+const { withEntitlementsPlist } = require('@expo/config-plugins');
+
+function withCustomEntitlements(config) {
+  return withEntitlementsPlist(config, (config) => {
+    config.modResults['com.apple.security.application-groups'] = [
+      'group.com.mycompany.myapp',
+    ];
+    return config;
+  });
+}
+```
+
+#### Add Android Permissions
+
+```javascript
+const { withAndroidManifest, AndroidConfig } = require('@expo/config-plugins');
+
+function withCustomPermissions(config) {
+  return withAndroidManifest(config, (config) => {
+    config.modResults = AndroidConfig.Permissions.addPermission(
+      config.modResults,
+      'android.permission.ACCESS_FINE_LOCATION'
+    );
+    return config;
+  });
+}
+```
+
+#### Modify Gradle
+
+```javascript
+const { withGradleProperties } = require('@expo/config-plugins');
+
+function withCustomGradle(config) {
+  return withGradleProperties(config, (config) => {
+    config.modResults.push({
+      type: 'property',
+      key: 'android.useAndroidX',
+      value: 'true',
+    });
+    return config;
+  });
+}
+```
+
+## Templates
+
+Prebuild uses templates to generate native projects.
+
+### Default Template
+
+```bash
+# Uses expo-template-bare-minimum by default
+npx expo prebuild
+```
+
+### Custom Template
+
+```bash
+# Use specific template
+npx expo prebuild --template expo-template-bare-minimum@49.0.0
+
+# From npm package
+npx expo prebuild --template my-custom-template
+
+# From GitHub
+npx expo prebuild --template https://github.com/user/template.git
+
+# From local directory
+npx expo prebuild --template file:../my-template
+```
+
+### Template Structure
+
+```
+my-template/
+├── ios/
+│   └── MyApp/
+│       └── Info.plist
+├── android/
+│   └── app/
+│       └── build.gradle
+└── template.config.js
+```
+
+```javascript title="template.config.js"
+module.exports = {
+  placeholderName: 'HelloWorld',
+  templateType: 'bare-minimum',
+  // Files to process
+  postInitScript: './postinstall.js',
+};
+```
+
+## Workflow Strategies
+
+### Strategy 1: Clean Projects (Recommended)
+
+**Workflow:**
+
+```bash
+# Never commit native directories
+echo "ios/" >> .gitignore
+echo "android/" >> .gitignore
+
+# Prebuild before running
+npx expo prebuild
+npx expo run:ios
+```
+
+**When to use:**
+- Standard Expo modules only
+- No custom native code
+- Team prefers simplicity
+- CI/CD builds
+
+### Strategy 2: Modified Projects
+
+**Workflow:**
+
+```bash
+# Commit native directories
+git add ios/ android/
+git commit -m "Add native projects"
+
+# Make manual changes
+open ios/MyApp.xcworkspace
+studio android/
+
+# Re-run prebuild carefully
+npx expo prebuild
+# May overwrite changes!
+```
+
+**When to use:**
+- Custom native code
+- Third-party SDKs
+- Advanced configurations
+- Need full native control
+
+### Strategy 3: Hybrid
+
+**Workflow:**
+
+```bash
+# Prebuild initially
+npx expo prebuild
+
+# Commit baseline
+git add ios/ android/
+git commit -m "Initial native projects"
+
+# Make careful modifications
+# Document changes
+# Re-prebuild only when needed
+```
+
+## CI/CD Integration
+
+### GitHub Actions
+
+```yaml title=".github/workflows/build.yml"
+name: Build
+
+on: push
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Prebuild iOS
+        run: npx expo prebuild --platform ios --clean
+      
+      - name: Build iOS
+        run: |
+          cd ios
+          xcodebuild -workspace MyApp.xcworkspace \
+            -scheme MyApp -configuration Debug \
+            -sdk iphonesimulator
+```
+
+### EAS Build
+
+EAS Build runs prebuild automatically:
+
+```json title="eas.json"
+{
+  "build": {
+    "development": {
+      "developmentClient": true
+    }
+  }
+}
+```
+
+## Troubleshooting
+
+### Prebuild Fails: Package Conflicts
+
+```bash
+Error: Conflicting dependencies for expo-camera
+```
+
+**Solution:**
+
+```bash
+# Install correct versions
+npx expo install expo-camera
+
+# Or update all
+npx expo install --fix
+```
+
+### Native Directories Out of Sync
+
+```bash
+# Clean and regenerate
+npx expo prebuild --clean
+
+# Or manually delete
+rm -rf ios android
+npx expo prebuild
+```
+
+### CocoaPods Install Fails
+
+```bash
+Error: [!] Unable to find a specification for...
+```
+
+**Solution:**
+
+```bash
+# Update CocoaPods
+cd ios
+rm -rf Pods Podfile.lock
+pod install --repo-update
+```
+
+### Gradle Sync Fails
+
+```bash
+Error: Could not resolve all dependencies
+```
+
+**Solution:**
+
+```bash
+# Clean Gradle cache
+cd android
+./gradlew clean
+rm -rf .gradle
+./gradlew --refresh-dependencies
+```
+
+### Plugin Errors
+
+```bash
+Error: Plugin "my-plugin" is not a valid config plugin
+```
+
+**Solution:**
+
+```javascript
+// Ensure plugin exports function
+module.exports = function withMyPlugin(config) {
+  return config;
+};
+```
+
+## Best Practices
+
+### 1. Use Clean Projects When Possible
+
+```bash
+# Add to .gitignore
+ios/
+android/
+```
+
+Regerate anytime:
+```bash
+npx expo prebuild --clean
+```
+
+### 2. Document Custom Changes
+
+If modifying native code:
+
+```markdown title="NATIVE_CHANGES.md"
+# Native Modifications
+
+## iOS
+- Modified Info.plist to add custom URL scheme
+- Added FirebaseSDK to Podfile
+
+## Android
+- Modified MainActivity.kt for deep linking
+- Added Firebase dependencies to build.gradle
+```
+
+### 3. Test After Prebuild
+
+```bash
+# Always test after prebuild
+npx expo prebuild --clean
+npx expo run:ios
+npx expo run:android
+```
+
+### 4. Keep Config Plugins Simple
+
+```javascript
+// Good: Simple, focused plugin
+function withMyFeature(config) {
+  config = addPermission(config);
+  return config;
+}
+
+// Bad: Complex, multi-purpose plugin
+function withEverything(config) {
+  // 500 lines of modifications
+}
+```
+
+### 5. Version Lock Templates
+
+```json title="app.json"
+{
+  "expo": {
+    "sdkVersion": "49.0.0"
+  }
+}
+```
+
+Prebuild uses matching template version automatically.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Build Properties" icon="gear" href="/development/build-properties">
+    Configure native build settings
+  </Card>
+  <Card title="Creating Builds" icon="hammer" href="/development/creating-builds">
+    Build your prebuilt project
+  </Card>
+  <Card title="Native Modules" icon="cube" href="/development/native-modules">
+    Create custom native modules
+  </Card>
+  <Card title="Monorepos" icon="folder-tree" href="/development/monorepos">
+    Use prebuild in monorepos
+  </Card>
+</CardGroup>

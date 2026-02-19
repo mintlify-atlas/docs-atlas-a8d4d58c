@@ -1,0 +1,479 @@
+---
+title: expo-image-picker
+description: Access system UI for selecting images and videos from the library or taking photos with the camera
+---
+
+# expo-image-picker
+
+**Version:** 55.0.6
+
+Provides access to the system's UI for selecting images and videos from the phone's library or taking a photo with the camera. Supports image editing, multiple selection, and customizable media types.
+
+## Installation
+
+```bash
+npx expo install expo-image-picker
+```
+
+## Usage
+
+```typescript
+import * as ImagePicker from 'expo-image-picker';
+import { Button, Image, View } from 'react-native';
+import { useState } from 'react';
+
+export default function App() {
+  const [image, setImage] = useState<string | null>(null);
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+    }
+  };
+
+  return (
+    <View>
+      <Button title="Pick Image" onPress={pickImage} />
+      {image && <Image source={{ uri: image }} style={{ width: 200, height: 200 }} />}
+    </View>
+  );
+}
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="launchImageLibraryAsync(options)" type="(options?: ImagePickerOptions) => Promise<ImagePickerResult>">
+  Opens the system UI for choosing an image or video from the library
+  
+  ```typescript
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.All,
+    allowsEditing: true,
+    aspect: [16, 9],
+    quality: 0.8,
+  });
+  ```
+</ParamField>
+
+<ParamField path="launchCameraAsync(options)" type="(options?: ImagePickerOptions) => Promise<ImagePickerResult>">
+  Opens the system camera for taking a photo or video
+  
+  ```typescript
+  const result = await ImagePicker.launchCameraAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: true,
+    quality: 1,
+  });
+  ```
+</ParamField>
+
+<ParamField path="requestCameraPermissionsAsync()" type="() => Promise<CameraPermissionResponse>">
+  Requests camera permissions from the user
+  
+  ```typescript
+  const { status } = await ImagePicker.requestCameraPermissionsAsync();
+  if (status === 'granted') {
+    // Permission granted
+  }
+  ```
+</ParamField>
+
+<ParamField path="getCameraPermissionsAsync()" type="() => Promise<CameraPermissionResponse>">
+  Checks current camera permission status
+  
+  ```typescript
+  const { status } = await ImagePicker.getCameraPermissionsAsync();
+  ```
+</ParamField>
+
+<ParamField path="requestMediaLibraryPermissionsAsync(writeOnly)" type="(writeOnly?: boolean) => Promise<MediaLibraryPermissionResponse>">
+  Requests media library permissions
+  
+  **Parameters:**
+  - `writeOnly` (boolean): Request write-only permissions. Defaults to `false`
+  
+  ```typescript
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  ```
+</ParamField>
+
+<ParamField path="getMediaLibraryPermissionsAsync(writeOnly)" type="(writeOnly?: boolean) => Promise<MediaLibraryPermissionResponse>">
+  Checks current media library permission status
+</ParamField>
+
+<ParamField path="getPendingResultAsync()" type="() => Promise<ImagePickerResult | null>">
+  Retrieves pending result on Android when MainActivity is destroyed
+  
+  ```typescript
+  const result = await ImagePicker.getPendingResultAsync();
+  if (result) {
+    // Handle recovered result
+  }
+  ```
+</ParamField>
+
+### Hooks
+
+<ParamField path="useCameraPermissions(options)" type="() => [PermissionResponse | null, () => Promise<PermissionResponse>, () => Promise<PermissionResponse>]">
+  Hook for camera permissions
+  
+  ```typescript
+  const [permission, requestPermission] = ImagePicker.useCameraPermissions();
+  
+  if (!permission?.granted) {
+    await requestPermission();
+  }
+  ```
+</ParamField>
+
+<ParamField path="useMediaLibraryPermissions(options)" type="(options?: { writeOnly?: boolean }) => [PermissionResponse | null, () => Promise<PermissionResponse>, () => Promise<PermissionResponse>]">
+  Hook for media library permissions
+  
+  ```typescript
+  const [permission, requestPermission] = ImagePicker.useMediaLibraryPermissions();
+  ```
+</ParamField>
+
+### Types
+
+#### ImagePickerOptions
+
+<ParamField path="mediaTypes" type="MediaTypeOptions">
+  Type of media to select. Values: `All`, `Images`, `Videos`
+</ParamField>
+
+<ParamField path="allowsEditing" type="boolean">
+  Whether to show editing UI after selection. Defaults to `false`
+</ParamField>
+
+<ParamField path="allowsMultipleSelection" type="boolean">
+  Allow selecting multiple items. Defaults to `false`
+</ParamField>
+
+<ParamField path="aspect" type="[number, number]">
+  Aspect ratio for editing (e.g., `[4, 3]`)
+</ParamField>
+
+<ParamField path="quality" type="number">
+  Image quality (0 to 1). Defaults to `0.2`
+</ParamField>
+
+<ParamField path="videoMaxDuration" type="number">
+  Maximum video duration in seconds
+</ParamField>
+
+<ParamField path="videoQuality" type="UIImagePickerControllerQualityType">
+  Video quality: `0` (High), `1` (Medium), `2` (Low)
+</ParamField>
+
+<ParamField path="exif" type="boolean">
+  Include EXIF data. Defaults to `false`
+</ParamField>
+
+<ParamField path="base64" type="boolean">
+  Include base64 representation. Defaults to `false`
+</ParamField>
+
+#### ImagePickerResult
+
+```typescript
+type ImagePickerResult =
+  | {
+      canceled: false;
+      assets: ImagePickerAsset[];
+    }
+  | {
+      canceled: true;
+      assets: null;
+    };
+```
+
+#### ImagePickerAsset
+
+<ResponseField name="uri" type="string">
+  URI of the selected media
+</ResponseField>
+
+<ResponseField name="width" type="number">
+  Width in pixels
+</ResponseField>
+
+<ResponseField name="height" type="number">
+  Height in pixels
+</ResponseField>
+
+<ResponseField name="type" type="'image' | 'video'">
+  Media type
+</ResponseField>
+
+<ResponseField name="fileName" type="string | null">
+  Original file name
+</ResponseField>
+
+<ResponseField name="fileSize" type="number">
+  File size in bytes
+</ResponseField>
+
+<ResponseField name="exif" type="object">
+  EXIF metadata (if requested)
+</ResponseField>
+
+<ResponseField name="base64" type="string">
+  Base64 data (if requested)
+</ResponseField>
+
+<ResponseField name="duration" type="number">
+  Video duration in milliseconds
+</ResponseField>
+
+### Enums
+
+```typescript
+enum MediaTypeOptions {
+  All = 'All',
+  Images = 'Images',
+  Videos = 'Videos',
+}
+```
+
+## Examples
+
+### Pick Image from Library
+
+```typescript
+import * as ImagePicker from 'expo-image-picker';
+
+async function selectImage() {
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    quality: 1,
+  });
+
+  if (!result.canceled) {
+    const asset = result.assets[0];
+    console.log('Image URI:', asset.uri);
+    console.log('Dimensions:', asset.width, 'x', asset.height);
+  }
+}
+```
+
+### Take Photo with Camera
+
+```typescript
+import * as ImagePicker from 'expo-image-picker';
+
+async function takePhoto() {
+  // Request permission first
+  const { status } = await ImagePicker.requestCameraPermissionsAsync();
+  if (status !== 'granted') {
+    alert('Camera permission required');
+    return;
+  }
+
+  const result = await ImagePicker.launchCameraAsync({
+    allowsEditing: true,
+    aspect: [1, 1],
+    quality: 1,
+  });
+
+  if (!result.canceled) {
+    console.log('Photo taken:', result.assets[0].uri);
+  }
+}
+```
+
+### Select Multiple Images
+
+```typescript
+import * as ImagePicker from 'expo-image-picker';
+
+async function selectMultiple() {
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsMultipleSelection: true,
+    quality: 0.8,
+  });
+
+  if (!result.canceled) {
+    console.log(`Selected ${result.assets.length} images`);
+    result.assets.forEach((asset) => {
+      console.log(asset.uri);
+    });
+  }
+}
+```
+
+### Pick Video with Editing
+
+```typescript
+import * as ImagePicker from 'expo-image-picker';
+
+async function selectVideo() {
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+    allowsEditing: true,
+    videoMaxDuration: 60, // 60 seconds max
+    videoQuality: ImagePicker.UIImagePickerControllerQualityType.High,
+  });
+
+  if (!result.canceled) {
+    const video = result.assets[0];
+    console.log('Video URI:', video.uri);
+    console.log('Duration:', video.duration, 'ms');
+  }
+}
+```
+
+### Get Image with EXIF Data
+
+```typescript
+import * as ImagePicker from 'expo-image-picker';
+
+async function getImageWithExif() {
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    exif: true,
+  });
+
+  if (!result.canceled && result.assets[0].exif) {
+    const exif = result.assets[0].exif;
+    console.log('GPS:', exif.GPSLatitude, exif.GPSLongitude);
+    console.log('Camera:', exif.Make, exif.Model);
+    console.log('Date:', exif.DateTime);
+  }
+}
+```
+
+### Complete Example with Permissions
+
+```tsx
+import * as ImagePicker from 'expo-image-picker';
+import { useState } from 'react';
+import { View, Button, Image, StyleSheet, Text } from 'react-native';
+
+export default function ImagePickerExample() {
+  const [image, setImage] = useState<string | null>(null);
+  const [cameraPermission, requestCameraPermission] =
+    ImagePicker.useCameraPermissions();
+  const [libraryPermission, requestLibraryPermission] =
+    ImagePicker.useMediaLibraryPermissions();
+
+  const takePhoto = async () => {
+    if (!cameraPermission?.granted) {
+      const result = await requestCameraPermission();
+      if (!result.granted) return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+    }
+  };
+
+  const pickImage = async () => {
+    if (!libraryPermission?.granted) {
+      const result = await requestLibraryPermission();
+      if (!result.granted) return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <Button title="Take Photo" onPress={takePhoto} />
+      <Button title="Pick Image" onPress={pickImage} />
+      
+      {image && (
+        <Image source={{ uri: image }} style={styles.image} />
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 20, gap: 10 },
+  image: { width: 300, height: 300, marginTop: 20 },
+});
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ✅       |
+
+## Permissions
+
+<Warning>
+Camera and media library permissions are required.
+</Warning>
+
+### iOS
+
+Add to `app.json`:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos.",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera."
+        }
+      ]
+    ]
+  }
+}
+```
+
+### Android
+
+Permissions are automatically added:
+- `READ_EXTERNAL_STORAGE` / `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO`
+- `WRITE_EXTERNAL_STORAGE` (Android < 10)
+- `CAMERA`
+
+## Best Practices
+
+1. **Always Request Permissions**: Check and request permissions before launching picker
+2. **Quality Settings**: Use `quality: 1` for profile photos, lower for thumbnails
+3. **Handle Cancellation**: Always check `result.canceled` before accessing assets
+4. **Memory Management**: Be cautious with `base64` on large images
+5. **Multiple Selection**: Don't use `allowsEditing` with `allowsMultipleSelection`
+
+<Note>
+On Android, if the system kills the activity, use `getPendingResultAsync()` to recover the selection. Test by enabling "Don't keep activities" in developer options.
+</Note>
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/imagepicker/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-image-picker)

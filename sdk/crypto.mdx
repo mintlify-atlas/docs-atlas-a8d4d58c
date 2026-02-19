@@ -1,0 +1,430 @@
+---
+title: expo-crypto
+description: Cryptography primitives for hashing and random value generation
+---
+
+# expo-crypto
+
+**Version:** 55.0.6
+
+Provides cryptography primitives for Android, iOS and web. Supports digest algorithms, random value generation, and CryptoDigestAlgorithm for secure hashing.
+
+## Installation
+
+```bash
+npx expo install expo-crypto
+```
+
+## Usage
+
+```typescript
+import * as Crypto from 'expo-crypto';
+
+// Generate SHA-256 hash
+const hash = await Crypto.digestStringAsync(
+  Crypto.CryptoDigestAlgorithm.SHA256,
+  'Hello World'
+);
+console.log('Hash:', hash);
+
+// Generate random bytes
+const randomBytes = await Crypto.getRandomBytesAsync(16);
+console.log('Random bytes:', randomBytes);
+
+// Generate random UUID
+const uuid = Crypto.randomUUID();
+console.log('UUID:', uuid);
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="digestStringAsync(algorithm, data, options)" type="(algorithm: CryptoDigestAlgorithm, data: string, options?: CryptoDigestOptions) => Promise<string>">
+  Generates a digest hash of the provided string
+  
+  **Parameters:**
+  - `algorithm`: Hash algorithm to use
+  - `data`: String to hash
+  - `options`: Optional encoding format
+  
+  ```typescript
+  const hash = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    'password123'
+  );
+  
+  // With hex encoding
+  const hexHash = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    'data',
+    { encoding: Crypto.CryptoEncoding.HEX }
+  );
+  ```
+</ParamField>
+
+<ParamField path="digest(algorithm, data)" type="(algorithm: CryptoDigestAlgorithm, data: TypedArray) => Promise<TypedArray>">
+  Generates a digest hash of typed array data
+  
+  ```typescript
+  const data = new Uint8Array([1, 2, 3, 4, 5]);
+  const hash = await Crypto.digest(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    data
+  );
+  ```
+</ParamField>
+
+<ParamField path="getRandomBytesAsync(byteCount)" type="(byteCount: number) => Promise<Uint8Array>">
+  Generates cryptographically secure random bytes
+  
+  ```typescript
+  const randomBytes = await Crypto.getRandomBytesAsync(32);
+  console.log('Random bytes:', randomBytes);
+  ```
+</ParamField>
+
+<ParamField path="getRandomBytes(byteCount)" type="(byteCount: number) => Uint8Array">
+  Synchronous version of getRandomBytesAsync
+  
+  ```typescript
+  const randomBytes = Crypto.getRandomBytes(16);
+  ```
+</ParamField>
+
+<ParamField path="randomUUID()" type="() => string">
+  Generates a random UUID (v4)
+  
+  ```typescript
+  const uuid = Crypto.randomUUID();
+  // Example: '550e8400-e29b-41d4-a716-446655440000'
+  ```
+</ParamField>
+
+### Enums
+
+#### CryptoDigestAlgorithm
+
+```typescript
+enum CryptoDigestAlgorithm {
+  SHA1 = 'SHA-1',
+  SHA256 = 'SHA-256',
+  SHA384 = 'SHA-384',
+  SHA512 = 'SHA-512',
+  MD2 = 'MD2',
+  MD4 = 'MD4',
+  MD5 = 'MD5',
+}
+```
+
+#### CryptoEncoding
+
+```typescript
+enum CryptoEncoding {
+  HEX = 'hex',
+  BASE64 = 'base64',
+}
+```
+
+## Examples
+
+### Hash Password
+
+```typescript
+import * as Crypto from 'expo-crypto';
+
+async function hashPassword(password: string) {
+  const hash = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    password
+  );
+  return hash;
+}
+
+// Usage
+const hashedPassword = await hashPassword('mySecurePassword123');
+console.log('Hashed:', hashedPassword);
+```
+
+### Verify Password
+
+```typescript
+import * as Crypto from 'expo-crypto';
+
+async function verifyPassword(password: string, storedHash: string) {
+  const hash = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    password
+  );
+  return hash === storedHash;
+}
+
+// Usage
+const isValid = await verifyPassword('password', storedHash);
+```
+
+### Generate Random Token
+
+```typescript
+import * as Crypto from 'expo-crypto';
+
+async function generateToken() {
+  const randomBytes = await Crypto.getRandomBytesAsync(32);
+  
+  // Convert to hex string
+  const token = Array.from(randomBytes)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  
+  return token;
+}
+
+// Usage
+const token = await generateToken();
+console.log('Token:', token);
+```
+
+### Hash File Content
+
+```typescript
+import * as Crypto from 'expo-crypto';
+import * as FileSystem from 'expo-file-system';
+
+async function hashFile(fileUri: string) {
+  // Read file as base64
+  const content = await FileSystem.readAsStringAsync(fileUri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  
+  // Hash the content
+  const hash = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    content
+  );
+  
+  return hash;
+}
+```
+
+### Generate UUID for Records
+
+```typescript
+import * as Crypto from 'expo-crypto';
+
+interface Record {
+  id: string;
+  data: any;
+  createdAt: number;
+}
+
+function createRecord(data: any): Record {
+  return {
+    id: Crypto.randomUUID(),
+    data,
+    createdAt: Date.now(),
+  };
+}
+
+// Usage
+const record = createRecord({ name: 'John' });
+console.log('Record ID:', record.id);
+```
+
+### Hash with Different Algorithms
+
+```typescript
+import * as Crypto from 'expo-crypto';
+
+async function hashWithAlgorithms(text: string) {
+  const algorithms = [
+    Crypto.CryptoDigestAlgorithm.MD5,
+    Crypto.CryptoDigestAlgorithm.SHA1,
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    Crypto.CryptoDigestAlgorithm.SHA512,
+  ];
+
+  for (const algorithm of algorithms) {
+    const hash = await Crypto.digestStringAsync(algorithm, text);
+    console.log(`${algorithm}: ${hash}`);
+  }
+}
+```
+
+### Generate Secure Random String
+
+```typescript
+import * as Crypto from 'expo-crypto';
+
+function generateSecureRandomString(length: number) {
+  const bytes = Crypto.getRandomBytes(length);
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars[bytes[i] % chars.length];
+  }
+  
+  return result;
+}
+
+// Generate 16-character random string
+const randomString = generateSecureRandomString(16);
+console.log('Random string:', randomString);
+```
+
+### Create HMAC-like Hash
+
+```typescript
+import * as Crypto from 'expo-crypto';
+
+async function createHmac(message: string, secret: string) {
+  // Simple HMAC-like implementation
+  const combined = secret + message;
+  const hash = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    combined
+  );
+  return hash;
+}
+
+// Usage
+const signature = await createHmac('my message', 'secret-key');
+```
+
+### Complete Example
+
+```tsx
+import * as Crypto from 'expo-crypto';
+import { useState } from 'react';
+import { View, TextInput, Button, Text, StyleSheet } from 'react-native';
+
+export default function CryptoExample() {
+  const [input, setInput] = useState('');
+  const [hash, setHash] = useState('');
+  const [uuid, setUuid] = useState('');
+  const [randomBytes, setRandomBytes] = useState('');
+
+  async function generateHash() {
+    const result = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      input
+    );
+    setHash(result);
+  }
+
+  function generateUUID() {
+    const result = Crypto.randomUUID();
+    setUuid(result);
+  }
+
+  async function generateRandom() {
+    const bytes = await Crypto.getRandomBytesAsync(16);
+    const hex = Array.from(bytes)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    setRandomBytes(hex);
+  }
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Crypto Demo</Text>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Enter text to hash"
+        value={input}
+        onChangeText={setInput}
+      />
+
+      <Button title="Generate SHA-256 Hash" onPress={generateHash} />
+      {hash ? (
+        <Text style={styles.result}>Hash: {hash.substring(0, 32)}...</Text>
+      ) : null}
+
+      <Button title="Generate UUID" onPress={generateUUID} />
+      {uuid ? <Text style={styles.result}>UUID: {uuid}</Text> : null}
+
+      <Button title="Generate Random Bytes" onPress={generateRandom} />
+      {randomBytes ? (
+        <Text style={styles.result}>Random: {randomBytes}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    gap: 15,
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 10,
+    borderRadius: 5,
+  },
+  result: {
+    fontSize: 12,
+    color: '#666',
+    fontFamily: 'monospace',
+  },
+});
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ✅       |
+
+## Algorithm Support
+
+| Algorithm | Description | Recommended |
+|-----------|-------------|-------------|
+| **SHA-256** | Secure, widely used | ✅ Yes |
+| **SHA-384** | More secure than SHA-256 | ✅ Yes |
+| **SHA-512** | Most secure SHA-2 | ✅ Yes |
+| **SHA-1** | Deprecated, insecure | ⚠️ No |
+| **MD5** | Broken, very insecure | ❌ No |
+| **MD2/MD4** | Broken, very insecure | ❌ No |
+
+<Warning>
+MD5, SHA-1, MD2, and MD4 are cryptographically broken and should not be used for security purposes. Use SHA-256 or higher for secure applications.
+</Warning>
+
+## Use Cases
+
+- **Password Hashing**: Hash passwords before storage (use with salt)
+- **Data Integrity**: Verify file/data hasn't been tampered with
+- **Unique IDs**: Generate UUIDs for records
+- **Tokens**: Create secure random tokens
+- **Cache Keys**: Generate consistent keys for caching
+- **Checksums**: Verify downloaded files
+
+## Best Practices
+
+1. **Use SHA-256 or Higher**: For security-sensitive applications
+2. **Salt Passwords**: Add random salt when hashing passwords
+3. **Don't Roll Your Own**: Use established libraries for encryption
+4. **Secure Random**: Use `getRandomBytesAsync()` for security-critical randomness
+5. **Consider bcrypt**: For password hashing, consider `bcrypt` or `scrypt` libraries
+
+<Note>
+For password hashing, consider using a dedicated library like `bcrypt` that includes proper salting and key stretching. `expo-crypto` provides hashing primitives but doesn't include these features by default.
+</Note>
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/crypto/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-crypto)
+- [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)

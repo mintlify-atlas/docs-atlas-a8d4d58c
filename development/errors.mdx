@@ -1,0 +1,675 @@
+---
+title: Error Handling
+description: Handle errors, crashes, and exceptions in your Expo development build.
+---
+
+Proper error handling is crucial for debugging and providing a good user experience. This guide covers error boundaries, LogBox, crash reporting, and debugging techniques.
+
+## LogBox
+
+LogBox is React Native's in-app notification system for errors, warnings, and logs.
+
+### Error Display
+
+When an error occurs in development, LogBox shows:
+
+```typescript
+// This error will trigger LogBox
+function BrokenComponent() {
+  throw new Error('Something went wrong!');
+  return <View />;
+}
+
+// LogBox displays:
+// ┌─────────────────────────┐
+// │ ERROR                    │
+// │ Something went wrong!    │
+// │                          │
+// │ BrokenComponent.tsx:2    │
+// │   in BrokenComponent     │
+// │   in App                 │
+// └─────────────────────────┘
+```
+
+### Warning Display
+
+Warnings appear as yellow boxes:
+
+```typescript
+// Triggers warning
+console.warn('Deprecated API used');
+
+// LogBox shows:
+// ┌─────────────────────────┐
+// │ WARNING                  │
+// │ Deprecated API used      │
+// └─────────────────────────┘
+```
+
+### Configuring LogBox
+
+```typescript title="app/_layout.tsx"
+import { LogBox } from 'react-native';
+
+// Ignore specific warnings
+LogBox.ignoreLogs([
+  'Non-serializable values were found in the navigation state',
+  'Warning: componentWillReceiveProps',
+]);
+
+// Ignore all logs (not recommended)
+LogBox.ignoreAllLogs(true);
+
+// Ignore using regex
+LogBox.ignoreLogs([
+  /GraphQL error:/,
+  /Require cycle:/,
+]);
+```
+
+### Custom Log Handling
+
+```typescript title="app/utils/logger.ts"
+import { LogBox } from 'react-native';
+
+// Intercept console methods
+const originalWarn = console.warn;
+console.warn = (...args) => {
+  // Filter or modify warnings
+  if (args[0]?.includes('expected')) {
+    return; // Suppress
+  }
+  originalWarn(...args);
+};
+
+// Custom error handler
+const originalError = console.error;
+console.error = (...args) => {
+  // Log to external service
+  logToSentry(args);
+  originalError(...args);
+};
+```
+
+## Error Boundaries
+
+Error boundaries catch JavaScript errors in component trees and display fallback UI.
+
+### Basic Error Boundary
+
+```typescript title="app/components/ErrorBoundary.tsx"
+import React from 'react';
+import { View, Text, Button, StyleSheet } from 'react-native';
+
+interface Props {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}
+
+interface State {
+  hasError: boolean;
+  error: Error | null;
+}
+
+export class ErrorBoundary extends React.Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // Log error to service
+    console.error('Error boundary caught:', error, errorInfo);
+    
+    if (!__DEV__) {
+      // Report to crash reporting service
+      logErrorToService(error, errorInfo);
+    }
+  }
+
+  handleReset = () => {
+    this.setState({ hasError: false, error: null });
+  };
+
+  render() {
+    if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+
+      return (
+        <View style={styles.container}>
+          <Text style={styles.title}>Something went wrong</Text>
+          <Text style={styles.message}>
+            {this.state.error?.message}
+          </Text>
+          <Button title="Try Again" onPress={this.handleReset} />
+        </View>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  message: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+});
+```
+
+### Using Error Boundaries
+
+```typescript title="app/_layout.tsx"
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { Slot } from 'expo-router';
+
+export default function RootLayout() {
+  return (
+    <ErrorBoundary>
+      <Slot />
+    </ErrorBoundary>
+  );
+}
+```
+
+### Route-Specific Error Boundaries
+
+```typescript title="app/(tabs)/_layout.tsx"
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { Tabs } from 'expo-router';
+
+export default function TabLayout() {
+  return (
+    <ErrorBoundary
+      fallback={
+        <View>
+          <Text>Tab navigation error</Text>
+        </View>
+      }
+    >
+      <Tabs>
+        <Tabs.Screen name="index" />
+        <Tabs.Screen name="profile" />
+      </Tabs>
+    </ErrorBoundary>
+  );
+}
+```
+
+### Expo Router Error Handling
+
+Expo Router provides built-in error boundaries:
+
+```typescript title="app/_layout.tsx"
+import { ErrorBoundary } from 'expo-router';
+
+export default function RootLayout() {
+  return (
+    <ErrorBoundary
+      // Custom error screen
+      errorElement={<CustomErrorScreen />}
+    >
+      <Slot />
+    </ErrorBoundary>
+  );
+}
+```
+
+```typescript title="app/+not-found.tsx"
+import { Link, Stack } from 'expo-router';
+import { View, Text } from 'react-native';
+
+export default function NotFoundScreen() {
+  return (
+    <>
+      <Stack.Screen options={{ title: 'Oops!' }} />
+      <View>
+        <Text>This screen doesn't exist.</Text>
+        <Link href="/">Go to home screen</Link>
+      </View>
+    </>
+  );
+}
+```
+
+## Async Error Handling
+
+### Promise Rejections
+
+```typescript
+// Unhandled promise rejection
+fetch('/api/data').then(response => {
+  throw new Error('Processing failed');
+});
+// This won't be caught by error boundaries!
+
+// Solution: Always catch promises
+fetch('/api/data')
+  .then(response => {
+    throw new Error('Processing failed');
+  })
+  .catch(error => {
+    console.error('Fetch error:', error);
+    // Handle error
+  });
+```
+
+### Global Promise Handler
+
+```typescript title="app/_layout.tsx"
+import { useEffect } from 'react';
+
+export default function RootLayout() {
+  useEffect(() => {
+    // Handle unhandled promise rejections
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      console.error('Unhandled promise rejection:', event.reason);
+      
+      if (!__DEV__) {
+        // Report to crash service
+        logErrorToService(event.reason);
+      }
+    };
+
+    // @ts-ignore
+    global.addEventListener?.('unhandledRejection', handleRejection);
+
+    return () => {
+      // @ts-ignore
+      global.removeEventListener?.('unhandledRejection', handleRejection);
+    };
+  }, []);
+
+  return <Slot />;
+}
+```
+
+### Async/Await Error Handling
+
+```typescript
+import { useState, useEffect } from 'react';
+
+export function DataComponent() {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/data');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const json = await response.json();
+        setData(json);
+        setError(null);
+      } catch (err) {
+        console.error('Fetch failed:', err);
+        setError(err instanceof Error ? err : new Error('Unknown error'));
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, []);
+
+  if (loading) return <Text>Loading...</Text>;
+  if (error) return <Text>Error: {error.message}</Text>;
+  return <Text>{JSON.stringify(data)}</Text>;
+}
+```
+
+## Native Crashes
+
+### iOS Crash Debugging
+
+<Steps>
+
+<Step title="View crash logs in Xcode">
+
+Window > Devices and Simulators > Select device > View Device Logs
+
+</Step>
+
+<Step title="Symbolicate crash logs">
+
+```bash
+# Export crash log from device
+# Xcode > Window > Devices > Select Device > Export Log
+
+# Symbolicate
+atos -arch arm64 -o App.dSYM/Contents/Resources/DWARF/App -l 0x1000e4000 0x00000001000e4000
+```
+
+</Step>
+
+<Step title="Enable crash reporting">
+
+```swift title="ios/YourApp/AppDelegate.swift"
+import ExpoModulesCore
+
+@UIApplicationMain
+class AppDelegate: ExpoAppDelegate {
+  override func application(
+    _ application: UIApplication,
+    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+  ) -> Bool {
+    // Add crash reporting
+    NSSetUncaughtExceptionHandler { exception in
+      print("Uncaught exception: \(exception)")
+      print("Stack trace: \(exception.callStackSymbols)")
+    }
+    
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+}
+```
+
+</Step>
+
+</Steps>
+
+### Android Crash Debugging
+
+<Steps>
+
+<Step title="View crash logs with Logcat">
+
+```bash
+# View crash logs
+adb logcat | grep -i "fatal\|exception\|crash"
+
+# Or in Android Studio
+# View > Tool Windows > Logcat
+# Filter: level:error
+```
+
+</Step>
+
+<Step title="Handle native crashes">
+
+```kotlin title="android/app/src/main/java/com/yourapp/MainApplication.kt"
+import android.util.Log
+import expo.modules.ApplicationLifecycleDispatcher
+
+class MainApplication : Application() {
+  override fun onCreate() {
+    super.onCreate()
+    
+    // Add crash handler
+    Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+      Log.e("YourApp", "Uncaught exception in thread ${thread.name}", throwable)
+      // Report to crash service
+    }
+  }
+}
+```
+
+</Step>
+
+</Steps>
+
+## Crash Reporting Services
+
+### Sentry Integration
+
+<Steps>
+
+<Step title="Install Sentry">
+
+```bash
+npx expo install @sentry/react-native
+```
+
+</Step>
+
+<Step title="Configure Sentry">
+
+```typescript title="app/_layout.tsx"
+import * as Sentry from '@sentry/react-native';
+import { useEffect } from 'react';
+
+Sentry.init({
+  dsn: 'YOUR_SENTRY_DSN',
+  enableInExpoDevelopment: false,
+  debug: __DEV__,
+  tracesSampleRate: 1.0,
+});
+
+export default Sentry.wrap(function RootLayout() {
+  return <Slot />;
+});
+```
+
+</Step>
+
+<Step title="Report errors">
+
+```typescript
+try {
+  // Risky operation
+  await processData();
+} catch (error) {
+  Sentry.captureException(error, {
+    tags: {
+      section: 'data-processing',
+    },
+    extra: {
+      userId: user.id,
+      timestamp: Date.now(),
+    },
+  });
+}
+```
+
+</Step>
+
+</Steps>
+
+### Custom Crash Reporter
+
+```typescript title="app/utils/crashReporter.ts"
+interface CrashReport {
+  error: Error;
+  componentStack?: string;
+  timestamp: number;
+  userId?: string;
+  appVersion: string;
+  platform: string;
+}
+
+export class CrashReporter {
+  private static instance: CrashReporter;
+  
+  static getInstance() {
+    if (!CrashReporter.instance) {
+      CrashReporter.instance = new CrashReporter();
+    }
+    return CrashReporter.instance;
+  }
+  
+  async reportCrash(report: Omit<CrashReport, 'timestamp' | 'appVersion' | 'platform'>) {
+    const fullReport: CrashReport = {
+      ...report,
+      timestamp: Date.now(),
+      appVersion: '1.0.0', // From Constants
+      platform: Platform.OS,
+    };
+    
+    try {
+      await fetch('https://your-api.com/crashes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fullReport),
+      });
+    } catch (error) {
+      console.error('Failed to report crash:', error);
+    }
+  }
+}
+```
+
+## Error Recovery Strategies
+
+### Retry Logic
+
+```typescript
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit = {},
+  maxRetries = 3
+): Promise<Response> {
+  let lastError: Error;
+  
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await fetch(url, options);
+      if (response.ok) return response;
+      throw new Error(`HTTP ${response.status}`);
+    } catch (error) {
+      lastError = error as Error;
+      console.warn(`Attempt ${i + 1} failed:`, error);
+      
+      if (i < maxRetries - 1) {
+        // Exponential backoff
+        await new Promise(resolve => 
+          setTimeout(resolve, Math.pow(2, i) * 1000)
+        );
+      }
+    }
+  }
+  
+  throw lastError!;
+}
+```
+
+### Graceful Degradation
+
+```typescript
+export function FeatureComponent() {
+  const [hasError, setHasError] = useState(false);
+  
+  try {
+    if (hasError) {
+      // Fallback UI
+      return <BasicVersion />;
+    }
+    
+    // Feature with potential errors
+    return <AdvancedVersion />;
+  } catch (error) {
+    setHasError(true);
+    return <BasicVersion />;
+  }
+}
+```
+
+## Debugging Tips
+
+### Source Maps
+
+Ensure source maps work for readable stack traces:
+
+```json title="app.json"
+{
+  "expo": {
+    "packagerOpts": {
+      "sourceMaps": true
+    }
+  }
+}
+```
+
+### Error Context
+
+Add context to errors:
+
+```typescript
+class DataFetchError extends Error {
+  constructor(
+    message: string,
+    public url: string,
+    public statusCode: number
+  ) {
+    super(message);
+    this.name = 'DataFetchError';
+  }
+}
+
+try {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new DataFetchError(
+      'Failed to fetch data',
+      url,
+      response.status
+    );
+  }
+} catch (error) {
+  if (error instanceof DataFetchError) {
+    console.error('Fetch failed:', {
+      url: error.url,
+      status: error.statusCode,
+    });
+  }
+}
+```
+
+### Debug Mode Checks
+
+```typescript
+if (__DEV__) {
+  // Extra validation in development
+  if (!props.userId) {
+    throw new Error('userId is required');
+  }
+}
+
+// More lenient in production
+if (!props.userId) {
+  console.warn('userId is missing, using default');
+  props.userId = 'guest';
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Unit Testing" icon="flask" href="/development/unit-testing">
+    Prevent errors with testing
+  </Card>
+  <Card title="E2E Testing" icon="robot" href="/development/e2e-testing">
+    Test error scenarios
+  </Card>
+  <Card title="Debugging" icon="bug" href="/development/debugging">
+    Debug errors effectively
+  </Card>
+  <Card title="DevTools" icon="wrench" href="/development/devtools">
+    Use dev tools for debugging
+  </Card>
+</CardGroup>

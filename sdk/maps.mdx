@@ -1,0 +1,119 @@
+---
+title: expo-maps
+description: Display maps using Google Maps on Android and Apple Maps on iOS
+---
+
+# expo-maps
+
+**Version:** 55.0.6
+
+Provides a Map component that uses Google Maps on Android and Apple Maps on iOS. Display interactive maps with markers, regions, and overlays.
+
+## Installation
+
+```bash
+npx expo install expo-maps
+```
+
+## Usage
+
+```typescript
+import { Map, Marker } from 'expo-maps';
+import { View, StyleSheet } from 'react-native';
+
+export default function App() {
+  return (
+    <View style={styles.container}>
+      <Map
+        style={styles.map}
+        initialRegion={{
+          latitude: 37.78825,
+          longitude: -122.4324,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        }}
+      >
+        <Marker
+          coordinate={{
+            latitude: 37.78825,
+            longitude: -122.4324,
+          }}
+          title="San Francisco"
+          description="City by the Bay"
+        />
+      </Map>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  map: { flex: 1 },
+});
+```
+
+## API Reference
+
+### Map Component
+
+<ParamField path="initialRegion" type="Region">
+  Initial map region
+</ParamField>
+
+<ParamField path="region" type="Region">
+  Controlled region (updates map)
+</ParamField>
+
+<ParamField path="onRegionChange" type="(region: Region) => void">
+  Called when region changes
+</ParamField>
+
+<ParamField path="mapType" type="'standard' | 'satellite' | 'hybrid'">
+  Map display type
+</ParamField>
+
+<ParamField path="showsUserLocation" type="boolean">
+  Show user location indicator
+</ParamField>
+
+### Marker Component
+
+<ParamField path="coordinate" type="{ latitude: number; longitude: number }" required>
+  Marker position
+</ParamField>
+
+<ParamField path="title" type="string">
+  Marker title
+</ParamField>
+
+<ParamField path="description" type="string">
+  Marker description
+</ParamField>
+
+## Platform Support
+
+| Platform | Supported | Provider |
+|----------|----------|----------|
+| iOS      | ✅       | Apple Maps |
+| Android  | ✅       | Google Maps |
+| Web      | ❌       | - |
+
+## Configuration
+
+**Android:** Add Google Maps API key to `app.json`:
+```json
+{
+  "android": {
+    "config": {
+      "googleMaps": {
+        "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+      }
+    }
+  }
+}
+```
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/maps/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-maps)

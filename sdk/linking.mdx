@@ -1,0 +1,211 @@
+---
+title: expo-linking
+description: Create and open deep links universally across platforms
+---
+
+# expo-linking
+
+**Version:** 55.0.4
+
+Create and open deep links universally. Handle incoming links, create links to your app, and open external URLs.
+
+## Installation
+
+```bash
+npx expo install expo-linking
+```
+
+## Usage
+
+```typescript
+import * as Linking from 'expo-linking';
+
+// Open URL
+await Linking.openURL('https://expo.dev');
+
+// Parse URL
+const url = Linking.parse('myapp://path/into/app?hello=world');
+console.log(url.hostname, url.path, url.queryParams);
+
+// Create URL
+const url = Linking.createURL('path/into/app', {
+  queryParams: { hello: 'world' },
+});
+
+// Listen for incoming URLs
+Linking.addEventListener('url', ({ url }) => {
+  console.log('Received URL:', url);
+});
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="openURL(url)" type="(url: string) => Promise<void>">
+  Opens URL
+  
+  ```typescript
+  await Linking.openURL('https://expo.dev');
+  await Linking.openURL('tel:+1234567890');
+  await Linking.openURL('mailto:support@expo.dev');
+  ```
+</ParamField>
+
+<ParamField path="canOpenURL(url)" type="(url: string) => Promise<boolean>">
+  Checks if URL can be opened
+  
+  ```typescript
+  const can = await Linking.canOpenURL('myapp://');
+  ```
+</ParamField>
+
+<ParamField path="openSettings()" type="() => Promise<void>">
+  Opens app settings
+  
+  ```typescript
+  await Linking.openSettings();
+  ```
+</ParamField>
+
+<ParamField path="createURL(path, options)" type="(path: string, options?: CreateURLOptions) => string">
+  Creates deep link URL
+  
+  ```typescript
+  const url = Linking.createURL('profile/123', {
+    queryParams: { ref: 'notification' },
+    scheme: 'myapp',
+  });
+  // Result: myapp://profile/123?ref=notification
+  ```
+</ParamField>
+
+<ParamField path="parse(url)" type="(url: string) => URLObject">
+  Parses URL into components
+  
+  ```typescript
+  const parsed = Linking.parse('myapp://user/42?name=John');
+  console.log(parsed.hostname); // 'user'
+  console.log(parsed.path); // '42'
+  console.log(parsed.queryParams); // { name: 'John' }
+  ```
+</ParamField>
+
+<ParamField path="getInitialURL()" type="() => Promise<string | null>">
+  Gets URL that opened the app
+  
+  ```typescript
+  const url = await Linking.getInitialURL();
+  if (url) {
+    console.log('App opened with:', url);
+  }
+  ```
+</ParamField>
+
+<ParamField path="addEventListener(type, handler)" type="(type: 'url', handler: URLListener) => void">
+  Listens for URL events
+  
+  ```typescript
+  Linking.addEventListener('url', ({ url }) => {
+    const parsed = Linking.parse(url);
+    // Handle deep link
+  });
+  ```
+</ParamField>
+
+## Examples
+
+### Handle Deep Links
+
+```typescript
+import * as Linking from 'expo-linking';
+import { useEffect } from 'react';
+import { useNavigation } from '@react-navigation/native';
+
+export default function App() {
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    // Handle initial URL
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink(url);
+    });
+
+    // Handle subsequent URLs
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      handleDeepLink(url);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  function handleDeepLink(url: string) {
+    const { hostname, path, queryParams } = Linking.parse(url);
+    
+    if (hostname === 'user' && path) {
+      navigation.navigate('Profile', { id: path });
+    }
+  }
+
+  return <NavigationContainer linking={linkingConfig}>...</NavigationContainer>;
+}
+```
+
+### URL Schemes
+
+```typescript
+import * as Linking from 'expo-linking';
+
+// Open phone dialer
+await Linking.openURL('tel:+1234567890');
+
+// Send email
+await Linking.openURL('mailto:support@example.com?subject=Help&body=I need help');
+
+// Open maps
+await Linking.openURL('https://maps.apple.com/?q=coffee');
+
+// Open another app
+await Linking.openURL('instagram://user?username=expo');
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ✅       |
+
+## Configuration
+
+### app.json
+
+```json
+{
+  "expo": {
+    "scheme": "myapp",
+    "android": {
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "myapp",
+              "host": "*.myapp.io"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    }
+  }
+}
+```
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/linking/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-linking)

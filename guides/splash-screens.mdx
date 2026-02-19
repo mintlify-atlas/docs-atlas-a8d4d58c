@@ -1,0 +1,522 @@
+---
+title: "Splash Screens"
+description: "Configure and customize splash screens for iOS and Android in your Expo app"
+---
+
+## Overview
+
+A splash screen is displayed while your app loads. Expo provides `expo-splash-screen` to control when the splash screen is hidden and support custom splash screens on both platforms.
+
+## Basic Configuration
+
+### Configure in app.json
+
+```json app.json
+{
+  "expo": {
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    }
+  }
+}
+```
+
+### Image requirements
+
+- **Resolution**: 1284 x 2778 pixels (iPhone 13 Pro Max size)
+- **Format**: PNG with transparency
+- **Design**: Keep important content in the center (safe area)
+
+<Warning>
+  The splash image will be resized to fit different screen sizes. Design with a safe area of approximately 1000 x 1000 pixels in the center.
+</Warning>
+
+## Installation
+
+```bash
+npx expo install expo-splash-screen
+```
+
+## Controlling Splash Screen Visibility
+
+### Prevent auto-hide
+
+By default, the splash screen hides automatically. To control when it hides:
+
+```typescript app/_layout.tsx
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
+
+// Prevent the splash screen from auto-hiding
+SplashScreen.preventAutoHideAsync();
+
+export default function RootLayout() {
+  const [appIsReady, setAppIsReady] = useState(false);
+
+  useEffect(() => {
+    async function prepare() {
+      try {
+        // Pre-load fonts, make API calls, etc.
+        await Font.loadAsync({
+          'Inter-Regular': require('../assets/fonts/Inter-Regular.ttf'),
+          'Inter-Bold': require('../assets/fonts/Inter-Bold.ttf'),
+        });
+        
+        // Load user data
+        await loadUserData();
+        
+        // Artificially delay for two seconds to simulate a slow loading
+        // experience. Remove this for production.
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        setAppIsReady(true);
+      }
+    }
+
+    prepare();
+  }, []);
+
+  useEffect(() => {
+    if (appIsReady) {
+      // Hide the splash screen after the app is ready
+      SplashScreen.hideAsync();
+    }
+  }, [appIsReady]);
+
+  if (!appIsReady) {
+    return null;
+  }
+
+  return <Slot />;
+}
+```
+
+### With animations
+
+Create a smooth transition from splash screen to app:
+
+```typescript components/AnimatedSplash.tsx
+import { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, View } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
+
+SplashScreen.preventAutoHideAsync();
+
+type Props = {
+  children: React.ReactNode;
+  isReady: boolean;
+};
+
+export function AnimatedSplash({ children, isReady }: Props) {
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (isReady) {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }).start(() => {
+        SplashScreen.hideAsync();
+      });
+    }
+  }, [isReady, fadeAnim]);
+
+  if (!isReady) {
+    return null;
+  }
+
+  return (
+    <View style={styles.container}>
+      {children}
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          styles.splash,
+          { opacity: fadeAnim },
+        ]}
+        pointerEvents={fadeAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: ['none', 'auto'],
+        })}
+      >
+        <Image
+          source={require('../assets/splash.png')}
+          style={styles.image}
+          resizeMode="contain"
+        />
+      </Animated.View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  splash: {
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  image: {
+    width: '90%',
+    height: '90%',
+  },
+});
+```
+
+Usage:
+
+```typescript app/_layout.tsx
+import { AnimatedSplash } from '../components/AnimatedSplash';
+
+export default function RootLayout() {
+  const [appIsReady, setAppIsReady] = useState(false);
+
+  // ... loading logic
+
+  return (
+    <AnimatedSplash isReady={appIsReady}>
+      <Slot />
+    </AnimatedSplash>
+  );
+}
+```
+
+## Platform-Specific Configuration
+
+<Tabs>
+  <Tab title="iOS">
+    ### iOS-specific options
+
+    ```json app.json
+    {
+      "expo": {
+        "ios": {
+          "splash": {
+            "image": "./assets/splash-ios.png",
+            "resizeMode": "contain",
+            "backgroundColor": "#ffffff",
+            "dark": {
+              "image": "./assets/splash-ios-dark.png",
+              "backgroundColor": "#000000"
+            }
+          }
+        }
+      }
+    }
+    ```
+
+    ### Resize modes
+
+    - `contain`: Scale image to fit (default)
+    - `cover`: Scale to fill, may crop
+    - `native`: Use iOS native scaling
+
+    ### Status bar configuration
+
+    ```json app.json
+    {
+      "expo": {
+        "ios": {
+          "infoPlist": {
+            "UIStatusBarHidden": true,
+            "UIViewControllerBasedStatusBarAppearance": false
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Android">
+    ### Android-specific options
+
+    ```json app.json
+    {
+      "expo": {
+        "android": {
+          "splash": {
+            "image": "./assets/splash-android.png",
+            "resizeMode": "contain",
+            "backgroundColor": "#ffffff",
+            "dark": {
+              "image": "./assets/splash-android-dark.png",
+              "backgroundColor": "#000000"
+            }
+          }
+        }
+      }
+    }
+    ```
+
+    ### Resize modes
+
+    - `contain`: Scale image to fit (default)
+    - `cover`: Scale to fill, may crop
+    - `native`: Use Android native scaling (center image without scaling)
+
+    ### Status bar and navigation bar
+
+    ```json app.json
+    {
+      "expo": {
+        "android": {
+          "androidStatusBar": {
+            "hidden": true,
+            "translucent": false
+          },
+          "androidNavigationBar": {
+            "visible": "immersive",
+            "backgroundColor": "#ffffff"
+          }
+        }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Dark Mode Support
+
+```json app.json
+{
+  "expo": {
+    "splash": {
+      "image": "./assets/splash.png",
+      "backgroundColor": "#ffffff",
+      "dark": {
+        "image": "./assets/splash-dark.png",
+        "backgroundColor": "#000000"
+      }
+    }
+  }
+}
+```
+
+The dark mode splash screen is automatically shown based on the device's appearance settings.
+
+## Advanced Patterns
+
+### Custom splash component
+
+Create a fully custom splash screen using React components:
+
+```typescript components/CustomSplash.tsx
+import { useEffect, useState } from 'react';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring,
+  withSequence,
+  withDelay,
+} from 'react-native-reanimated';
+
+SplashScreen.preventAutoHideAsync();
+
+export function CustomSplash({ onComplete }: { onComplete: () => void }) {
+  const scale = useSharedValue(0.5);
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    // Animate logo
+    scale.value = withSpring(1, { damping: 10 });
+    opacity.value = withDelay(
+      300,
+      withSequence(
+        withSpring(1),
+        withDelay(1000, withSpring(0))
+      )
+    );
+
+    // Complete after animations
+    setTimeout(() => {
+      SplashScreen.hideAsync();
+      onComplete();
+    }, 2500);
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+
+  return (
+    <View style={styles.container}>
+      <Animated.View style={animatedStyle}>
+        <Text style={styles.logo}>Your Logo</Text>
+      </Animated.View>
+      <ActivityIndicator size="large" color="#0000ff" />
+      <Text style={styles.text}>Loading...</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+  },
+  logo: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  text: {
+    marginTop: 20,
+    fontSize: 16,
+    color: '#666',
+  },
+});
+```
+
+### Loading progress indicator
+
+```typescript hooks/useAppLoading.ts
+import { useState, useEffect } from 'react';
+import * as Font from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
+
+type LoadingTask = () => Promise<void>;
+
+export function useAppLoading(tasks: LoadingTask[]) {
+  const [progress, setProgress] = useState(0);
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    async function loadResources() {
+      try {
+        for (let i = 0; i < tasks.length; i++) {
+          await tasks[i]();
+          setProgress((i + 1) / tasks.length);
+        }
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        setIsReady(true);
+        SplashScreen.hideAsync();
+      }
+    }
+
+    loadResources();
+  }, []);
+
+  return { isReady, progress };
+}
+```
+
+Usage:
+
+```typescript app/_layout.tsx
+const { isReady, progress } = useAppLoading([
+  async () => {
+    await Font.loadAsync({
+      'Inter-Regular': require('../assets/fonts/Inter-Regular.ttf'),
+    });
+  },
+  async () => {
+    await loadUserData();
+  },
+  async () => {
+    await prefetchImages();
+  },
+]);
+
+if (!isReady) {
+  return (
+    <View style={styles.splash}>
+      <Text>Loading... {Math.round(progress * 100)}%</Text>
+      <ProgressBar progress={progress} />
+    </View>
+  );
+}
+```
+
+## Asset Generation
+
+Generate properly sized splash screens for all devices:
+
+```bash
+# Install the tool
+npm install -g sharp-cli
+
+# Generate from a high-res source
+sharp -i splash-source.png -o assets/splash.png resize 1284 2778
+```
+
+Or use online tools:
+- [Expo Asset Generator](https://www.appicon.co/)
+- [App Icon Generator](https://appicon.co/)
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Splash screen flickers or disappears immediately">
+    Call `SplashScreen.preventAutoHideAsync()` at the top level of your app, before any components render:
+    
+    ```typescript
+    import * as SplashScreen from 'expo-splash-screen';
+    
+    SplashScreen.preventAutoHideAsync();
+    
+    export default function App() {
+      // ...
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Splash screen not showing custom image">
+    - Run `npx expo prebuild --clean` to regenerate native files
+    - Verify the image path is correct in app.json
+    - Check image format (should be PNG)
+    - Rebuild your app (changes to splash screen require rebuild)
+  </Accordion>
+
+  <Accordion title="Different behavior on iOS vs Android">
+    The splash screen implementation differs between platforms. Test on both platforms and use platform-specific configurations if needed.
+  </Accordion>
+
+  <Accordion title="Splash screen stuck/won't hide">
+    Ensure you call `SplashScreen.hideAsync()` after your app is ready:
+    ```typescript
+    useEffect(() => {
+      if (appIsReady) {
+        SplashScreen.hideAsync();
+      }
+    }, [appIsReady]);
+    ```
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  Changes to the splash screen configuration in app.json require rebuilding your app. Run `npx expo prebuild` and rebuild.
+</Warning>
+
+## Best Practices
+
+- **Keep it simple**: Splash screens should be simple and load quickly
+- **Match your brand**: Use your brand colors and logo
+- **Design for all sizes**: Test on different device sizes
+- **Support dark mode**: Provide dark variants of your splash screen
+- **Don't overload**: Avoid loading too many resources before hiding the splash
+- **Use native splash first**: Let the native splash show while JS loads
+- **Animate transitions**: Create smooth transitions from splash to app
+- **Test on devices**: Simulator behavior may differ from physical devices
+- **Optimize images**: Compress splash images to reduce app size
+- **Handle errors**: Catch loading errors and hide splash screen anyway
+
+## Related Resources
+
+- [expo-splash-screen documentation](https://docs.expo.dev/versions/latest/sdk/splash-screen/)
+- [App icon and splash screen guidelines](https://docs.expo.dev/guides/app-icons/)
+- [iOS Human Interface Guidelines - Launch Screen](https://developer.apple.com/design/human-interface-guidelines/launch-screen)
+- [Android Splash Screen Guidelines](https://developer.android.com/guide/topics/ui/splash-screen)

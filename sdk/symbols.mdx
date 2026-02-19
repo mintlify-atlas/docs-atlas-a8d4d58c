@@ -1,0 +1,186 @@
+---
+title: expo-symbols
+description: Access SF Symbols on iOS and Material Symbols on Android
+---
+
+# expo-symbols
+
+**Version:** 55.0.4
+
+Provides access to the SF Symbols library on iOS and Material Symbols on Android for React Native and Expo apps.
+
+## Installation
+
+```bash
+npx expo install expo-symbols expo-font
+```
+
+## Usage
+
+```tsx
+import { SymbolView } from 'expo-symbols';
+
+function App() {
+  return (
+    <SymbolView
+      name="star.fill"
+      size={44}
+      tintColor="#FFD700"
+      type="hierarchical"
+    />
+  );
+}
+```
+
+## API Reference
+
+### SymbolView Props
+
+<ParamField path="name" type="string" required>
+  SF Symbol name (iOS) or Material Symbol name (Android)
+  
+  ```tsx
+  <SymbolView name="heart.fill" />
+  <SymbolView name="star" />
+  ```
+</ParamField>
+
+<ParamField path="size" type="number" default="24">
+  Symbol size in points
+</ParamField>
+
+<ParamField path="tintColor" type="string">
+  Symbol color
+  
+  ```tsx
+  <SymbolView name="heart.fill" tintColor="#FF0000" />
+  ```
+</ParamField>
+
+<ParamField path="type" type="'monochrome' | 'hierarchical' | 'palette' | 'multicolor'" default="monochrome">
+  Symbol rendering mode (iOS)
+</ParamField>
+
+<ParamField path="weight" type="'ultraLight' | 'thin' | 'light' | 'regular' | 'medium' | 'semibold' | 'bold' | 'heavy' | 'black'" default="regular">
+  Symbol weight
+</ParamField>
+
+<ParamField path="scale" type="'small' | 'medium' | 'large'" default="medium">
+  Symbol scale
+</ParamField>
+
+<ParamField path="colors" type="string[]">
+  Colors for palette mode
+  
+  ```tsx
+  <SymbolView 
+    name="person.2.fill" 
+    type="palette"
+    colors={['#FF0000', '#0000FF']}
+  />
+  ```
+</ParamField>
+
+<ParamField path="animationSpec" type="object">
+  Animation configuration
+  
+  ```tsx
+  <SymbolView
+    name="heart.fill"
+    animationSpec={{
+      effect: { type: 'bounce' },
+      repeating: true
+    }}
+  />
+  ```
+</ParamField>
+
+<ParamField path="fallback" type="React.ReactNode">
+  Fallback component if symbol not available
+</ParamField>
+
+## Examples
+
+### Basic Symbol
+
+```tsx
+import { SymbolView } from 'expo-symbols';
+
+function Icon() {
+  return (
+    <SymbolView
+      name="heart.fill"
+      size={32}
+      tintColor="#FF0000"
+    />
+  );
+}
+```
+
+### Animated Symbol
+
+```tsx
+import { SymbolView } from 'expo-symbols';
+
+function AnimatedIcon() {
+  return (
+    <SymbolView
+      name="star.fill"
+      size={44}
+      tintColor="#FFD700"
+      animationSpec={{
+        effect: { type: 'bounce' },
+        repeating: true
+      }}
+    />
+  );
+}
+```
+
+### Palette Colors
+
+```tsx
+import { SymbolView } from 'expo-symbols';
+
+function MultiColorIcon() {
+  return (
+    <SymbolView
+      name="person.2.fill"
+      type="palette"
+      colors={['#FF0000', '#0000FF', '#00FF00']}
+      size={44}
+    />
+  );
+}
+```
+
+### With Fallback
+
+```tsx
+import { SymbolView } from 'expo-symbols';
+import { Text } from 'react-native';
+
+function IconWithFallback() {
+  return (
+    <SymbolView
+      name="custom.symbol"
+      size={32}
+      fallback={<Text>⭐</Text>}
+    />
+  );
+}
+```
+
+## Platform Support
+
+| Platform | Symbol Library |
+|----------|----------------|
+| iOS      | SF Symbols     |
+| Android  | Material Symbols |
+| Web      | ❌             |
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/symbols/)
+- [SF Symbols Browser](https://developer.apple.com/sf-symbols/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-symbols)

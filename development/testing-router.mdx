@@ -1,0 +1,659 @@
+---
+title: Testing Expo Router
+description: Test navigation and routing with Expo Router's testing utilities.
+---
+
+Expo Router provides testing utilities specifically designed for testing file-based routing and navigation in your app.
+
+## Setup
+
+### Install Dependencies
+
+```bash
+npx expo install expo-router jest-expo @testing-library/react-native
+```
+
+### Configure Jest
+
+```javascript title="jest.config.js"
+module.exports = {
+  preset: 'jest-expo',
+  setupFilesAfterEnv: ['<rootDir>/jest-setup.js'],
+  transformIgnorePatterns: [
+    'node_modules/(?!(jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)',
+  ],
+};
+```
+
+### Setup File
+
+Expo Router's testing utilities include automatic mocks:
+
+```typescript title="jest-setup.js"
+import '@testing-library/jest-native/extend-expect';
+import 'expo-router/testing-library/mocks';
+```
+
+## renderRouter Utility
+
+The `renderRouter` function renders your routes for testing.
+
+### Basic Usage
+
+```typescript title="app/__tests__/routing.test.tsx"
+import { renderRouter, screen } from 'expo-router/testing-library';
+import { Text } from 'react-native';
+
+describe('Routing', () => {
+  it('renders home screen', () => {
+    renderRouter({
+      index: () => <Text testID="home">Home Screen</Text>,
+      about: () => <Text testID="about">About Screen</Text>,
+    });
+
+    expect(screen.getByTestId('home')).toBeVisible();
+  });
+});
+```
+
+### With Initial URL
+
+```typescript
+it('renders specific route', () => {
+  renderRouter(
+    {
+      index: () => <Text testID="home">Home</Text>,
+      profile: () => <Text testID="profile">Profile</Text>,
+    },
+    {
+      initialUrl: '/profile',
+    }
+  );
+
+  expect(screen.getByTestId('profile')).toBeVisible();
+});
+```
+
+### With Layouts
+
+```typescript
+import { Stack } from 'expo-router';
+
+it('renders with layout', () => {
+  renderRouter({
+    _layout: () => <Stack />,
+    index: () => <Text testID="home">Home</Text>,
+    'profile/[id]': () => <Text testID="profile">Profile</Text>,
+  });
+
+  expect(screen.getByTestId('home')).toBeVisible();
+});
+```
+
+## Navigation Testing
+
+### Using router Object
+
+```typescript
+import { renderRouter, screen } from 'expo-router/testing-library';
+import { router } from 'expo-router';
+import { act } from '@testing-library/react-native';
+
+it('navigates between screens', () => {
+  renderRouter({
+    index: () => <Text testID="home">Home</Text>,
+    profile: () => <Text testID="profile">Profile</Text>,
+  });
+
+  expect(screen.getByTestId('home')).toBeVisible();
+
+  // Navigate to profile
+  act(() => router.push('/profile'));
+  expect(screen.getByTestID('profile')).toBeVisible();
+
+  // Go back
+  act(() => router.back());
+  expect(screen.getByTestId('home')).toBeVisible();
+});
+```
+
+### Navigation Methods
+
+```typescript
+import { router } from 'expo-router';
+import { act } from '@testing-library/react-native';
+
+// Push (adds to history)
+act(() => router.push('/profile/123'));
+
+// Navigate (replaces in tab navigators)
+act(() => router.navigate('/settings'));
+
+// Replace (replaces current screen)
+act(() => router.replace('/login'));
+
+// Back
+act(() => router.back());
+
+// Can go back
+const canGoBack = router.canGoBack();
+expect(canGoBack).toBe(true);
+
+// Dismiss (close modal)
+act(() => router.dismiss());
+```
+
+### Testing Links
+
+```typescript
+import { Link } from 'expo-router';
+import { fireEvent } from '@testing-library/react-native';
+
+it('navigates when link is pressed', () => {
+  renderRouter({
+    index: () => (
+      <>
+        <Text testID="home">Home</Text>
+        <Link href="/profile" testID="profile-link">
+          Go to Profile
+        </Link>
+      </>
+    ),
+    profile: () => <Text testID="profile">Profile</Text>,
+  });
+
+  const link = screen.getByTestId('profile-link');
+  fireEvent.press(link);
+
+  expect(screen.getByTestId('profile')).toBeVisible();
+});
+```
+
+## Testing Dynamic Routes
+
+### Route Parameters
+
+```typescript
+import { useLocalSearchParams } from 'expo-router';
+
+it('passes route parameters', () => {
+  renderRouter(
+    {
+      'profile/[id]': () => {
+        const { id } = useLocalSearchParams();
+        return <Text testID="user-id">{id}</Text>;
+      },
+    },
+    {
+      initialUrl: '/profile/123',
+    }
+  );
+
+  expect(screen.getByTestId('user-id')).toHaveTextContent('123');
+});
+```
+
+### Query Parameters
+
+```typescript
+import { useLocalSearchParams } from 'expo-router';
+
+it('reads query parameters', () => {
+  renderRouter(
+    {
+      search: () => {
+        const { q, filter } = useLocalSearchParams();
+        return (
+          <>
+            <Text testID="query">{q}</Text>
+            <Text testID="filter">{filter}</Text>
+          </>
+        );
+      },
+    },
+    {
+      initialUrl: '/search?q=hello&filter=active',
+    }
+  );
+
+  expect(screen.getByTestId('query')).toHaveTextContent('hello');
+  expect(screen.getByTestId('filter')).toHaveTextContent('active');
+});
+```
+
+### Catch-all Routes
+
+```typescript
+it('handles catch-all routes', () => {
+  renderRouter(
+    {
+      '[...slug]': () => {
+        const { slug } = useLocalSearchParams();
+        return <Text testID="slug">{slug}</Text>;
+      },
+    },
+    {
+      initialUrl: '/docs/guide/testing',
+    }
+  );
+
+  // slug is an array
+  expect(screen.getByTestId('slug')).toHaveTextContent('docs,guide,testing');
+});
+```
+
+## Testing Hooks
+
+### usePathname
+
+```typescript
+import { usePathname } from 'expo-router';
+
+it('returns current pathname', () => {
+  renderRouter(
+    {
+      'profile/[id]': () => {
+        const pathname = usePathname();
+        return <Text testID="pathname">{pathname}</Text>;
+      },
+    },
+    {
+      initialUrl: '/profile/123',
+    }
+  );
+
+  expect(screen.getByTestId('pathname')).toHaveTextContent('/profile/123');
+});
+```
+
+### useSegments
+
+```typescript
+import { useSegments } from 'expo-router';
+
+it('returns route segments', () => {
+  renderRouter(
+    {
+      'posts/[id]/comments': () => {
+        const segments = useSegments();
+        return <Text testID="segments">{segments.join('/')}</Text>;
+      },
+    },
+    {
+      initialUrl: '/posts/123/comments',
+    }
+  );
+
+  expect(screen.getByTestId('segments')).toHaveTextContent('posts/123/comments');
+});
+```
+
+### useRouter
+
+```typescript
+import { useRouter } from 'expo-router';
+
+it('provides router methods', () => {
+  const TestComponent = () => {
+    const router = useRouter();
+    return (
+      <Button
+        testID="navigate-btn"
+        onPress={() => router.push('/profile')}
+        title="Go"
+      />
+    );
+  };
+
+  renderRouter({
+    index: () => <TestComponent />,
+    profile: () => <Text testID="profile">Profile</Text>,
+  });
+
+  fireEvent.press(screen.getByTestId('navigate-btn'));
+  expect(screen.getByTestId('profile')).toBeVisible();
+});
+```
+
+## Testing Layouts
+
+### Stack Navigator
+
+```typescript
+import { Stack } from 'expo-router';
+
+it('renders stack layout', () => {
+  renderRouter({
+    _layout: () => (
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: '#fff' },
+        }}
+      />
+    ),
+    index: () => <Text testID="home">Home</Text>,
+    profile: () => <Text testID="profile">Profile</Text>,
+  });
+
+  expect(screen.getByTestId('home')).toBeVisible();
+  
+  act(() => router.push('/profile'));
+  expect(screen.getByTestId('profile')).toBeVisible();
+  
+  act(() => router.back());
+  expect(screen.getByTestId('home')).toBeVisible();
+});
+```
+
+### Tabs Navigator
+
+```typescript
+import { Tabs } from 'expo-router';
+
+it('renders tabs layout', () => {
+  renderRouter({
+    '(tabs)/_layout': () => <Tabs />,
+    '(tabs)/index': () => <Text testID="home">Home</Text>,
+    '(tabs)/profile': () => <Text testID="profile">Profile</Text>,
+  });
+
+  // Default tab
+  expect(screen.getByTestId('home')).toBeVisible();
+
+  // Switch tabs
+  act(() => router.push('/profile'));
+  expect(screen.getByTestId('profile')).toBeVisible();
+});
+```
+
+### Nested Layouts
+
+```typescript
+it('renders nested layouts', () => {
+  renderRouter({
+    _layout: () => <Stack />,
+    '(tabs)/_layout': () => <Tabs />,
+    '(tabs)/index': () => <Text testID="home">Home</Text>,
+    '(tabs)/profile': () => <Text testID="profile">Profile</Text>,
+    modal: () => <Text testID="modal">Modal</Text>,
+  });
+
+  expect(screen.getByTestId('home')).toBeVisible();
+
+  act(() => router.push('/modal'));
+  expect(screen.getByTestId('modal')).toBeVisible();
+});
+```
+
+## Testing Redirects
+
+```typescript
+import { Redirect } from 'expo-router';
+
+it('handles redirects', () => {
+  renderRouter(
+    {
+      index: () => <Redirect href="/home" />,
+      home: () => <Text testID="home">Home</Text>,
+    },
+    {
+      initialUrl: '/',
+    }
+  );
+
+  // Should redirect to /home
+  expect(screen.getByTestId('home')).toBeVisible();
+});
+
+it('conditional redirect', () => {
+  const isAuthenticated = false;
+
+  renderRouter({
+    index: () => {
+      if (!isAuthenticated) {
+        return <Redirect href="/login" />;
+      }
+      return <Text testID="home">Home</Text>;
+    },
+    login: () => <Text testID="login">Login</Text>,
+  });
+
+  expect(screen.getByTestId('login')).toBeVisible();
+});
+```
+
+## Testing 404/Not Found
+
+```typescript
+it('shows not found screen', () => {
+  renderRouter(
+    {
+      index: () => <Text testID="home">Home</Text>,
+      '+not-found': () => <Text testID="not-found">404</Text>,
+    },
+    {
+      initialUrl: '/nonexistent',
+    }
+  );
+
+  expect(screen.getByTestId('not-found')).toBeVisible();
+});
+```
+
+## Screen Utilities
+
+### Pathname Matchers
+
+```typescript
+import { screen } from 'expo-router/testing-library';
+
+// Check pathname
+expect(screen).toHavePathname('/profile/123');
+expect(screen).not.toHavePathname('/home');
+
+// Check segments
+expect(screen).toHaveSegments(['profile', '123']);
+
+// Check search params
+expect(screen).toHaveSearchParams({ id: '123', tab: 'posts' });
+```
+
+### Screen Methods
+
+```typescript
+// Get current state
+const pathname = screen.getPathname();
+const segments = screen.getSegments();
+const params = screen.getSearchParams();
+const state = screen.getRouterState();
+
+// Example assertions
+expect(pathname).toBe('/profile/123');
+expect(segments).toEqual(['profile', '123']);
+expect(params).toEqual({ id: '123' });
+```
+
+## Advanced Testing
+
+### Navigation Guards
+
+```typescript
+import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
+
+it('redirects unauthenticated users', () => {
+  const ProtectedScreen = () => {
+    const router = useRouter();
+    const isAuthenticated = false;
+
+    useEffect(() => {
+      if (!isAuthenticated) {
+        router.replace('/login');
+      }
+    }, [isAuthenticated]);
+
+    return <Text testID="protected">Protected</Text>;
+  };
+
+  renderRouter(
+    {
+      index: () => <ProtectedScreen />,
+      login: () => <Text testID="login">Login</Text>,
+    },
+    {
+      initialUrl: '/',
+    }
+  );
+
+  // Should redirect to login
+  expect(screen.getByTestId('login')).toBeVisible();
+});
+```
+
+### Testing with Context
+
+```typescript
+import { AuthProvider } from '@/contexts/AuthContext';
+
+it('renders with context', () => {
+  renderRouter(
+    {
+      index: () => <Text testID="home">Home</Text>,
+    },
+    {
+      wrapper: ({ children }) => (
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      ),
+    }
+  );
+
+  expect(screen.getByTestId('home')).toBeVisible();
+});
+```
+
+## Troubleshooting
+
+### Timing Issues
+
+Wrap navigation in `act()`:
+
+```typescript
+import { act } from '@testing-library/react-native';
+
+// Good
+act(() => router.push('/profile'));
+
+// Bad
+router.push('/profile'); // May cause warnings
+```
+
+### Async Navigation
+
+Wait for navigation to complete:
+
+```typescript
+import { waitFor } from '@testing-library/react-native';
+
+it('navigates async', async () => {
+  renderRouter({
+    index: () => <AsyncComponent />,
+    result: () => <Text testID="result">Result</Text>,
+  });
+
+  fireEvent.press(screen.getByTestId('async-button'));
+
+  await waitFor(() => {
+    expect(screen.getByTestId('result')).toBeVisible();
+  });
+});
+```
+
+### Mock File System
+
+For more complex scenarios, use the file system structure:
+
+```typescript
+renderRouter({
+  'app/_layout.tsx': () => <Stack />,
+  'app/index.tsx': () => <Text>Home</Text>,
+  'app/(tabs)/_layout.tsx': () => <Tabs />,
+  'app/(tabs)/profile.tsx': () => <Text>Profile</Text>,
+});
+```
+
+## Best Practices
+
+### 1. Test User Flows
+
+```typescript
+it('completes checkout flow', () => {
+  renderRouter({
+    cart: () => <Text testID="cart">Cart</Text>,
+    shipping: () => <Text testID="shipping">Shipping</Text>,
+    payment: () => <Text testID="payment">Payment</Text>,
+    success: () => <Text testID="success">Success</Text>,
+  }, { initialUrl: '/cart' });
+
+  // Navigate through flow
+  act(() => router.push('/shipping'));
+  expect(screen).toHavePathname('/shipping');
+
+  act(() => router.push('/payment'));
+  expect(screen).toHavePathname('/payment');
+
+  act(() => router.push('/success'));
+  expect(screen).toHavePathname('/success');
+});
+```
+
+### 2. Test Navigation State
+
+```typescript
+it('maintains navigation history', () => {
+  renderRouter({
+    index: () => <Text testID="home">Home</Text>,
+    profile: () => <Text testID="profile">Profile</Text>,
+  });
+
+  expect(router.canGoBack()).toBe(false);
+
+  act(() => router.push('/profile'));
+  expect(router.canGoBack()).toBe(true);
+
+  act(() => router.back());
+  expect(router.canGoBack()).toBe(false);
+});
+```
+
+### 3. Test Edge Cases
+
+```typescript
+it('handles invalid routes', () => {
+  renderRouter({
+    index: () => <Text testID="home">Home</Text>,
+    '+not-found': () => <Text testID="404">Not Found</Text>,
+  });
+
+  act(() => router.push('/invalid'));
+  expect(screen.getByTestId('404')).toBeVisible();
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Unit Testing" icon="flask" href="/development/unit-testing">
+    Test components and logic
+  </Card>
+  <Card title="E2E Testing" icon="robot" href="/development/e2e-testing">
+    Test complete user flows
+  </Card>
+  <Card title="Expo Router" icon="route" href="/api-reference/expo-router">
+    Learn more about Expo Router
+  </Card>
+  <Card title="Debugging" icon="bug" href="/development/debugging">
+    Debug navigation issues
+  </Card>
+</CardGroup>

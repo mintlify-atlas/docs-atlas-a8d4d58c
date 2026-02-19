@@ -1,0 +1,356 @@
+---
+title: How Config Plugins Work
+description: Understand the plugin execution flow, prebuild process, and how plugins modify native projects.
+---
+
+import { Step } from '~/ui/components/Step';
+
+Config plugins work by building a chain of modifications that are applied to your native projects during the prebuild process. Understanding this flow helps you write effective plugins and debug issues.
+
+## Plugin execution flow
+
+When you run `npx expo prebuild`, the following sequence occurs:
+
+<Step label="1">Read configuration</Step>
+
+Expo CLI reads your `app.json` or `app.config.js` file and evaluates all JavaScript code to produce a complete `ExpoConfig` object.
+
+<Step label="2">Resolve plugins</Step>
+
+All plugins listed in the `plugins` array are resolved:
+
+```json app.json
+{
+  "expo": {
+    "plugins": [
+      "expo-camera",                    // Resolved from node_modules
+      "./plugins/custom-plugin.js",    // Local file path
+      [
+        "expo-location",
+        { "locationAlwaysAndWhenInUsePermission": "Allow app to use location" }
+      ]
+    ]
+  }
+}
+```
+
+Plugins are resolved in this order:
+
+- Strings are resolved as npm packages or file paths using `require()`
+- Functions are used directly
+- Arrays contain `[plugin, props]` where plugin is resolved and props are passed as the second argument
+
+<Step label="3">Execute plugin chain</Step>
+
+Each plugin is executed sequentially, receiving the config from the previous plugin:
+
+```ts withPlugins.ts
+export const withPlugins: ConfigPlugin<(StaticPlugin | ConfigPlugin | string)[]> = (
+  config,
+  plugins
+) => {
+  return plugins.reduce((prev, plugin) => withStaticPlugin(prev, { plugin }), config);
+};
+```
+
+This creates a "plugin chain" where each plugin transforms the config:
+
+```
+config → plugin1 → plugin2 → plugin3 → final config
+```
+
+<Step label="4">Add base mods</Step>
+
+After all plugins run, Expo adds "base mods" that provide access to native files:
+
+```ts mod-compiler.ts
+export function withDefaultBaseMods(
+  config: ExportedConfig,
+  props: ForwardedBaseModOptions = {}
+): ExportedConfig {
+  config = withIosBaseMods(config, props);
+  config = withAndroidBaseMods(config, props);
+  return config;
+}
+```
+
+Base mods set up providers for files like `Info.plist`, `AndroidManifest.xml`, `build.gradle`, etc.
+
+<Step label="5">Generate native projects</Step>
+
+The native `ios/` and `android/` directories are created using templates. If they already exist and `--clean` is used, they're deleted first.
+
+<Step label="6">Compile and evaluate mods</Step>
+
+All registered mods are sorted and executed in a specific order:
+
+```ts mod-compiler.ts
+const precedences: Record<string, Record<string, number>> = {
+  ios: {
+    // dangerous runs first
+    dangerous: -2,
+    // run the XcodeProject mod second because many plugins attempt to read from it.
+    xcodeproj: -1,
+    // put the finalized mod at the last
+    finalized: 1,
+  },
+};
+```
+
+The order ensures:
+- `dangerous` mods run first (before any file is loaded)
+- Core mods like `xcodeproj` run early (many plugins depend on them)
+- Regular mods run in the middle
+- `finalized` mods run last (after all modifications)
+
+<Step label="7">Write modified files</Step>
+
+Each mod writes its changes back to the native project:
+
+- XML files (AndroidManifest, strings.xml) are serialized back to XML
+- Plist files (Info.plist, .entitlements) are written as XML plists
+- Text files (Gradle, Podfile, Java) are written as strings
+- Xcode projects are serialized using the `xcode` npm package
+
+<Step label="8">Native projects ready</Step>
+
+Your `ios/` and `android/` directories now contain fully configured native projects ready to build.
+
+## The mods system
+
+Mods (modifications) are the core mechanism for changing native files. Each mod corresponds to a specific file or group of files.
+
+### How mods work
+
+A mod is a function that receives file contents, modifies them, and returns the result:
+
+```ts Plugin.types.ts
+export type Mod<Props = any> = ((config: ExportedConfigWithProps<Props>) => 
+  OptionalPromise<ExportedConfigWithProps<Props>>) & {
+  isProvider?: boolean;
+  isIntrospective?: boolean;
+};
+```
+
+The `ExportedConfigWithProps` includes:
+
+```ts
+export interface ExportedConfigWithProps<Data = any> extends ExportedConfig {
+  modResults: Data;      // The file contents (parsed)
+  modRequest: ModProps<Data>;  // Metadata about the mod
+  modRawConfig: ExpoConfig;    // Original config (frozen)
+}
+```
+
+### Mod types
+
+**Provider mods** (`isProvider: true`)
+
+These read files from disk and provide them to child mods:
+
+```ts
+const mod = async (config) => {
+  // Read file from disk
+  const infoPlist = await readInfoPlist(config.modRequest.platformProjectRoot);
+  
+  // Provide to child mods
+  config.modResults = infoPlist;
+  
+  // Run child mods
+  return config.modRequest.nextMod(config);
+};
+mod.isProvider = true;
+```
+
+**Regular mods**
+
+These modify the file contents:
+
+```ts
+const mod = async (config) => {
+  // Modify the file
+  config.modResults.CFBundleDisplayName = config.name;
+  
+  // Pass to next mod
+  return config;
+};
+```
+
+**Dangerous mods**
+
+These run before any file is read, useful for filesystem operations:
+
+```ts
+export const withDangerousMod: ConfigPlugin<[ModPlatform, Mod<unknown>]> = (
+  config,
+  [platform, action]
+) => {
+  return withMod(config, {
+    platform,
+    mod: 'dangerous',
+    action,
+  });
+};
+```
+
+## Modifying native projects
+
+### iOS example: Adding to Info.plist
+
+```ts
+import { withInfoPlist, ConfigPlugin } from '@expo/config-plugins';
+
+const withCustomInfoPlist: ConfigPlugin = (config) => {
+  return withInfoPlist(config, (config) => {
+    // modResults is the parsed Info.plist
+    config.modResults.NSCameraUsageDescription = "This app needs camera access";
+    config.modResults.UIBackgroundModes = ['remote-notification'];
+    
+    return config;
+  });
+};
+```
+
+### Android example: Adding permissions
+
+```ts Permissions.ts
+export function setAndroidPermissions(
+  config: Pick<ExpoConfig, 'android'>,
+  androidManifest: AndroidManifest
+) {
+  const permissions = getAndroidPermissions(config);
+  const providedPermissions = prefixAndroidPermissionsIfNecessary(permissions);
+
+  if (!androidManifest.manifest.hasOwnProperty('uses-permission')) {
+    androidManifest.manifest['uses-permission'] = [];
+  }
+
+  const manifestPermissions = androidManifest.manifest['uses-permission'] ?? [];
+
+  providedPermissions.forEach((permission) => {
+    if (!isPermissionAlreadyRequested(permission, manifestPermissions)) {
+      addPermissionToManifest(permission, manifestPermissions);
+    }
+  });
+
+  return androidManifest;
+}
+```
+
+## The plugin chain in detail
+
+Let's trace a complete example:
+
+```js app.config.js
+module.exports = {
+  name: "My App",
+  plugins: [
+    "expo-camera",
+    "expo-location",
+    withCustomFeature,
+  ]
+};
+```
+
+Execution:
+
+```
+1. withPlugins(["expo-camera", "expo-location", withCustomFeature])
+   ↓
+2. withStaticPlugin(config, "expo-camera")
+   → Resolves to require('expo-camera/plugin')
+   → Adds camera permissions to config.ios.infoPlist
+   → Adds camera permissions to config.android.permissions
+   ↓
+3. withStaticPlugin(config, "expo-location") 
+   → Resolves to require('expo-location/plugin')
+   → Adds location permissions
+   ↓
+4. withCustomFeature(config)
+   → Runs your custom logic
+   ↓
+5. withDefaultBaseMods(config)
+   → withIosBaseMods: Registers providers for Info.plist, Entitlements, etc.
+   → withAndroidBaseMods: Registers providers for AndroidManifest.xml, etc.
+   ↓
+6. evalModsAsync(config)
+   → For each platform (iOS, Android):
+     → Sort mods by precedence
+     → For each mod:
+       → Provider reads file → Child mods modify → Provider writes file
+```
+
+## Introspection mode
+
+Plugins can be run in "introspection mode" to read config without modifying files:
+
+```ts mod-compiler.ts
+export function withIntrospectionBaseMods(
+  config: ExportedConfig,
+  props: ForwardedBaseModOptions = {}
+): ExportedConfig {
+  config = withIosBaseMods(config, {
+    saveToInternal: true,
+    skipEmptyMod: false,
+    ...props,
+  });
+  // Results saved to config._internal.modResults
+}
+```
+
+This is used by:
+- EAS Build to extract native configuration
+- Expo CLI to validate config
+- Testing and debugging tools
+
+## Error handling
+
+Plugins can throw `PluginError` for better error messages:
+
+```ts errors.ts
+export class PluginError extends Error {
+  code?: string;
+  constructor(message: string, code?: string) {
+    super(message);
+    this.code = code;
+  }
+}
+```
+
+Common error codes from the source:
+- `MODULE_NOT_FOUND`: Plugin package not found
+- `CONFLICTING_PROVIDER`: Multiple providers for same mod
+- `INVALID_MOD_ORDER`: Provider must be last
+- `MISSING_PROVIDER`: No provider for mod
+- `INVALID_PLUGIN_TYPE`: Invalid plugin format
+
+## Debug mode
+
+Enable debug logging to see the plugin chain:
+
+```bash
+EXPO_DEBUG=1 npx expo prebuild
+```
+
+This logs the full plugin stack trace:
+
+```ts withMod.ts
+if (isDebug) {
+  const modStack = chalk.bold(`${platform}.${mod}`);
+  debugTrace = `${modStack}: ${debugTrace}`;
+  console.log(debugTrace);
+}
+```
+
+Output:
+```
+ios.infoPlist: withCustomPlugin ➜ withPlugins ➜ withIosBaseMods
+```
+
+## Next steps
+
+Now that you understand how plugins work, learn to create your own:
+
+- [Creating plugins](/config-plugins/creating-plugins)
+- [Plugin API reference](/config-plugins/plugin-api)
+- [Modifying native projects](/config-plugins/modifying-native-projects)

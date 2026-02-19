@@ -1,0 +1,601 @@
+---
+title: "Migration Guide"
+description: "Migrate your app to Expo from React Native CLI, other frameworks, or upgrade between Expo SDK versions"
+---
+
+## Overview
+
+This guide covers migrating to Expo from various starting points and strategies for smooth upgrades between Expo SDK versions.
+
+## Migrating from React Native CLI
+
+If you have an existing React Native CLI project, you can adopt Expo incrementally.
+
+<Steps>
+  <Step title="Install Expo packages">
+    ```bash
+    npm install expo
+    npx expo install expo-constants expo-device expo-file-system
+    ```
+  </Step>
+
+  <Step title="Update package.json scripts">
+    ```json package.json
+    {
+      "scripts": {
+        "start": "expo start",
+        "android": "expo run:android",
+        "ios": "expo run:ios",
+        "web": "expo start --web"
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Create app.json">
+    ```json app.json
+    {
+      "expo": {
+        "name": "Your App",
+        "slug": "your-app",
+        "version": "1.0.0",
+        "orientation": "portrait",
+        "icon": "./assets/icon.png",
+        "userInterfaceStyle": "light",
+        "splash": {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        },
+        "ios": {
+          "supportsTablet": true,
+          "bundleIdentifier": "com.yourcompany.yourapp"
+        },
+        "android": {
+          "adaptiveIcon": {
+            "foregroundImage": "./assets/adaptive-icon.png",
+            "backgroundColor": "#ffffff"
+          },
+          "package": "com.yourcompany.yourapp"
+        },
+        "web": {
+          "favicon": "./assets/favicon.png"
+        }
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Update entry point">
+    If you have a custom entry point, update it:
+    
+    ```javascript index.js
+    import { registerRootComponent } from 'expo';
+    import App from './App';
+
+    registerRootComponent(App);
+    ```
+  </Step>
+
+  <Step title="Regenerate native projects">
+    ```bash
+    npx expo prebuild --clean
+    ```
+    
+    This updates your `ios/` and `android/` directories with Expo configuration.
+  </Step>
+
+  <Step title="Test the app">
+    ```bash
+    npx expo run:ios
+    npx expo run:android
+    ```
+  </Step>
+</Steps>
+
+### Handling native dependencies
+
+Most React Native libraries work with Expo:
+
+```bash
+# Install using expo install to get compatible versions
+npx expo install react-native-reanimated react-native-gesture-handler
+```
+
+### Replace React Native CLI libraries
+
+<Tabs>
+  <Tab title="AsyncStorage">
+    ```bash
+    npm uninstall @react-native-async-storage/async-storage
+    npx expo install expo-secure-store
+    ```
+    
+    Update imports:
+    ```typescript
+    // Before
+    import AsyncStorage from '@react-native-async-storage/async-storage';
+    
+    // After
+    import * as SecureStore from 'expo-secure-store';
+    ```
+  </Tab>
+
+  <Tab title="NetInfo">
+    ```bash
+    npm uninstall @react-native-community/netinfo
+    npx expo install expo-network
+    ```
+    
+    ```typescript
+    // Before
+    import NetInfo from '@react-native-community/netinfo';
+    
+    // After
+    import * as Network from 'expo-network';
+    ```
+  </Tab>
+
+  <Tab title="ImagePicker">
+    ```bash
+    npm uninstall react-native-image-picker
+    npx expo install expo-image-picker
+    ```
+    
+    ```typescript
+    // Before
+    import { launchImageLibrary } from 'react-native-image-picker';
+    
+    // After
+    import * as ImagePicker from 'expo-image-picker';
+    ```
+  </Tab>
+</Tabs>
+
+## Migrating from Native (iOS/Android)
+
+If you're coming from native development:
+
+<Steps>
+  <Step title="Create Expo app">
+    ```bash
+    npx create-expo-app@latest my-app --template blank-typescript
+    cd my-app
+    ```
+  </Step>
+
+  <Step title="Set up navigation">
+    ```bash
+    npx expo install expo-router react-native-safe-area-context react-native-screens
+    ```
+  </Step>
+
+  <Step title="Port UI components">
+    Convert native UI to React Native:
+    
+    ```typescript
+    // iOS UIKit -> React Native
+    UILabel -> <Text>
+    UIButton -> <TouchableOpacity> or <Button>
+    UIView -> <View>
+    UIImageView -> <Image>
+    UIScrollView -> <ScrollView>
+    UITableView -> <FlatList>
+    ```
+    
+    ```typescript
+    // Android Views -> React Native
+    TextView -> <Text>
+    Button -> <Button>
+    ViewGroup -> <View>
+    ImageView -> <Image>
+    ScrollView -> <ScrollView>
+    RecyclerView -> <FlatList>
+    ```
+  </Step>
+
+  <Step title="Port business logic">
+    Move business logic to TypeScript:
+    
+    ```typescript utils/api.ts
+    export async function fetchUserData(userId: string) {
+      const response = await fetch(`https://api.example.com/users/${userId}`);
+      return response.json();
+    }
+    ```
+  </Step>
+
+  <Step title="Add native modules if needed">
+    For platform-specific features:
+    ```bash
+    npx create-expo-module@latest --local my-native-module
+    ```
+  </Step>
+</Steps>
+
+## Migrating from Flutter
+
+<Tabs>
+  <Tab title="UI Components">
+    | Flutter | React Native / Expo |
+    |---------|--------------------|
+    | `Text()` | `<Text>` |
+    | `Container()` | `<View>` |
+    | `Row()` | `<View style={{ flexDirection: 'row' }}>` |
+    | `Column()` | `<View>` |
+    | `Image.network()` | `<Image source={{ uri: url }}>` |
+    | `GestureDetector()` | `<TouchableOpacity>` |
+    | `ListView.builder()` | `<FlatList>` |
+    | `Stack()` | `<View>` with absolute positioning |
+  </Tab>
+
+  <Tab title="State Management">
+    ```dart
+    // Flutter
+    class Counter extends StatefulWidget {
+      @override
+      _CounterState createState() => _CounterState();
+    }
+
+    class _CounterState extends State<Counter> {
+      int count = 0;
+
+      void increment() {
+        setState(() {
+          count++;
+        });
+      }
+    }
+    ```
+    
+    ```typescript
+    // React Native
+    export default function Counter() {
+      const [count, setCount] = useState(0);
+
+      const increment = () => {
+        setCount(count + 1);
+      };
+
+      return (
+        <View>
+          <Text>{count}</Text>
+          <Button title="Increment" onPress={increment} />
+        </View>
+      );
+    }
+    ```
+  </Tab>
+
+  <Tab title="Navigation">
+    ```dart
+    // Flutter
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => SecondScreen()),
+    );
+    ```
+    
+    ```typescript
+    // Expo Router
+    import { router } from 'expo-router';
+    
+    router.push('/second-screen');
+    ```
+  </Tab>
+</Tabs>
+
+## Upgrading Between SDK Versions
+
+### Automated upgrade
+
+```bash
+# Upgrade to latest SDK
+npx expo install --fix
+
+# Or upgrade to specific version
+npm install expo@^50.0.0
+npx expo install --fix
+```
+
+This updates all Expo packages to compatible versions.
+
+### Manual upgrade process
+
+<Steps>
+  <Step title="Check the upgrade guide">
+    Visit [Expo SDK release notes](https://expo.dev/changelog/) for breaking changes.
+  </Step>
+
+  <Step title="Update Expo SDK">
+    ```bash
+    npm install expo@^50.0.0
+    ```
+  </Step>
+
+  <Step title="Update dependencies">
+    ```bash
+    npx expo install --fix
+    ```
+  </Step>
+
+  <Step title="Update app.json">
+    ```json app.json
+    {
+      "expo": {
+        "sdkVersion": "50.0.0"
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Clear caches">
+    ```bash
+    rm -rf node_modules
+    npm install
+    npx expo start --clear
+    ```
+  </Step>
+
+  <Step title="Rebuild native projects">
+    ```bash
+    npx expo prebuild --clean
+    npx expo run:ios
+    npx expo run:android
+    ```
+  </Step>
+</Steps>
+
+### Common breaking changes
+
+<AccordionGroup>
+  <Accordion title="SDK 50 - Updates">
+    - Expo Router becomes the default routing solution
+    - New App Icon and Splash Screen API
+    - Updated minimum iOS version to 13.4
+    - New EAS Update API
+  </Accordion>
+
+  <Accordion title="SDK 49 - Updates">
+    - React Native 0.73
+    - New Architecture support (Fabric)
+    - Updated Metro bundler
+    - Improved web support
+  </Accordion>
+
+  <Accordion title="SDK 48 - Updates">
+    - React Native 0.71
+    - Hermes is now the default JS engine
+    - Improved TypeScript support
+    - New Expo Image component
+  </Accordion>
+</AccordionGroup>
+
+## Migration Strategies
+
+### Incremental migration
+
+Migrate screen by screen:
+
+```typescript
+// Keep existing navigation
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+// Add Expo Router gradually
+import { router } from 'expo-router';
+
+function OldScreen() {
+  return (
+    <Button 
+      title="Go to new screen"
+      onPress={() => router.push('/new-screen')}
+    />
+  );
+}
+```
+
+### Feature flags
+
+Use feature flags for gradual rollout:
+
+```typescript utils/features.ts
+export const features = {
+  useNewAuth: __DEV__ ? true : false,
+  useExpoRouter: true,
+  useNewAPI: false,
+};
+```
+
+```typescript
+import { features } from './utils/features';
+
+if (features.useNewAuth) {
+  // New authentication flow
+} else {
+  // Legacy authentication
+}
+```
+
+### Parallel implementations
+
+Run old and new implementations side-by-side:
+
+```typescript
+import { Platform } from 'react-native';
+
+if (Platform.OS === 'web') {
+  // New web implementation
+} else {
+  // Existing mobile implementation
+}
+```
+
+## Rollback Strategy
+
+If something goes wrong:
+
+<Steps>
+  <Step title="Use version control">
+    ```bash
+    git checkout -b migration/expo-sdk-50
+    # ... make changes ...
+    # If issues arise:
+    git checkout main
+    ```
+  </Step>
+
+  <Step title="Keep old versions">
+    ```json package.json
+    {
+      "devDependencies": {
+        "expo-sdk-49": "npm:expo@^49.0.0"
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Document migration">
+    Keep notes on changes for easy rollback:
+    ```markdown MIGRATION.md
+    # Migration to Expo SDK 50
+    
+    ## Changes Made
+    - Updated expo-router from 2.x to 3.x
+    - Replaced AsyncStorage with expo-secure-store
+    - Updated minimum iOS version to 13.4
+    
+    ## Rollback Steps
+    1. `git checkout main`
+    2. `npm install`
+    3. `npx expo prebuild --clean`
+    ```
+  </Step>
+</Steps>
+
+## Testing After Migration
+
+### Automated tests
+
+```typescript __tests__/migration.test.ts
+import { render, fireEvent } from '@testing-library/react-native';
+import HomeScreen from '../app/index';
+
+describe('Migration tests', () => {
+  it('renders correctly after migration', () => {
+    const { getByText } = render(<HomeScreen />);
+    expect(getByText('Welcome')).toBeTruthy();
+  });
+
+  it('navigation works with Expo Router', () => {
+    const { getByText } = render(<HomeScreen />);
+    fireEvent.press(getByText('Go to Settings'));
+    // Assert navigation occurred
+  });
+});
+```
+
+### Manual testing checklist
+
+- [ ] App launches successfully
+- [ ] All screens render correctly
+- [ ] Navigation between screens works
+- [ ] API calls succeed
+- [ ] Authentication flow works
+- [ ] Push notifications work
+- [ ] Deep linking works
+- [ ] Offline functionality works
+- [ ] Performance is acceptable
+- [ ] No console errors or warnings
+
+## Common Migration Issues
+
+<AccordionGroup>
+  <Accordion title="Metro bundler errors">
+    ```bash
+    # Clear all caches
+    npx expo start --clear
+    rm -rf node_modules
+    npm install
+    ```
+  </Accordion>
+
+  <Accordion title="Native module linking errors">
+    ```bash
+    # iOS
+    cd ios && pod install && cd ..
+    npx expo run:ios
+    
+    # Android
+    cd android && ./gradlew clean && cd ..
+    npx expo run:android
+    ```
+  </Accordion>
+
+  <Accordion title="TypeScript errors after upgrade">
+    ```bash
+    # Update types
+    npm install --save-dev @types/react @types/react-native
+    
+    # Restart TypeScript server in your editor
+    ```
+  </Accordion>
+
+  <Accordion title="Version conflicts">
+    ```bash
+    # Let Expo resolve versions
+    npx expo install --fix
+    
+    # Or check for conflicts
+    npm ls expo
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Migration Checklist
+
+### Before migration
+
+- [ ] Read the upgrade guide for target SDK version
+- [ ] Create a new branch in version control
+- [ ] Document current app behavior
+- [ ] Back up current codebase
+- [ ] Inform team about migration
+- [ ] Plan rollback strategy
+
+### During migration
+
+- [ ] Update Expo SDK version
+- [ ] Update all Expo packages
+- [ ] Update third-party dependencies
+- [ ] Address breaking changes
+- [ ] Update TypeScript types
+- [ ] Clear all caches
+- [ ] Rebuild native projects
+
+### After migration
+
+- [ ] Test all features
+- [ ] Run automated tests
+- [ ] Test on iOS and Android
+- [ ] Check performance metrics
+- [ ] Monitor crash reports
+- [ ] Update documentation
+- [ ] Notify team of completion
+
+## Getting Help
+
+If you encounter issues:
+
+- Check [Expo documentation](https://docs.expo.dev/)
+- Search [Expo forums](https://forums.expo.dev/)
+- Ask in [Expo Discord](https://chat.expo.dev/)
+- Review [GitHub issues](https://github.com/expo/expo/issues)
+- Consult [SDK upgrade guide](https://expo.dev/changelog/)
+
+## Related Resources
+
+- [Expo SDK Changelog](https://expo.dev/changelog/)
+- [Adopting Expo in existing apps](https://docs.expo.dev/bare/installing-expo-modules/)
+- [React Native to Expo migration](https://docs.expo.dev/guides/adopting-expo/)
+- [Expo Router migration](https://docs.expo.dev/router/migrate/)

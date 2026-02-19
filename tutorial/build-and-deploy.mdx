@@ -1,0 +1,714 @@
+---
+title: "Build and Deploy"
+description: "Learn how to build your Expo app for production and deploy to app stores"
+icon: "rocket"
+---
+
+Ready to share your app with the world? This tutorial covers everything you need to build your Expo app for production and deploy it to the Apple App Store and Google Play Store.
+
+## Build Options
+
+Expo provides two ways to build your app:
+
+<CardGroup cols={2}>
+  <Card title="EAS Build" icon="cloud">
+    Cloud-based builds. No Xcode or Android Studio required. Recommended for most developers.
+  </Card>
+  
+  <Card title="Local Builds" icon="computer">
+    Build on your machine with Xcode and Android Studio. Full control, but more setup.
+  </Card>
+</CardGroup>
+
+## Prerequisites
+
+<Tabs>
+  <Tab title="EAS Build (Recommended)">
+    
+    <Check>
+      Requirements:
+      - Expo account (free): [expo.dev/signup](https://expo.dev/signup)
+      - Node.js 18+
+      - Your Expo project
+    </Check>
+
+    **For iOS:**
+    - Apple Developer account ($99/year)
+    - Not required for testing, only for App Store submission
+
+    **For Android:**
+    - Google Play Developer account ($25 one-time)
+    - Not required for testing, only for Play Store submission
+
+  </Tab>
+  
+  <Tab title="Local Builds">
+    
+    <Check>
+      Requirements:
+      - Node.js 18+
+      - Your Expo project
+    </Check>
+
+    **For iOS:**
+    - Mac with macOS
+    - Xcode 15+
+    - CocoaPods
+    - Apple Developer account
+
+    **For Android:**
+    - Android Studio
+    - Android SDK
+    - Java Development Kit
+
+  </Tab>
+</Tabs>
+
+## Building with EAS (Recommended)
+
+### Step 1: Install EAS CLI
+
+```bash
+npm install -g eas-cli
+```
+
+Verify installation:
+
+```bash
+eas --version
+```
+
+### Step 2: Log In to Expo
+
+```bash
+eas login
+```
+
+Enter your Expo credentials. Don't have an account? Create one at [expo.dev/signup](https://expo.dev/signup).
+
+### Step 3: Configure EAS Build
+
+In your project directory:
+
+```bash
+eas build:configure
+```
+
+This creates `eas.json` with build profiles:
+
+```json eas.json
+{
+  "cli": {
+    "version": ">= 5.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
+```
+
+**Build Profiles Explained:**
+
+- **development**: For local testing with custom native code
+- **preview**: For internal testing (APK for Android, Ad Hoc for iOS)
+- **production**: For app store submission
+
+### Step 4: Build for Android
+
+<Steps>
+
+<Step title="Start the build">
+  ```bash
+  eas build --platform android --profile production
+  ```
+</Step>
+
+<Step title="Choose build type">
+  Select **APK** for testing or **AAB** (Android App Bundle) for Play Store:
+  
+  ```bash
+  ? What would you like your Android application id to be?
+  › com.yourcompany.yourapp
+  ```
+</Step>
+
+<Step title="Generate keystore">
+  EAS will generate a new keystore for signing:
+  
+  ```bash
+  ✔ Generated a new Android Keystore
+  ✔ Uploaded credentials
+  ```
+
+  <Info>
+    EAS securely stores your keystore. You can download it later if needed.
+  </Info>
+</Step>
+
+<Step title="Build starts">
+  Your build is queued in the cloud:
+  
+  ```bash
+  ✔ Build started
+  › Build ID: abc123-def456-ghi789
+  › View build details: https://expo.dev/accounts/yourname/projects/yourapp/builds/abc123
+  ```
+</Step>
+
+<Step title="Download APK/AAB">
+  When complete (5-15 minutes), download your build:
+  
+  ```bash
+  eas build:list
+  ```
+  
+  Or visit the URL to download from the dashboard.
+</Step>
+
+</Steps>
+
+<Accordion title="Testing the APK">
+
+Install on your Android device:
+
+1. Download the APK to your phone
+2. Open it to install
+3. You may need to enable "Install from Unknown Sources"
+4. Test all features
+
+</Accordion>
+
+### Step 5: Build for iOS
+
+<Steps>
+
+<Step title="Start the build">
+  ```bash
+  eas build --platform ios --profile production
+  ```
+</Step>
+
+<Step title="Configure bundle identifier">
+  ```bash
+  ? What would you like your iOS bundle identifier to be?
+  › com.yourcompany.yourapp
+  ```
+  
+  <Warning>
+    This must match your Apple Developer account configuration.
+  </Warning>
+</Step>
+
+<Step title="Set up Apple credentials">
+  EAS needs access to your Apple Developer account:
+  
+  ```bash
+  ? Do you have access to the Apple account that will be used for this app?
+  › Yes
+  
+  ? Provide your Apple ID:
+  › your-email@example.com
+  ```
+  
+  You'll receive a verification code via email/SMS.
+</Step>
+
+<Step title="Generate certificates">
+  EAS generates distribution certificates and provisioning profiles:
+  
+  ```bash
+  ✔ Generated Distribution Certificate
+  ✔ Generated Provisioning Profile
+  ✔ Uploaded credentials
+  ```
+</Step>
+
+<Step title="Build starts">
+  ```bash
+  ✔ Build started
+  › Build ID: xyz789-abc123-def456
+  › View: https://expo.dev/accounts/yourname/projects/yourapp/builds/xyz789
+  ```
+</Step>
+
+<Step title="Download IPA">
+  When complete, download the `.ipa` file from the dashboard.
+</Step>
+
+</Steps>
+
+<Accordion title="Testing the IPA">
+
+**Option 1: TestFlight (Recommended)**
+
+1. Upload to App Store Connect
+2. Add internal testers
+3. They install via TestFlight app
+
+**Option 2: Ad Hoc Build**
+
+For ad hoc distribution:
+```bash
+eas build --platform ios --profile preview
+```
+
+Install with Apple Configurator or Xcode.
+
+</Accordion>
+
+### Step 6: Submit to App Stores
+
+EAS can submit builds automatically!
+
+**Submit to Google Play:**
+
+```bash
+eas submit --platform android
+```
+
+You'll need:
+- Google Play Console account
+- App created in Play Console
+- Service account key (EAS guides you through this)
+
+**Submit to App Store:**
+
+```bash
+eas submit --platform ios
+```
+
+You'll need:
+- Apple Developer account
+- App created in App Store Connect
+- App Store Connect API key (EAS guides you through this)
+
+<Info>
+  For detailed submission guides, see:
+  - [iOS Submission](https://docs.expo.dev/submit/ios/)
+  - [Android Submission](https://docs.expo.dev/submit/android/)
+</Info>
+
+## Building Locally
+
+### Generate Native Projects
+
+First, generate the native `ios/` and `android/` folders:
+
+```bash
+npx expo prebuild
+```
+
+This creates native projects configured for your app.
+
+<Warning>
+  Run `npx expo prebuild --clean` to regenerate from scratch if you modify app.json.
+</Warning>
+
+### Build iOS Locally
+
+<Steps>
+
+<Step title="Open in Xcode">
+  ```bash
+  open ios/YourApp.xcworkspace
+  ```
+  
+  <Warning>
+    Open the `.xcworkspace` file, NOT `.xcodeproj`!
+  </Warning>
+</Step>
+
+<Step title="Select scheme">
+  In Xcode, select your app scheme and "Any iOS Device" as the destination.
+</Step>
+
+<Step title="Configure signing">
+  1. Select your project in the navigator
+  2. Go to "Signing & Capabilities"
+  3. Select your team
+  4. Xcode will handle provisioning
+</Step>
+
+<Step title="Archive">
+  Product → Archive
+  
+  Wait for the build to complete.
+</Step>
+
+<Step title="Distribute">
+  1. Window → Organizer
+  2. Select your archive
+  3. Click "Distribute App"
+  4. Choose distribution method:
+     - App Store Connect (for submission)
+     - Ad Hoc (for testing)
+     - Development (for your devices)
+</Step>
+
+</Steps>
+
+### Build Android Locally
+
+<Steps>
+
+<Step title="Generate signing key">
+  ```bash
+  keytool -genkeypair -v -storetype PKCS12 -keystore my-release-key.keystore -alias my-key-alias -keyalg RSA -keysize 2048 -validity 10000
+  ```
+  
+  Remember the passwords you set!
+</Step>
+
+<Step title="Configure Gradle">
+  Create `android/gradle.properties`:
+  
+  ```properties
+  MYAPP_RELEASE_STORE_FILE=my-release-key.keystore
+  MYAPP_RELEASE_KEY_ALIAS=my-key-alias
+  MYAPP_RELEASE_STORE_PASSWORD=your-store-password
+  MYAPP_RELEASE_KEY_PASSWORD=your-key-password
+  ```
+  
+  Update `android/app/build.gradle`:
+  
+  ```gradle
+  android {
+    signingConfigs {
+      release {
+        storeFile file(MYAPP_RELEASE_STORE_FILE)
+        storePassword MYAPP_RELEASE_STORE_PASSWORD
+        keyAlias MYAPP_RELEASE_KEY_ALIAS
+        keyPassword MYAPP_RELEASE_KEY_PASSWORD
+      }
+    }
+    buildTypes {
+      release {
+        signingConfig signingConfigs.release
+      }
+    }
+  }
+  ```
+</Step>
+
+<Step title="Build APK">
+  ```bash
+  cd android
+  ./gradlew assembleRelease
+  ```
+  
+  Output: `android/app/build/outputs/apk/release/app-release.apk`
+</Step>
+
+<Step title="Or build AAB (for Play Store)">
+  ```bash
+  ./gradlew bundleRelease
+  ```
+  
+  Output: `android/app/build/outputs/bundle/release/app-release.aab`
+</Step>
+
+</Steps>
+
+## Running on Physical Devices
+
+### Development Builds
+
+Create a development build to test on device:
+
+```bash
+eas build --profile development --platform ios
+eas build --profile development --platform android
+```
+
+Development builds:
+- Include dev menu
+- Connect to Metro bundler
+- Support Fast Refresh
+- Include all your native dependencies
+
+### Install on Device
+
+**iOS:**
+1. Download IPA from EAS dashboard
+2. Install via Xcode: Window → Devices and Simulators
+3. Drag IPA onto device
+
+**Android:**
+1. Download APK from EAS dashboard
+2. Transfer to device
+3. Open APK to install
+4. Or use `adb install app.apk`
+
+## App Store Guidelines
+
+### iOS App Store
+
+<AccordionGroup>
+
+<Accordion title="App Review Guidelines">
+  
+Key requirements:
+- App must be fully functional
+- No placeholder content
+- Privacy policy required
+- App description accurate
+- Screenshots required (multiple sizes)
+- Test account if login required
+
+Full guidelines: [developer.apple.com/app-store/review/guidelines/](https://developer.apple.com/app-store/review/guidelines/)
+
+</Accordion>
+
+<Accordion title="App Store Connect Setup">
+  
+1. Create app in App Store Connect
+2. Fill in metadata:
+   - Name, subtitle, description
+   - Keywords
+   - Category
+   - Content rating
+3. Upload screenshots (required sizes)
+4. Set pricing
+5. Submit for review
+
+Review typically takes 1-3 days.
+
+</Accordion>
+
+<Accordion title="Common Rejection Reasons">
+  
+- Crashes or bugs
+- Missing functionality
+- Poor user experience
+- Privacy policy issues
+- Misleading description
+- Placeholder content
+
+Always test thoroughly before submission!
+
+</Accordion>
+
+</AccordionGroup>
+
+### Google Play Store
+
+<AccordionGroup>
+
+<Accordion title="Play Console Setup">
+  
+1. Create app in Play Console
+2. Complete store listing:
+   - Title, description
+   - Screenshots (phone, tablet, TV)
+   - Feature graphic
+   - App icon
+3. Set content rating (questionnaire)
+4. Add privacy policy
+5. Choose countries
+6. Set pricing
+7. Upload AAB
+
+</Accordion>
+
+<Accordion title="Release Tracks">
+  
+- **Internal Testing**: Up to 100 testers, instant access
+- **Closed Testing**: Limited testers, opt-in
+- **Open Testing**: Public beta, anyone can join
+- **Production**: Live on Play Store
+
+Start with internal testing, then progress through tracks.
+
+</Accordion>
+
+<Accordion title="App Review Process">
+  
+Google Play reviews are typically faster than iOS:
+- Initial review: Few hours to 2 days
+- Updates: Usually faster
+- Automated checks run immediately
+
+Common issues:
+- Permissions not justified
+- Privacy policy missing
+- Content rating incorrect
+- Crashes on specific devices
+
+</Accordion>
+
+</AccordionGroup>
+
+## Over-the-Air Updates
+
+Update your app instantly without going through app stores:
+
+```bash
+# Install expo-updates
+npx expo install expo-updates
+
+# Publish update
+eas update --branch production
+```
+
+<Info>
+  OTA updates work for JavaScript code only. Native code changes require a new build.
+</Info>
+
+Configure in `app.json`:
+
+```json app.json
+{
+  "expo": {
+    "updates": {
+      "url": "https://u.expo.dev/your-project-id"
+    },
+    "runtimeVersion": "1.0.0"
+  }
+}
+```
+
+Users get updates automatically when they open the app!
+
+## Production Checklist
+
+<AccordionGroup>
+
+<Accordion title="Before Building" icon="list-check">
+  
+- [ ] Test on multiple devices/simulators
+- [ ] Test in production mode: `expo start --no-dev`
+- [ ] Remove console.logs and debug code
+- [ ] Update version in app.json
+- [ ] Verify app icon and splash screen
+- [ ] Test deep links
+- [ ] Check permissions work correctly
+- [ ] Verify API endpoints (not localhost!)
+- [ ] Test offline functionality
+- [ ] Review privacy policy
+
+</Accordion>
+
+<Accordion title="App Store Submission" icon="apple">
+  
+- [ ] App created in App Store Connect
+- [ ] Metadata completed
+- [ ] Screenshots uploaded (all required sizes)
+- [ ] Privacy policy URL added
+- [ ] Test account provided (if needed)
+- [ ] Export compliance information
+- [ ] Age rating set
+- [ ] Pricing configured
+
+</Accordion>
+
+<Accordion title="Play Store Submission" icon="android">
+  
+- [ ] App created in Play Console
+- [ ] Store listing completed
+- [ ] Screenshots uploaded
+- [ ] Feature graphic added
+- [ ] Content rating obtained
+- [ ] Privacy policy URL added
+- [ ] Countries selected
+- [ ] Pricing configured
+- [ ] AAB uploaded
+
+</Accordion>
+
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+
+<Accordion title="Build fails with credentials error">
+  
+Reset credentials:
+```bash
+eas credentials
+```
+
+Select platform and "Remove all credentials" then rebuild.
+
+</Accordion>
+
+<Accordion title="App crashes on production build">
+  
+Check:
+1. Running in production mode locally:
+   ```bash
+   expo start --no-dev --minify
+   ```
+2. All environment variables set
+3. API URLs correct (not localhost)
+4. All assets included
+5. No development-only code
+
+</Accordion>
+
+<Accordion title="iOS app rejected">
+  
+Common fixes:
+1. Add NSPhotoLibraryUsageDescription in app.json
+2. Ensure privacy policy is accessible
+3. Test on actual device
+4. Provide test account
+5. Remove references to other platforms
+
+</Accordion>
+
+<Accordion title="Android signing issues">
+  
+For EAS builds:
+```bash
+eas credentials
+```
+
+For local builds, verify:
+- Keystore path correct
+- Passwords correct in gradle.properties
+- Keystore not corrupted
+
+</Accordion>
+
+</AccordionGroup>
+
+## Next Steps
+
+Congratulations on building your first Expo app!
+
+<CardGroup cols={2}>
+  <Card title="Monitor with Sentry" icon="bug" href="https://docs.expo.dev/guides/using-sentry/">
+    Track errors in production
+  </Card>
+  
+  <Card title="Analytics" icon="chart-line" href="https://docs.expo.dev/guides/using-analytics/">
+    Understand user behavior
+  </Card>
+  
+  <Card title="Push Notifications" icon="bell" href="https://docs.expo.dev/push-notifications/overview/">
+    Engage users with notifications
+  </Card>
+  
+  <Card title="EAS Documentation" icon="book" href="https://docs.expo.dev/eas/">
+    Learn advanced EAS features
+  </Card>
+</CardGroup>

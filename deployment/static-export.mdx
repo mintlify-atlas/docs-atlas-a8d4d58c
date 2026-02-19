@@ -1,0 +1,817 @@
+---
+title: Static Export for Web
+description: Learn how to export your Expo Router app as a static website with HTML and CSS files for deployment to any hosting provider.
+---
+
+import { Steps } from '~/components/Steps';
+import { Step } from '~/components/Step';
+import { Warning } from '~/components/Warning';
+import { Tabs, Tab } from '~/components/Tabs';
+
+# Static Export for Web
+
+Static export generates pre-rendered HTML files for your Expo Router web app, enabling SEO optimization and deployment to static hosting providers. This is ideal for content-focused apps, marketing sites, and apps that don't require server-side rendering.
+
+## Understanding Web Output Modes
+
+Expo Router supports three web output modes:
+
+### Single-Page Application (SPA)
+
+**Default mode** - Generates one **index.html** file:
+
+```json app.json
+{
+  "expo": {
+    "web": {
+      "output": "single"
+    }
+  }
+}
+```
+
+**Use when:**
+- SEO is not important
+- Client-side routing only
+- Simplest deployment
+
+### Static Site Generation (SSG)
+
+**Recommended for most apps** - Pre-renders HTML for each route:
+
+```json app.json
+{
+  "expo": {
+    "web": {
+      "output": "static"
+    }
+  }
+}
+```
+
+**Use when:**
+- SEO is important
+- Multiple pages with unique content
+- Want fast initial page loads
+- Can deploy to static hosting (Netlify, Vercel, etc.)
+
+### Server-Side Rendering (SSR)
+
+**Advanced mode** - Renders pages on each request:
+
+```json app.json
+{
+  "expo": {
+    "web": {
+      "output": "server"
+    }
+  }
+}
+```
+
+**Use when:**
+- Need server functions or API routes
+- Dynamic data on each request
+- User-specific content
+- Requires server deployment (not covered in this guide)
+
+## Setting Up Static Export
+
+<Steps>
+
+<Step>
+
+### Enable Static Output
+
+Configure your **app.json**:
+
+```json app.json
+{
+  "expo": {
+    "name": "My App",
+    "slug": "my-app",
+    "web": {
+      "output": "static",
+      "bundler": "metro"
+    }
+  }
+}
+```
+
+</Step>
+
+<Step>
+
+### Create Routes
+
+Expo Router automatically generates pages from your **app** directory:
+
+```
+app/
+├── _layout.tsx          # Root layout
+├── index.tsx            # Home page (/)
+├── about.tsx            # About page (/about)
+├── blog/
+│   ├── index.tsx        # Blog index (/blog)
+│   └── [slug].tsx       # Blog post (/blog/[slug])
+└── contact.tsx          # Contact page (/contact)
+```
+
+</Step>
+
+<Step>
+
+### Test Development Server
+
+Start the development server:
+
+```bash
+npx expo start
+```
+
+Press `w` to open in web browser and verify routing works.
+
+</Step>
+
+<Step>
+
+### Export Static Files
+
+Generate production build:
+
+```bash
+npx expo export --platform web
+```
+
+This creates a **dist** directory with:
+
+```
+dist/
+├── index.html              # Home page
+├── about.html              # About page
+├── blog.html               # Blog index
+├── blog/
+│   └── my-post.html        # Dynamic blog post
+├── contact.html            # Contact page
+├── _expo/
+│   ├── static/
+│   │   ├── js/
+│   │   │   └── index-[hash].js
+│   │   └── css/
+│   │       └── index-[hash].css
+│   └── metadata.json
+└── assets/                 # Images, fonts, etc.
+```
+
+</Step>
+
+<Step>
+
+### Test Production Build Locally
+
+Serve the **dist** directory:
+
+```bash
+npx serve dist
+```
+
+Open `http://localhost:3000` to test the static site.
+
+</Step>
+
+</Steps>
+
+## Dynamic Routes and Static Generation
+
+Static export can generate pages for dynamic routes using `generateStaticParams`.
+
+### Generating Static Params
+
+For dynamic routes like **app/blog/[slug].tsx**, define which pages to generate:
+
+```tsx app/blog/[slug].tsx
+import { Text, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+
+// Generate static pages at build time
+export async function generateStaticParams(): Promise<Record<string, string>[]> {
+  const posts = await fetchBlogPosts(); // Fetch from API or files
+  
+  return posts.map(post => ({
+    slug: post.slug
+  }));
+}
+
+export default function BlogPost() {
+  const { slug } = useLocalSearchParams();
+  
+  return (
+    <View>
+      <Text>Blog Post: {slug}</Text>
+    </View>
+  );
+}
+
+async function fetchBlogPosts() {
+  // Example: Fetch from CMS, database, or local files
+  return [
+    { slug: 'getting-started', title: 'Getting Started' },
+    { slug: 'advanced-tips', title: 'Advanced Tips' },
+    { slug: 'deployment-guide', title: 'Deployment Guide' }
+  ];
+}
+```
+
+**Output:**
+
+```
+dist/blog/getting-started.html
+dist/blog/advanced-tips.html
+dist/blog/deployment-guide.html
+```
+
+### Cascading Parameters
+
+Nested dynamic routes receive parent parameters:
+
+```tsx app/blog/[category]/[slug].tsx
+export async function generateStaticParams({
+  category
+}: {
+  category: string;
+}): Promise<Record<string, string>[]> {
+  const posts = await fetchPostsByCategory(category);
+  
+  return posts.map(post => ({
+    category,  // Pass parent param through
+    slug: post.slug
+  }));
+}
+```
+
+### Reading Local Files
+
+Use Node.js APIs in `generateStaticParams`:
+
+```tsx app/docs/[page].tsx
+import fs from 'node:fs/promises';
+import path from 'node:path';
+
+export async function generateStaticParams() {
+  // Use process.cwd() for project root
+  const docsDir = path.join(process.cwd(), 'content/docs');
+  const files = await fs.readdir(docsDir);
+  
+  return files
+    .filter(file => file.endsWith('.md'))
+    .map(file => ({
+      page: file.replace('.md', '')
+    }));
+}
+```
+
+<Warning>
+Do not use `__dirname` in `generateStaticParams` - it points to the build directory, not your source. Always use `process.cwd()`.
+</Warning>
+
+## Customizing HTML Output
+
+### Root HTML Template
+
+Customize the base HTML for all pages:
+
+```tsx app/+html.tsx
+import { ScrollViewStyleReset } from 'expo-router/html';
+import { type PropsWithChildren } from 'react';
+
+export default function Root({ children }: PropsWithChildren) {
+  return (
+    <html lang="en">
+      <head>
+        <meta charSet="utf-8" />
+        <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, shrink-to-fit=no"
+        />
+        
+        {/* Disable body scrolling on web */}
+        <ScrollViewStyleReset />
+        
+        {/* Global meta tags */}
+        <meta name="theme-color" content="#000000" />
+        
+        {/* Favicon */}
+        <link rel="icon" href="/favicon.ico" />
+        
+        {/* Global styles */}
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            * {
+              box-sizing: border-box;
+            }
+          `
+        }} />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+**Important notes:**
+- This file only runs in Node.js during export
+- Cannot import global CSS here (use root layout instead)
+- No access to browser APIs (`window`, `document`, etc.)
+- Children prop includes root `<div id="root" />`
+
+### Page-Specific Meta Tags
+
+Add meta tags per route:
+
+```tsx app/blog/[slug].tsx
+import Head from 'expo-router/head';
+import { View, Text } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+
+export default function BlogPost() {
+  const { slug } = useLocalSearchParams();
+  const post = getPost(slug); // Fetch post data
+  
+  return (
+    <>
+      <Head>
+        <title>{post.title} | My Blog</title>
+        <meta name="description" content={post.excerpt} />
+        <meta property="og:title" content={post.title} />
+        <meta property="og:description" content={post.excerpt} />
+        <meta property="og:image" content={post.coverImage} />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Head>
+      
+      <View>
+        <Text>{post.title}</Text>
+        <Text>{post.content}</Text>
+      </View>
+    </>
+  );
+}
+```
+
+## Static Assets
+
+### Public Directory
+
+Files in **public/** are copied to **dist/** root:
+
+```
+public/
+├── favicon.ico
+├── robots.txt
+├── sitemap.xml
+├── images/
+│   └── logo.png
+└── .well-known/
+    └── apple-app-site-association
+```
+
+**After export:**
+
+```
+dist/
+├── favicon.ico
+├── robots.txt
+├── sitemap.xml
+├── images/
+│   └── logo.png
+└── .well-known/
+    └── apple-app-site-association
+```
+
+### Referencing Static Assets
+
+Access public files from root path:
+
+```tsx
+import { Image } from 'react-native';
+
+export default function Logo() {
+  return (
+    <Image 
+      source={{ uri: '/images/logo.png' }}
+      style={{ width: 200, height: 100 }}
+    />
+  );
+}
+```
+
+### Asset Optimization
+
+Optimize images before placing in **public/**:
+
+```bash
+# Install image optimization tool
+npm install -g sharp-cli
+
+# Optimize images
+sharp -i public/images/*.png -o public/images/ -f webp
+```
+
+## Font Loading
+
+Expo Font automatically optimizes font loading for static sites:
+
+```tsx app/_layout.tsx
+import { useFonts } from 'expo-font';
+import { Stack } from 'expo-router';
+
+export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    'Inter-Regular': require('../assets/fonts/Inter-Regular.ttf'),
+    'Inter-Bold': require('../assets/fonts/Inter-Bold.ttf'),
+  });
+  
+  if (!fontsLoaded) {
+    return null;
+  }
+  
+  return <Stack />;
+}
+```
+
+**Generated HTML includes:**
+
+```html
+<!-- Preload fonts -->
+<link rel="preload" href="/assets/fonts/Inter-Regular.ttf" as="font" crossorigin />
+<link rel="preload" href="/assets/fonts/Inter-Bold.ttf" as="font" crossorigin />
+
+<!-- Font face definitions -->
+<style id="expo-generated-fonts">
+  @font-face {
+    font-family: 'Inter-Regular';
+    src: url(/assets/fonts/Inter-Regular.ttf);
+    font-display: auto;
+  }
+  @font-face {
+    font-family: 'Inter-Bold';
+    src: url(/assets/fonts/Inter-Bold.ttf);
+    font-display: auto;
+  }
+</style>
+```
+
+Fonts are preloaded and available immediately, preventing layout shift.
+
+## SEO Optimization
+
+### Sitemap Generation
+
+Create **public/sitemap.xml**:
+
+```xml public/sitemap.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://example.com/</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://example.com/about</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://example.com/blog</loc>
+    <lastmod>2024-01-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+</urlset>
+```
+
+Or generate dynamically during build:
+
+```javascript scripts/generate-sitemap.js
+const fs = require('fs');
+const path = require('path');
+
+const BASE_URL = 'https://example.com';
+const DIST_DIR = path.join(__dirname, '../dist');
+
+function generateSitemap() {
+  const pages = findHtmlFiles(DIST_DIR);
+  
+  const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${pages.map(page => `  <url>
+    <loc>${BASE_URL}${page}</loc>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+  </url>`).join('\n')}
+</urlset>`;
+  
+  fs.writeFileSync(path.join(DIST_DIR, 'sitemap.xml'), sitemap);
+  console.log('Sitemap generated!');
+}
+
+function findHtmlFiles(dir, basePath = '') {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  let pages = [];
+  
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    const urlPath = path.join(basePath, entry.name);
+    
+    if (entry.isDirectory()) {
+      pages = pages.concat(findHtmlFiles(fullPath, urlPath));
+    } else if (entry.name.endsWith('.html')) {
+      const url = urlPath
+        .replace(/\\/g, '/')
+        .replace(/index\.html$/, '')
+        .replace(/\.html$/, '');
+      pages.push(url || '/');
+    }
+  }
+  
+  return pages;
+}
+
+generateSitemap();
+```
+
+Run after export:
+
+```json package.json
+{
+  "scripts": {
+    "export": "expo export --platform web",
+    "postexport": "node scripts/generate-sitemap.js"
+  }
+}
+```
+
+### Robots.txt
+
+Create **public/robots.txt**:
+
+```txt public/robots.txt
+User-agent: *
+Allow: /
+
+Sitemap: https://example.com/sitemap.xml
+```
+
+### Structured Data
+
+Add JSON-LD structured data:
+
+```tsx app/blog/[slug].tsx
+import Head from 'expo-router/head';
+
+export default function BlogPost({ post }) {
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.title,
+    description: post.excerpt,
+    image: post.coverImage,
+    datePublished: post.publishedAt,
+    dateModified: post.updatedAt,
+    author: {
+      '@type': 'Person',
+      name: post.author.name
+    }
+  };
+  
+  return (
+    <>
+      <Head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(structuredData)
+          }}
+        />
+      </Head>
+      {/* Page content */}
+    </>
+  );
+}
+```
+
+## Performance Optimization
+
+### Code Splitting
+
+Automatic code splitting by route:
+
+```
+app/
+├── index.tsx       # Chunk: index-[hash].js
+├── about.tsx       # Chunk: about-[hash].js
+└── blog/
+    └── [slug].tsx  # Chunk: blog-[slug]-[hash].js
+```
+
+Manual code splitting with dynamic imports:
+
+```tsx
+import { lazy } from 'react';
+
+const HeavyComponent = lazy(() => import('../components/HeavyComponent'));
+
+export default function Page() {
+  return (
+    <Suspense fallback={<Text>Loading...</Text>}>
+      <HeavyComponent />
+    </Suspense>
+  );
+}
+```
+
+### Image Optimization
+
+Use responsive images:
+
+```tsx
+import { Image } from 'react-native';
+
+export default function OptimizedImage() {
+  return (
+    <picture>
+      <source
+        type="image/webp"
+        srcSet="/images/hero-320w.webp 320w,
+                /images/hero-640w.webp 640w,
+                /images/hero-1280w.webp 1280w"
+      />
+      <Image
+        source={{ uri: '/images/hero.jpg' }}
+        style={{ width: '100%', height: 'auto' }}
+      />
+    </picture>
+  );
+}
+```
+
+### Preloading Critical Resources
+
+Add resource hints:
+
+```tsx app/+html.tsx
+export default function Root({ children }) {
+  return (
+    <html>
+      <head>
+        {/* Preload critical fonts */}
+        <link
+          rel="preload"
+          href="/fonts/Inter-Regular.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+        
+        {/* Prefetch next page */}
+        <link rel="prefetch" href="/about.html" />
+        
+        {/* Preconnect to external domains */}
+        <link rel="preconnect" href="https://api.example.com" />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+## Limitations
+
+### No Server-Side Logic
+
+Static export cannot:
+- Run server functions
+- Execute API routes (**+api.ts** files)
+- Render pages dynamically per request
+- Access request headers or cookies
+- Handle form submissions server-side
+
+**Workarounds:**
+- Use client-side API calls
+- Integrate with serverless functions (separate from static export)
+- Use EAS Hosting for server output mode
+
+### Dynamic Routes Require Pre-Generation
+
+All dynamic routes must be defined at build time:
+
+```tsx
+// This won't work for /blog/random-post-123
+export default function BlogPost() {
+  const { slug } = useLocalSearchParams();
+  return <Text>{slug}</Text>;
+}
+
+// You must define ALL possible slugs:
+export async function generateStaticParams() {
+  return [
+    { slug: 'post-1' },
+    { slug: 'post-2' },
+    // All posts must be listed
+  ];
+}
+```
+
+### No Real-Time Data
+
+Static pages show data from build time. For fresh data:
+
+1. **Rebuild and redeploy** when content changes
+2. **Client-side fetching** for real-time updates
+3. **Incremental Static Regeneration** (requires server output mode)
+
+## Troubleshooting
+
+### "No routes found"
+
+**Issue:** Export creates empty dist folder
+
+**Solution:** Verify **app/** directory structure:
+
+```
+app/
+├── _layout.tsx
+└── index.tsx  # At least index.tsx required
+```
+
+### "generateStaticParams not called"
+
+**Issue:** Dynamic pages not generated
+
+**Solutions:**
+
+1. **Export function correctly:**
+   ```tsx
+   export async function generateStaticParams() {
+     // Must be async and return array
+     return [{ slug: 'test' }];
+   }
+   ```
+
+2. **Check web output mode:**
+   ```json app.json
+   {
+     "web": {
+       "output": "static"  // Not "single"
+     }
+   }
+   ```
+
+### Assets not loading
+
+**Issue:** Images/fonts return 404
+
+**Solutions:**
+
+1. **Use absolute paths:**
+   ```tsx
+   // Correct
+   <Image source={{ uri: '/images/logo.png' }} />
+   
+   // Wrong
+   <Image source={{ uri: './images/logo.png' }} />
+   ```
+
+2. **Place in public directory:**
+   ```
+   public/images/logo.png  ✓
+   src/images/logo.png     ✗
+   ```
+
+### Build fails with "process is not defined"
+
+**Issue:** Using Node.js APIs in client code
+
+**Solution:** Only use Node.js APIs in `generateStaticParams`:
+
+```tsx
+// OK - Runs in Node.js
+export async function generateStaticParams() {
+  const fs = require('fs');
+  return [];
+}
+
+// ERROR - Runs in browser
+export default function Page() {
+  const fs = require('fs'); // ✗ process not defined
+  return <View />;
+}
+```
+
+## Next Steps
+
+- [Hosting Providers](/deployment/hosting-providers) - Deploy your static export
+- [Over-the-Air Updates](/deployment/over-the-air-updates) - Update native apps remotely
+- [Build Configuration](/deployment/build-configuration) - Configure builds for mobile

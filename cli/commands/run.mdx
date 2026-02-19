@@ -1,0 +1,388 @@
+---
+title: expo run
+description: Build and run your app natively on iOS and Android devices.
+---
+
+The `expo run` commands compile your native code and launch your app on iOS simulators, Android emulators, or physical devices. These commands are essential for testing native modules and custom native code.
+
+## expo run:ios
+
+Build and run the iOS app binary locally.
+
+### Usage
+
+```bash
+npx expo run:ios [options]
+```
+
+### Options
+
+<ParamField path="--device" type="string | boolean">
+  Device name or UDID to build the app on. Alias: `-d`
+  
+  Can be:
+  - Device name (e.g., "iPhone 15 Pro")
+  - Device UDID for physical devices
+  - Boolean flag to select from available devices
+</ParamField>
+
+<ParamField path="--scheme" type="string | boolean">
+  Xcode scheme to build. If not specified, the first scheme in the workspace is used.
+</ParamField>
+
+<ParamField path="--configuration" type="string">
+  Xcode configuration to use. Options: `Debug` or `Release`. Default: `Debug`
+</ParamField>
+
+<ParamField path="--no-build-cache" type="boolean">
+  Clear the native derived data before building. Use this when you encounter build issues.
+</ParamField>
+
+<ParamField path="--no-install" type="boolean">
+  Skip installing npm dependencies before building.
+</ParamField>
+
+<ParamField path="--no-bundler" type="boolean">
+  Skip starting the Metro bundler. Use this if Metro is already running.
+</ParamField>
+
+<ParamField path="--port" type="number">
+  Port to start the Metro bundler on. Default: 8081. Alias: `-p`
+</ParamField>
+
+<ParamField path="--binary" type="string">
+  Path to existing `.app` or `.ipa` file to install instead of building.
+</ParamField>
+
+### Examples
+
+#### Basic iOS Build
+
+Build and run on default simulator:
+
+```bash
+npx expo run:ios
+```
+
+#### Specific Device
+
+Run on a specific simulator:
+
+```bash
+npx expo run:ios --device "iPhone 15 Pro"
+```
+
+Run on physical device by UDID:
+
+```bash
+npx expo run:ios --device 00008030-001234567890ABCD
+```
+
+#### Production Build
+
+Build with Release configuration (unsigned):
+
+```bash
+npx expo run:ios --configuration Release
+```
+
+This creates an optimized build without debug symbols, useful for testing production performance.
+
+#### Clean Build
+
+Clear derived data for a fresh build:
+
+```bash
+npx expo run:ios --no-build-cache
+```
+
+#### Custom Scheme
+
+Build a specific scheme:
+
+```bash
+npx expo run:ios --scheme MyAppProd
+```
+
+#### Without Metro
+
+If Metro is already running:
+
+```bash
+npx expo run:ios --no-bundler
+```
+
+### Platform Requirements
+
+- **macOS only** - iOS development is not supported on Windows or Linux
+- **Xcode** - Install from the Mac App Store
+- **iOS Simulator** - Included with Xcode
+- **CocoaPods** - Installed automatically if not present
+
+### How It Works
+
+1. **Runs prebuild** - Generates native iOS project if needed
+2. **Installs CocoaPods** - Runs `pod install` in the ios directory
+3. **Resolves device** - Selects or launches simulator
+4. **Builds with Xcode** - Compiles native code using `xcodebuild`
+5. **Installs app** - Deploys to simulator or device
+6. **Starts Metro** - Launches bundler for JavaScript
+7. **Opens app** - Launches the app on the device
+
+## expo run:android
+
+Build and run the Android app binary locally.
+
+### Usage
+
+```bash
+npx expo run:android [options]
+```
+
+### Options
+
+<ParamField path="--device" type="string | boolean">
+  Device name to run the app on. Alias: `-d`
+  
+  Can be:
+  - Device name or ID from `adb devices`
+  - Boolean flag to select from available devices
+</ParamField>
+
+<ParamField path="--variant" type="string">
+  Build variant or product flavor and build variant. Default: `debug`
+  
+  Examples:
+  - `debug` - Debug build
+  - `release` - Release build
+  - `productionDebug` - Product flavor with debug build type
+</ParamField>
+
+<ParamField path="--no-build-cache" type="boolean">
+  Clear the native build cache before building.
+</ParamField>
+
+<ParamField path="--no-install" type="boolean">
+  Skip installing npm dependencies before building.
+</ParamField>
+
+<ParamField path="--no-bundler" type="boolean">
+  Skip starting the Metro bundler.
+</ParamField>
+
+<ParamField path="--port" type="number">
+  Port to start the dev server on. Default: 8081. Alias: `-p`
+</ParamField>
+
+<ParamField path="--binary" type="string">
+  Path to existing `.apk` or `.aab` file to install instead of building.
+</ParamField>
+
+<ParamField path="--app-id" type="string">
+  Custom Android application ID to launch. Overrides the default package name.
+</ParamField>
+
+### Examples
+
+#### Basic Android Build
+
+Build and run on default device/emulator:
+
+```bash
+npx expo run:android
+```
+
+#### Specific Device
+
+Run on a specific device:
+
+```bash
+npx expo run:android --device emulator-5554
+```
+
+List available devices:
+
+```bash
+adb devices
+```
+
+#### Production Build
+
+Build with release variant:
+
+```bash
+npx expo run:android --variant release
+```
+
+Note: Release builds require signing configuration in `android/app/build.gradle`.
+
+#### Clean Build
+
+Clear build cache:
+
+```bash
+npx expo run:android --no-build-cache
+```
+
+#### Custom App ID
+
+Launch a specific application ID:
+
+```bash
+npx expo run:android --app-id com.mycompany.myapp.debug
+```
+
+#### Install Existing APK
+
+Install a pre-built APK:
+
+```bash
+npx expo run:android --binary ./app-release.apk
+```
+
+### Platform Requirements
+
+- **Java Development Kit (JDK)** - Version 17 or newer
+- **Android Studio** or **Android SDK**
+- **Android emulator** or **physical device** with USB debugging enabled
+
+### How It Works
+
+1. **Runs prebuild** - Generates native Android project if needed
+2. **Resolves device** - Selects device or launches emulator
+3. **Configures Gradle** - Sets up build properties
+4. **Builds with Gradle** - Compiles native code
+5. **Installs APK** - Deploys to device via ADB
+6. **Starts Metro** - Launches bundler for JavaScript
+7. **Opens app** - Launches the app on the device
+
+## Common Use Cases
+
+### Development Workflow
+
+Use `expo run` commands when you need to:
+
+- Test native modules and APIs
+- Debug platform-specific code
+- Verify native build configuration
+- Test on physical devices
+- Profile app performance
+- Test production builds locally
+
+### When Not to Use
+
+For JavaScript-only changes, use `expo start` instead:
+
+```bash
+# Faster for JS development
+npx expo start --ios
+npx expo start --android
+```
+
+This skips the native build step and just installs/launches the app.
+
+## Device Selection
+
+### iOS Devices
+
+List available iOS simulators:
+
+```bash
+xcrun simctl list devices
+```
+
+Boot a specific simulator:
+
+```bash
+xcrun simctl boot "iPhone 15 Pro"
+```
+
+### Android Devices
+
+List connected Android devices:
+
+```bash
+adb devices
+```
+
+Launch an emulator:
+
+```bash
+emulator -avd Pixel_7_API_34
+```
+
+## Troubleshooting
+
+### iOS Build Failures
+
+Clear derived data:
+
+```bash
+rm -rf ~/Library/Developer/Xcode/DerivedData
+npx expo run:ios --no-build-cache
+```
+
+Update CocoaPods:
+
+```bash
+cd ios
+pod install --repo-update
+cd ..
+```
+
+### Android Build Failures
+
+Clean Gradle cache:
+
+```bash
+cd android
+./gradlew clean
+cd ..
+npx expo run:android --no-build-cache
+```
+
+Invalid cache or corrupted Gradle:
+
+```bash
+cd android
+./gradlew clean --no-daemon
+rm -rf .gradle
+cd ..
+```
+
+### Code Signing (iOS)
+
+For physical devices, you need a development certificate:
+
+1. Open `ios/*.xcworkspace` in Xcode
+2. Select your team in Signing & Capabilities
+3. Connect your device
+4. Trust the certificate on your device
+
+### ADB Connection Issues (Android)
+
+Restart ADB server:
+
+```bash
+adb kill-server
+adb start-server
+```
+
+Enable USB debugging on your Android device:
+
+1. Go to Settings → About Phone
+2. Tap Build Number 7 times
+3. Go to Developer Options
+4. Enable USB Debugging
+
+## Comparing with expo start
+
+| Feature | expo start | expo run |
+|---------|-----------|----------|
+| **Native builds** | Uses existing binary | Compiles native code |
+| **Speed** | Fast | Slower (compile time) |
+| **Use case** | JS development | Native development |
+| **Requirements** | Expo Go or dev build | Xcode/Android Studio |
+| **Native changes** | Not reflected | Reflected |
+
+Use `expo run` when working with native code, `expo start` for everything else.

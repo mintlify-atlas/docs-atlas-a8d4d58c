@@ -1,0 +1,193 @@
+---
+title: expo-battery
+description: Get battery information and monitor battery state changes
+---
+
+# expo-battery
+
+**Version:** 55.0.6
+
+Provides battery information for the physical device, as well as corresponding event listeners.
+
+## Installation
+
+```bash
+npx expo install expo-battery
+```
+
+## Usage
+
+```typescript
+import * as Battery from 'expo-battery';
+import { useEffect, useState } from 'react';
+
+function App() {
+  const [batteryLevel, setBatteryLevel] = useState<number | null>(null);
+
+  useEffect(() => {
+    Battery.getBatteryLevelAsync().then(setBatteryLevel);
+    
+    const subscription = Battery.addBatteryLevelListener(({ batteryLevel }) => {
+      setBatteryLevel(batteryLevel);
+    });
+
+    return () => subscription.remove();
+  }, []);
+
+  return <Text>Battery: {(batteryLevel * 100).toFixed(0)}%</Text>;
+}
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="Battery.getBatteryLevelAsync()" type="() => Promise<number>">
+  Gets current battery level (0-1)
+  
+  ```typescript
+  const level = await Battery.getBatteryLevelAsync();
+  console.log(`${(level * 100).toFixed(0)}%`);
+  ```
+</ParamField>
+
+<ParamField path="Battery.getBatteryStateAsync()" type="() => Promise<BatteryState>">
+  Gets battery charging state
+  
+  Returns:
+  - `Battery.BatteryState.UNKNOWN`
+  - `Battery.BatteryState.UNPLUGGED`
+  - `Battery.BatteryState.CHARGING`
+  - `Battery.BatteryState.FULL`
+</ParamField>
+
+<ParamField path="Battery.isLowPowerModeEnabledAsync()" type="() => Promise<boolean>">
+  Checks if low power mode is enabled
+</ParamField>
+
+<ParamField path="Battery.getPowerStateAsync()" type="() => Promise<PowerState>">
+  Gets complete power state
+  
+  ```typescript
+  const powerState = await Battery.getPowerStateAsync();
+  console.log(powerState);
+  // {
+  //   batteryLevel: 0.75,
+  //   batteryState: Battery.BatteryState.CHARGING,
+  //   lowPowerMode: false
+  // }
+  ```
+</ParamField>
+
+### Event Listeners
+
+<ParamField path="Battery.addBatteryLevelListener(listener)" type="(listener: (event: BatteryLevelEvent) => void) => EventSubscription">
+  Listens for battery level changes
+  
+  ```typescript
+  const subscription = Battery.addBatteryLevelListener(({ batteryLevel }) => {
+    console.log('Battery:', batteryLevel);
+  });
+  
+  // Clean up
+  subscription.remove();
+  ```
+</ParamField>
+
+<ParamField path="Battery.addBatteryStateListener(listener)" type="(listener: (event: BatteryStateEvent) => void) => EventSubscription">
+  Listens for battery state changes
+</ParamField>
+
+<ParamField path="Battery.addLowPowerModeListener(listener)" type="(listener: (event: LowPowerModeEvent) => void) => EventSubscription">
+  Listens for low power mode changes
+</ParamField>
+
+## Examples
+
+### Battery Indicator
+
+```tsx
+import * as Battery from 'expo-battery';
+import { useEffect, useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+
+function BatteryIndicator() {
+  const [batteryLevel, setBatteryLevel] = useState(0);
+  const [batteryState, setBatteryState] = useState(Battery.BatteryState.UNKNOWN);
+
+  useEffect(() => {
+    async function loadBatteryInfo() {
+      const level = await Battery.getBatteryLevelAsync();
+      const state = await Battery.getBatteryStateAsync();
+      setBatteryLevel(level);
+      setBatteryState(state);
+    }
+
+    loadBatteryInfo();
+
+    const levelSub = Battery.addBatteryLevelListener(({ batteryLevel }) => {
+      setBatteryLevel(batteryLevel);
+    });
+
+    const stateSub = Battery.addBatteryStateListener(({ batteryState }) => {
+      setBatteryState(batteryState);
+    });
+
+    return () => {
+      levelSub.remove();
+      stateSub.remove();
+    };
+  }, []);
+
+  const percentage = (batteryLevel * 100).toFixed(0);
+  const isCharging = batteryState === Battery.BatteryState.CHARGING;
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.percentage}>{percentage}%</Text>
+      <Text>{isCharging ? '⚡ Charging' : '🔋 Unplugged'}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { padding: 20, alignItems: 'center' },
+  percentage: { fontSize: 48, fontWeight: 'bold' }
+});
+```
+
+### Low Battery Warning
+
+```tsx
+import * as Battery from 'expo-battery';
+import { useEffect, useState } from 'react';
+import { Alert } from 'react-native';
+
+function useBatteryWarning() {
+  useEffect(() => {
+    const subscription = Battery.addBatteryLevelListener(({ batteryLevel }) => {
+      if (batteryLevel < 0.2) {
+        Alert.alert(
+          'Low Battery',
+          'Battery is below 20%. Please charge your device.'
+        );
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
+}
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ✅ (Battery Status API) |
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/battery/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-battery)

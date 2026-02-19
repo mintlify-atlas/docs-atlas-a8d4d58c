@@ -1,0 +1,491 @@
+---
+title: expo-sqlite
+description: Access SQLite database for persistent local storage in React Native apps
+---
+
+# expo-sqlite
+
+**Version:** 55.0.6
+
+Provides access to a database using SQLite. The database is persisted across restarts of your app. Offers a modern promise-based API with support for transactions, prepared statements, and more.
+
+## Installation
+
+```bash
+npx expo install expo-sqlite
+```
+
+## Usage
+
+```typescript
+import * as SQLite from 'expo-sqlite';
+
+// Open database
+const db = await SQLite.openDatabaseAsync('mydb.db');
+
+// Create table
+await db.execAsync(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE
+  );
+`);
+
+// Insert data
+await db.runAsync('INSERT INTO users (name, email) VALUES (?, ?)', 
+  'John Doe', 'john@example.com');
+
+// Query data
+const users = await db.getAllAsync('SELECT * FROM users');
+console.log(users);
+```
+
+## API Reference
+
+### Database Methods
+
+<ParamField path="openDatabaseAsync(databaseName, options)" type="(databaseName: string, options?: SQLiteOpenOptions) => Promise<SQLiteDatabase>">
+  Opens or creates a SQLite database
+  
+  **Parameters:**
+  - `databaseName` (string): Database file name
+  - `options` (SQLiteOpenOptions): Optional configuration
+  
+  ```typescript
+  const db = await SQLite.openDatabaseAsync('myapp.db');
+  
+  // With options
+  const db = await SQLite.openDatabaseAsync('myapp.db', {
+    useNewConnection: true,
+  });
+  ```
+</ParamField>
+
+<ParamField path="openDatabaseSync(databaseName, options)" type="(databaseName: string, options?: SQLiteOpenOptions) => SQLiteDatabase">
+  Synchronous version of openDatabaseAsync
+  
+  ```typescript
+  const db = SQLite.openDatabaseSync('myapp.db');
+  ```
+</ParamField>
+
+<ParamField path="deleteDatabaseAsync(databaseName)" type="(databaseName: string) => Promise<void>">
+  Deletes a database file
+  
+  ```typescript
+  await SQLite.deleteDatabaseAsync('myapp.db');
+  ```
+</ParamField>
+
+<ParamField path="deleteDatabaseSync(databaseName)" type="(databaseName: string) => void">
+  Synchronous version of deleteDatabaseAsync
+</ParamField>
+
+### SQLiteDatabase
+
+#### Query Methods
+
+<ParamField path="db.getAllAsync(query, ...params)" type="(query: string, ...params: any[]) => Promise<any[]>">
+  Executes a query and returns all rows
+  
+  ```typescript
+  const users = await db.getAllAsync('SELECT * FROM users WHERE age > ?', 18);
+  ```
+</ParamField>
+
+<ParamField path="db.getFirstAsync(query, ...params)" type="(query: string, ...params: any[]) => Promise<any | null>">
+  Executes a query and returns the first row
+  
+  ```typescript
+  const user = await db.getFirstAsync('SELECT * FROM users WHERE id = ?', 1);
+  ```
+</ParamField>
+
+<ParamField path="db.runAsync(query, ...params)" type="(query: string, ...params: any[]) => Promise<SQLiteRunResult>">
+  Executes a query without returning rows
+  
+  Returns object with `lastInsertRowId` and `changes`
+  
+  ```typescript
+  const result = await db.runAsync(
+    'INSERT INTO users (name, email) VALUES (?, ?)',
+    'Jane Doe',
+    'jane@example.com'
+  );
+  console.log('Inserted ID:', result.lastInsertRowId);
+  console.log('Rows changed:', result.changes);
+  ```
+</ParamField>
+
+<ParamField path="db.execAsync(source)" type="(source: string) => Promise<void>">
+  Executes multiple SQL statements
+  
+  ```typescript
+  await db.execAsync(`
+    DROP TABLE IF EXISTS users;
+    CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);
+    INSERT INTO users (name) VALUES ('John');
+  `);
+  ```
+</ParamField>
+
+#### Prepared Statements
+
+<ParamField path="db.prepareAsync(query)" type="(query: string) => Promise<SQLiteStatement>">
+  Creates a prepared statement for efficient repeated execution
+  
+  ```typescript
+  const stmt = await db.prepareAsync('INSERT INTO users (name) VALUES (?)');
+  
+  for (const name of names) {
+    await stmt.executeAsync(name);
+  }
+  
+  await stmt.finalizeAsync();
+  ```
+</ParamField>
+
+#### Transactions
+
+<ParamField path="db.withTransactionAsync(task)" type="(task: () => Promise<void>) => Promise<void>">
+  Executes operations within a transaction
+  
+  Automatically commits on success or rolls back on error
+  
+  ```typescript
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('INSERT INTO users (name) VALUES (?)', 'Alice');
+    await db.runAsync('INSERT INTO users (name) VALUES (?)', 'Bob');
+  });
+  ```
+</ParamField>
+
+<ParamField path="db.withExclusiveTransactionAsync(task)" type="(task: () => Promise<void>) => Promise<void>">
+  Executes operations within an exclusive transaction
+  
+  Guarantees no other queries interrupt the transaction
+  
+  ```typescript
+  await db.withExclusiveTransactionAsync(async () => {
+    const count = await db.getFirstAsync('SELECT COUNT(*) as count FROM users');
+    await db.runAsync('INSERT INTO users (name) VALUES (?)', 'New User');
+  });
+  ```
+</ParamField>
+
+#### Other Methods
+
+<ParamField path="db.closeAsync()" type="() => Promise<void>">
+  Closes the database connection
+  
+  ```typescript
+  await db.closeAsync();
+  ```
+</ParamField>
+
+<ParamField path="db.isInTransactionAsync()" type="() => Promise<boolean>">
+  Checks if database is currently in a transaction
+</ParamField>
+
+<ParamField path="db.serializeAsync(databaseName)" type="(databaseName?: string) => Promise<Uint8Array>">
+  Serializes database to Uint8Array
+</ParamField>
+
+### SQLiteStatement
+
+<ParamField path="stmt.executeAsync(...params)" type="(...params: any[]) => Promise<SQLiteExecuteAsyncResult>">
+  Executes the prepared statement
+  
+  ```typescript
+  const result = await stmt.executeAsync('John', 'john@example.com');
+  ```
+</ParamField>
+
+<ParamField path="stmt.finalizeAsync()" type="() => Promise<void>">
+  Finalizes and releases the statement
+  
+  ```typescript
+  await stmt.finalizeAsync();
+  ```
+</ParamField>
+
+### Hooks
+
+<ParamField path="useSQLiteContext()" type="() => SQLiteDatabase">
+  Access database from SQLiteProvider context
+  
+  ```typescript
+  import { useSQLiteContext } from 'expo-sqlite';
+  
+  function MyComponent() {
+    const db = useSQLiteContext();
+    // Use db
+  }
+  ```
+</ParamField>
+
+### Types
+
+#### SQLiteRunResult
+
+<ResponseField name="lastInsertRowId" type="number">
+  ID of the last inserted row
+</ResponseField>
+
+<ResponseField name="changes" type="number">
+  Number of rows changed
+</ResponseField>
+
+## Examples
+
+### Basic CRUD Operations
+
+```typescript
+import * as SQLite from 'expo-sqlite';
+
+const db = await SQLite.openDatabaseAsync('app.db');
+
+// Create
+await db.execAsync(`
+  CREATE TABLE IF NOT EXISTS todos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    text TEXT NOT NULL,
+    completed INTEGER DEFAULT 0
+  );
+`);
+
+// Insert
+const result = await db.runAsync(
+  'INSERT INTO todos (text) VALUES (?)',
+  'Learn SQLite'
+);
+console.log('Inserted todo with ID:', result.lastInsertRowId);
+
+// Read all
+const todos = await db.getAllAsync('SELECT * FROM todos');
+
+// Read one
+const todo = await db.getFirstAsync('SELECT * FROM todos WHERE id = ?', 1);
+
+// Update
+await db.runAsync('UPDATE todos SET completed = 1 WHERE id = ?', 1);
+
+// Delete
+await db.runAsync('DELETE FROM todos WHERE id = ?', 1);
+```
+
+### Using Prepared Statements
+
+```typescript
+import * as SQLite from 'expo-sqlite';
+
+const db = await SQLite.openDatabaseAsync('app.db');
+
+// Prepare statement for batch inserts
+const stmt = await db.prepareAsync(
+  'INSERT INTO users (name, email, age) VALUES (?, ?, ?)'
+);
+
+const users = [
+  ['Alice', 'alice@example.com', 25],
+  ['Bob', 'bob@example.com', 30],
+  ['Charlie', 'charlie@example.com', 35],
+];
+
+try {
+  for (const [name, email, age] of users) {
+    await stmt.executeAsync(name, email, age);
+  }
+} finally {
+  await stmt.finalizeAsync();
+}
+
+console.log('Batch insert complete');
+```
+
+### Transactions
+
+```typescript
+import * as SQLite from 'expo-sqlite';
+
+const db = await SQLite.openDatabaseAsync('banking.db');
+
+async function transferFunds(fromId: number, toId: number, amount: number) {
+  await db.withTransactionAsync(async () => {
+    // Deduct from sender
+    await db.runAsync(
+      'UPDATE accounts SET balance = balance - ? WHERE id = ?',
+      amount,
+      fromId
+    );
+    
+    // Add to receiver
+    await db.runAsync(
+      'UPDATE accounts SET balance = balance + ? WHERE id = ?',
+      amount,
+      toId
+    );
+  });
+  
+  console.log('Transfer completed');
+}
+```
+
+### Complex Queries
+
+```typescript
+import * as SQLite from 'expo-sqlite';
+
+const db = await SQLite.openDatabaseAsync('app.db');
+
+// Join query
+const results = await db.getAllAsync(`
+  SELECT 
+    users.name,
+    orders.total,
+    orders.created_at
+  FROM users
+  JOIN orders ON users.id = orders.user_id
+  WHERE orders.total > ?
+  ORDER BY orders.created_at DESC
+  LIMIT ?
+`, 100, 10);
+
+// Aggregation
+const stats = await db.getFirstAsync(`
+  SELECT 
+    COUNT(*) as total_orders,
+    SUM(total) as revenue,
+    AVG(total) as avg_order
+  FROM orders
+  WHERE created_at > ?
+`, Date.now() - 86400000); // Last 24 hours
+
+console.log('Stats:', stats);
+```
+
+### React Hook Usage
+
+```tsx
+import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
+import { useEffect, useState } from 'react';
+import { View, Text, FlatList } from 'react-native';
+
+export default function App() {
+  return (
+    <SQLiteProvider databaseName="app.db" onInit={initDB}>
+      <TodoList />
+    </SQLiteProvider>
+  );
+}
+
+async function initDB(db: SQLite.SQLiteDatabase) {
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS todos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      text TEXT NOT NULL,
+      completed INTEGER DEFAULT 0
+    );
+  `);
+}
+
+function TodoList() {
+  const db = useSQLiteContext();
+  const [todos, setTodos] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadTodos();
+  }, []);
+
+  async function loadTodos() {
+    const result = await db.getAllAsync('SELECT * FROM todos');
+    setTodos(result);
+  }
+
+  async function addTodo(text: string) {
+    await db.runAsync('INSERT INTO todos (text) VALUES (?)', text);
+    await loadTodos();
+  }
+
+  return (
+    <View>
+      <FlatList
+        data={todos}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => <Text>{item.text}</Text>}
+      />
+    </View>
+  );
+}
+```
+
+### Migration Example
+
+```typescript
+import * as SQLite from 'expo-sqlite';
+
+const CURRENT_VERSION = 2;
+
+async function migrateDatabase() {
+  const db = await SQLite.openDatabaseAsync('app.db');
+  
+  let version = 0;
+  try {
+    const result = await db.getFirstAsync<{ user_version: number }>(
+      'PRAGMA user_version'
+    );
+    version = result?.user_version ?? 0;
+  } catch (e) {
+    // First time
+  }
+
+  if (version === 0) {
+    // Initial schema
+    await db.execAsync(`
+      CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);
+      PRAGMA user_version = 1;
+    `);
+    version = 1;
+  }
+
+  if (version === 1) {
+    // Migration to v2
+    await db.execAsync(`
+      ALTER TABLE users ADD COLUMN email TEXT;
+      PRAGMA user_version = 2;
+    `);
+    version = 2;
+  }
+
+  console.log('Database migrated to version', version);
+  return db;
+}
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ✅ (WebSQL/IndexedDB) |
+
+## Best Practices
+
+1. **Use Prepared Statements**: For repeated queries, use `prepareAsync()` for better performance
+2. **Transactions**: Use transactions for multiple related operations
+3. **Close Connections**: Always close database connections when done
+4. **Parameterized Queries**: Use `?` placeholders to prevent SQL injection
+5. **Error Handling**: Wrap database operations in try/catch blocks
+6. **Migrations**: Implement version-based migrations for schema changes
+
+<Warning>
+Always use parameterized queries with `?` placeholders instead of string concatenation to prevent SQL injection attacks.
+</Warning>
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/sqlite/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-sqlite)
+- [SQLite Documentation](https://www.sqlite.org/docs.html)

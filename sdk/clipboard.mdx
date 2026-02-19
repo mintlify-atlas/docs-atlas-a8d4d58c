@@ -1,0 +1,170 @@
+---
+title: expo-clipboard
+description: Get and set clipboard content on iOS, Android, and Web
+---
+
+# expo-clipboard
+
+**Version:** 55.0.6
+
+Provides an interface for getting and setting Clipboard content on Android, iOS and Web.
+
+## Installation
+
+```bash
+npx expo install expo-clipboard
+```
+
+## Usage
+
+```typescript
+import * as Clipboard from 'expo-clipboard';
+
+// Set string
+await Clipboard.setStringAsync('Hello, World!');
+
+// Get string
+const text = await Clipboard.getStringAsync();
+console.log('Clipboard:', text);
+
+// Set image (iOS/Android)
+await Clipboard.setImageAsync('data:image/png;base64,...');
+
+// Check if clipboard has content
+const hasString = await Clipboard.hasStringAsync();
+const hasImage = await Clipboard.hasImageAsync();
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="setStringAsync(text)" type="(text: string) => Promise<void>">
+  Sets clipboard text
+  
+  ```typescript
+  await Clipboard.setStringAsync('Copied text');
+  ```
+</ParamField>
+
+<ParamField path="getStringAsync()" type="() => Promise<string>">
+  Gets clipboard text
+  
+  ```typescript
+  const text = await Clipboard.getStringAsync();
+  console.log('Clipboard:', text);
+  ```
+</ParamField>
+
+<ParamField path="setString(text)" type="(text: string) => void">
+  Sets clipboard text synchronously (deprecated)
+</ParamField>
+
+<ParamField path="getString()" type="() => string">
+  Gets clipboard text synchronously (deprecated)
+</ParamField>
+
+<ParamField path="setImageAsync(base64Image)" type="(base64Image: string) => Promise<void>">
+  Sets clipboard image (iOS/Android)
+  
+  ```typescript
+  await Clipboard.setImageAsync('data:image/png;base64,iVBORw0...');
+  ```
+</ParamField>
+
+<ParamField path="getImageAsync()" type="() => Promise<string | null>">
+  Gets clipboard image as base64 (iOS/Android)
+  
+  ```typescript
+  const imageBase64 = await Clipboard.getImageAsync();
+  ```
+</ParamField>
+
+<ParamField path="hasStringAsync()" type="() => Promise<boolean>">
+  Checks if clipboard has string
+  
+  ```typescript
+  const hasText = await Clipboard.hasStringAsync();
+  ```
+</ParamField>
+
+<ParamField path="hasImageAsync()" type="() => Promise<boolean>">
+  Checks if clipboard has image (iOS/Android)
+  
+  ```typescript
+  const hasImage = await Clipboard.hasImageAsync();
+  ```
+</ParamField>
+
+## Examples
+
+### Copy to Clipboard
+
+```typescript
+import * as Clipboard from 'expo-clipboard';
+import { Button } from 'react-native';
+
+function CopyButton({ text }: { text: string }) {
+  async function copyToClipboard() {
+    await Clipboard.setStringAsync(text);
+    alert('Copied to clipboard!');
+  }
+
+  return <Button title="Copy" onPress={copyToClipboard} />;
+}
+```
+
+### Paste from Clipboard
+
+```tsx
+import * as Clipboard from 'expo-clipboard';
+import { useState } from 'react';
+import { View, Button, Text } from 'react-native';
+
+export default function PasteExample() {
+  const [pastedText, setPastedText] = useState('');
+
+  async function paste() {
+    const text = await Clipboard.getStringAsync();
+    setPastedText(text);
+  }
+
+  return (
+    <View>
+      <Button title="Paste" onPress={paste} />
+      <Text>{pastedText}</Text>
+    </View>
+  );
+}
+```
+
+### Copy Image
+
+```typescript
+import * as Clipboard from 'expo-clipboard';
+import * as FileSystem from 'expo-file-system';
+
+async function copyImageToClipboard(imageUri: string) {
+  // Read image as base64
+  const base64 = await FileSystem.readAsStringAsync(imageUri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+
+  // Set to clipboard
+  await Clipboard.setImageAsync(`data:image/png;base64,${base64}`);
+  alert('Image copied!');
+}
+```
+
+## Platform Support
+
+| Platform | String | Image |
+|----------|--------|-------|
+| iOS      | ✅     | ✅    |
+| Android  | ✅     | ✅    |
+| Web      | ✅     | ❌    |
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/clipboard/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-clipboard)

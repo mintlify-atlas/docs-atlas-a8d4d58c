@@ -1,0 +1,658 @@
+---
+title: Troubleshooting
+description: Common problems and solutions for Expo development.
+---
+
+Solutions to common issues encountered during Expo development.
+
+## Installation Issues
+
+### npm/yarn Installation Fails
+
+**Problem:** Installation errors or timeouts
+
+**Solutions:**
+
+1. **Clear npm cache:**
+   ```bash
+   npm cache clean --force
+   rm -rf node_modules package-lock.json
+   npm install
+   ```
+
+2. **Try yarn:**
+   ```bash
+   npm install -g yarn
+   yarn install
+   ```
+
+3. **Check Node version:**
+   ```bash
+   node --version  # Should be 18.0.0 or higher
+   ```
+
+4. **Use different registry:**
+   ```bash
+   npm config set registry https://registry.npmjs.org/
+   ```
+
+### Expo CLI Not Found
+
+**Problem:** `command not found: expo`
+
+**Solutions:**
+
+1. **Use npx:**
+   ```bash
+   npx expo start
+   ```
+
+2. **Or install globally:**
+   ```bash
+   npm install -g expo-cli  # Legacy
+   # Modern Expo uses npx expo
+   ```
+
+3. **Check package installation:**
+   ```bash
+   npm list expo
+   ```
+
+## Metro Bundler Issues
+
+### Metro Won't Start
+
+**Problem:** Metro bundler fails to start
+
+**Solutions:**
+
+1. **Clear Metro cache:**
+   ```bash
+   npx expo start --clear
+   ```
+
+2. **Check port availability:**
+   ```bash
+   # Kill process on port 8081
+   lsof -ti:8081 | xargs kill -9
+   
+   # Or use different port
+   npx expo start --port 8082
+   ```
+
+3. **Clear all caches:**
+   ```bash
+   rm -rf node_modules/.cache
+   rm -rf .metro
+   npx expo start --clear
+   ```
+
+4. **Reinstall dependencies:**
+   ```bash
+   rm -rf node_modules package-lock.json
+   npm install
+   ```
+
+### Module Resolution Errors
+
+**Problem:** `Unable to resolve module` or `Cannot find module`
+
+**Solutions:**
+
+1. **Install missing package:**
+   ```bash
+   npx expo install package-name
+   ```
+
+2. **Clear cache:**
+   ```bash
+   npx expo start --clear
+   ```
+
+3. **Check import path case sensitivity:**
+   ```tsx
+   // Wrong on Linux/macOS
+   import Component from './component';
+   
+   // Correct (matches filename)
+   import Component from './Component';
+   ```
+
+4. **Verify file extensions:**
+   ```tsx
+   // Don't include extension in imports
+   import Component from './Component';
+   ```
+
+5. **Check Metro config:**
+   ```js
+   // metro.config.js
+   const config = getDefaultConfig(__dirname);
+   console.log(config.resolver.sourceExts);
+   ```
+
+### Slow Bundle Performance
+
+**Problem:** Metro bundling is very slow
+
+**Solutions:**
+
+1. **Use Hermes:**
+   ```json
+   { "expo": { "jsEngine": "hermes" } }
+   ```
+
+2. **Limit watched folders:**
+   ```js
+   // metro.config.js
+   config.watchFolders = [__dirname];
+   ```
+
+3. **Disable source maps in dev:**
+   ```js
+   config.serializer.sourceMapUrl = undefined;
+   ```
+
+4. **Check for large files:**
+   ```bash
+   find . -type f -size +1M -not -path "./node_modules/*"
+   ```
+
+## Build Errors
+
+### Native Module Linking Issues
+
+**Problem:** `Native module cannot be null` or module not found
+
+**Solutions:**
+
+1. **Prebuild for development builds:**
+   ```bash
+   npx expo prebuild --clean
+   npx expo run:ios
+   ```
+
+2. **Add config plugin:**
+   ```json
+   {
+     "expo": {
+       "plugins": ["expo-camera"]
+     }
+   }
+   ```
+
+3. **Check package installation:**
+   ```bash
+   npx expo install --check
+   npx expo install --fix
+   ```
+
+4. **Clear native build cache:**
+   ```bash
+   # iOS
+   cd ios && rm -rf Pods Podfile.lock && pod install && cd ..
+   
+   # Android
+   cd android && ./gradlew clean && cd ..
+   ```
+
+### iOS Build Failures
+
+**Problem:** Xcode build fails
+
+**Solutions:**
+
+1. **Update CocoaPods:**
+   ```bash
+   sudo gem install cocoapods
+   cd ios && pod repo update && pod install && cd ..
+   ```
+
+2. **Clean Xcode cache:**
+   ```bash
+   cd ios
+   rm -rf ~/Library/Developer/Xcode/DerivedData/*
+   xcodebuild clean
+   ```
+
+3. **Reinstall pods:**
+   ```bash
+   cd ios
+   rm -rf Pods Podfile.lock
+   pod install
+   cd ..
+   ```
+
+4. **Check Xcode version:**
+   ```bash
+   xcodebuild -version  # Should match requirements
+   ```
+
+5. **Select Xcode command line tools:**
+   ```bash
+   sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+   ```
+
+### Android Build Failures
+
+**Problem:** Gradle build fails
+
+**Solutions:**
+
+1. **Set JAVA_HOME:**
+   ```bash
+   export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+   ```
+
+2. **Clean Gradle cache:**
+   ```bash
+   cd android
+   ./gradlew clean
+   rm -rf .gradle
+   cd ..
+   ```
+
+3. **Update Gradle:**
+   ```bash
+   cd android
+   ./gradlew wrapper --gradle-version=8.0
+   ```
+
+4. **Check Android SDK:**
+   ```bash
+   echo $ANDROID_HOME  # Should point to SDK
+   ```
+
+5. **Invalidate caches in Android Studio:**
+   - File → Invalidate Caches → Invalidate and Restart
+
+## Runtime Errors
+
+### White Screen on Launch
+
+**Problem:** App shows white/blank screen
+
+**Solutions:**
+
+1. **Check console for errors:**
+   - View terminal output
+   - Check React DevTools
+
+2. **Common causes:**
+   - JavaScript error in render
+   - Missing dependencies
+   - Incorrect import paths
+
+3. **Add error boundary:**
+   ```tsx
+   import React from 'react';
+   import { Text } from 'react-native';
+   
+   class ErrorBoundary extends React.Component {
+     state = { hasError: false };
+     
+     static getDerivedStateFromError() {
+       return { hasError: true };
+     }
+     
+     componentDidCatch(error, info) {
+       console.error('Error:', error, info);
+     }
+     
+     render() {
+       if (this.state.hasError) {
+         return <Text>Something went wrong</Text>;
+       }
+       return this.props.children;
+     }
+   }
+   ```
+
+### App Crashes on Device
+
+**Problem:** App crashes immediately on physical device
+
+**Solutions:**
+
+1. **Check device logs:**
+   ```bash
+   # iOS
+   xcrun simctl spawn booted log stream --level debug
+   
+   # Android
+   adb logcat
+   ```
+
+2. **Verify app permissions:**
+   - Check Info.plist (iOS)
+   - Check AndroidManifest.xml (Android)
+
+3. **Test in release mode:**
+   ```bash
+   npx expo run:ios --configuration Release
+   npx expo run:android --variant release
+   ```
+
+4. **Check native dependencies:**
+   - Ensure all native modules are compatible
+   - Check minimum OS versions
+
+### Network Request Failures
+
+**Problem:** API requests fail or timeout
+
+**Solutions:**
+
+1. **Check Network Inspector:**
+   - Press Cmd+D (iOS) or Cmd+M (Android)
+   - Enable Network Inspector
+
+2. **iOS specific - App Transport Security:**
+   ```xml
+   <!-- Info.plist -->
+   <key>NSAppTransportSecurity</key>
+   <dict>
+     <key>NSAllowsArbitraryLoads</key>
+     <true/>
+   </dict>
+   ```
+
+3. **Android specific - Cleartext traffic:**
+   ```xml
+   <!-- AndroidManifest.xml -->
+   <application
+     android:usesCleartextTraffic="true">
+   ```
+
+4. **Check CORS (web):**
+   - Ensure API allows cross-origin requests
+
+## Development Build Issues
+
+### Development Build Won't Connect
+
+**Problem:** Can't connect to Metro from development build
+
+**Solutions:**
+
+1. **Check network connectivity:**
+   - Use same WiFi network
+   - Or use `--tunnel` flag
+
+2. **Manually set dev server URL:**
+   - Shake device
+   - Settings → Dev Server URL
+   - Enter `http://YOUR_IP:8081`
+
+3. **Use tunnel mode:**
+   ```bash
+   npx expo start --tunnel
+   ```
+
+4. **Check firewall:**
+   - Allow port 8081
+   - Disable VPN if needed
+
+### EAS Build Failures
+
+**Problem:** EAS build fails
+
+**Solutions:**
+
+1. **Check build logs:**
+   ```bash
+   eas build:list
+   # Click on failed build for logs
+   ```
+
+2. **Validate eas.json:**
+   ```bash
+   eas build:configure
+   ```
+
+3. **Test build locally first:**
+   ```bash
+   eas build --local --platform ios
+   ```
+
+4. **Common issues:**
+   - Missing credentials
+   - Incorrect bundle identifier
+   - Native dependency conflicts
+
+## Platform-Specific Issues
+
+### iOS Simulator Issues
+
+**Problem:** Simulator not working or not listed
+
+**Solutions:**
+
+1. **Restart Simulator:**
+   ```bash
+   xcrun simctl shutdown all
+   xcrun simctl erase all
+   ```
+
+2. **List available simulators:**
+   ```bash
+   xcrun simctl list devices
+   ```
+
+3. **Install simulators:**
+   - Xcode → Settings → Platforms
+   - Download iOS simulators
+
+4. **Reset Simulator:**
+   - Device → Erase All Content and Settings
+
+### Android Emulator Issues
+
+**Problem:** Emulator won't start or is very slow
+
+**Solutions:**
+
+1. **Check virtualization:**
+   - Enable Intel VT-x or AMD-V in BIOS
+   - Check with: `grep -E "(vmx|svm)" /proc/cpuinfo`
+
+2. **Use ARM image on M1/M2 Mac:**
+   - Create ARM64 emulator in Android Studio
+
+3. **Increase emulator RAM:**
+   - Android Studio → AVD Manager
+   - Edit device → Advanced → RAM: 4096MB
+
+4. **Cold boot emulator:**
+   ```bash
+   emulator -avd Pixel_4_API_31 -no-snapshot-load
+   ```
+
+## Update & Version Issues
+
+### Incompatible Package Versions
+
+**Problem:** Version conflicts between packages
+
+**Solutions:**
+
+1. **Check compatibility:**
+   ```bash
+   npx expo install --check
+   ```
+
+2. **Fix automatically:**
+   ```bash
+   npx expo install --fix
+   ```
+
+3. **Check Expo SDK version:**
+   ```json
+   // package.json
+   "expo": "~54.0.0"
+   ```
+
+4. **Upgrade SDK:**
+   ```bash
+   npx expo install expo@latest
+   npx expo install --fix
+   ```
+
+### OTA Update Not Working
+
+**Problem:** Updates not appearing on devices
+
+**Solutions:**
+
+1. **Check update configuration:**
+   ```json
+   {
+     "expo": {
+       "runtimeVersion": "1.0.0",
+       "updates": {
+         "url": "https://u.expo.dev/..."
+       }
+     }
+   }
+   ```
+
+2. **Verify runtime version compatibility:**
+   - Update must match runtime version
+   - Check `runtimeVersion` in app.json
+
+3. **Force update check:**
+   ```tsx
+   import * as Updates from 'expo-updates';
+   
+   async function checkForUpdates() {
+     const update = await Updates.checkForUpdateAsync();
+     if (update.isAvailable) {
+       await Updates.fetchUpdateAsync();
+       await Updates.reloadAsync();
+     }
+   }
+   ```
+
+4. **Check update logs:**
+   ```bash
+   eas update:list
+   ```
+
+## Web-Specific Issues
+
+### Web App Won't Start
+
+**Problem:** `npx expo start --web` fails
+
+**Solutions:**
+
+1. **Install web dependencies:**
+   ```bash
+   npx expo install react-dom react-native-web
+   ```
+
+2. **Check port:**
+   ```bash
+   # Kill process on port 19006
+   lsof -ti:19006 | xargs kill -9
+   ```
+
+3. **Clear webpack cache:**
+   ```bash
+   rm -rf .expo .webpack
+   npx expo start --web --clear
+   ```
+
+### CSS Not Loading on Web
+
+**Problem:** Styles not applied on web
+
+**Solutions:**
+
+1. **Check Metro config:**
+   ```js
+   // metro.config.js should support CSS
+   const config = getDefaultConfig(__dirname);
+   // Expo's default config includes CSS support
+   ```
+
+2. **Import CSS:**
+   ```tsx
+   import './styles.css';
+   ```
+
+3. **Check CSS syntax:**
+   - Standard CSS only
+   - No SCSS/SASS without configuration
+
+## Debugging Tools
+
+### Enable Debug Logging
+
+```bash
+# Expo debug mode
+EXPO_DEBUG=1 npx expo start
+
+# Metro debug mode
+DEBUG=metro:* npx expo start
+
+# React Native debug mode
+REACT_DEBUGGER="open -g 'rndebugger://set-debugger-loc?port=8081' ||" npx expo start
+```
+
+### View Bundle Size
+
+```bash
+# Generate source map
+npx expo export --dump-sourcemap
+
+# Analyze with source-map-explorer
+npm install -g source-map-explorer
+source-map-explorer dist/bundles/*.map
+```
+
+### Check Native Logs
+
+**iOS:**
+```bash
+# Simulator logs
+xcrun simctl spawn booted log stream --level debug
+
+# Device logs
+idevicesyslog
+```
+
+**Android:**
+```bash
+# All logs
+adb logcat
+
+# Filtered logs
+adb logcat | grep -i "expo"
+
+# Clear logs
+adb logcat -c
+```
+
+## Getting More Help
+
+If these solutions don't work:
+
+1. **Search existing issues:**
+   - [GitHub Issues](https://github.com/expo/expo/issues)
+   - [Expo Forums](https://forums.expo.dev)
+
+2. **Ask for help:**
+   - [Discord](https://chat.expo.dev)
+   - [Stack Overflow](https://stackoverflow.com/questions/tagged/expo)
+
+3. **Report bugs:**
+   - Create detailed issue on GitHub
+   - Include logs and reproduction steps
+
+## Related Documentation
+
+- [FAQ](/reference/faq)
+- [Community Resources](/reference/community)
+- [Debugging Guide](https://docs.expo.dev/debugging/runtime-issues/)
+- [EAS Build Troubleshooting](https://docs.expo.dev/build-reference/troubleshooting/)

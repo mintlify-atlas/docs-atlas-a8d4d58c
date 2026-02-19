@@ -1,0 +1,506 @@
+---
+title: expo-local-authentication
+description: Authenticate users with Face ID, Touch ID, or device PIN
+---
+
+# expo-local-authentication
+
+**Version:** 55.0.6
+
+Provides an API for Face ID and Touch ID (iOS) or the Fingerprint API (Android) to authenticate the user with a face or fingerprint scan.
+
+## Installation
+
+```bash
+npx expo install expo-local-authentication
+```
+
+## Usage
+
+```typescript
+import * as LocalAuthentication from 'expo-local-authentication';
+import { Button, Text, View } from 'react-native';
+
+export default function App() {
+  const authenticate = async () => {
+    const hasHardware = await LocalAuthentication.hasHardwareAsync();
+    if (!hasHardware) {
+      alert('Biometric hardware not available');
+      return;
+    }
+
+    const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+    if (!isEnrolled) {
+      alert('No biometric records found');
+      return;
+    }
+
+    const result = await LocalAuthentication.authenticateAsync({
+      promptMessage: 'Authenticate to continue',
+    });
+
+    if (result.success) {
+      alert('Authentication successful!');
+    } else {
+      alert('Authentication failed');
+    }
+  };
+
+  return (
+    <View>
+      <Button title="Authenticate" onPress={authenticate} />
+    </View>
+  );
+}
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="hasHardwareAsync()" type="() => Promise<boolean>">
+  Checks if device has biometric authentication hardware
+  
+  ```typescript
+  const hasHardware = await LocalAuthentication.hasHardwareAsync();
+  if (hasHardware) {
+    // Device supports biometric authentication
+  }
+  ```
+</ParamField>
+
+<ParamField path="isEnrolledAsync()" type="() => Promise<boolean>">
+  Checks if user has enrolled biometric records
+  
+  ```typescript
+  const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+  if (!isEnrolled) {
+    alert('Please enroll biometric authentication in settings');
+  }
+  ```
+</ParamField>
+
+<ParamField path="authenticateAsync(options)" type="(options?: LocalAuthenticationOptions) => Promise<LocalAuthenticationResult>">
+  Authenticates user with biometrics
+  
+  **Options:**
+  - `promptMessage`: Message shown in authentication dialog
+  - `fallbackLabel`: iOS fallback button text
+  - `cancelLabel`: Android cancel button text
+  - `disableDeviceFallback`: Disable device PIN fallback
+  - `requireConfirmation`: Require explicit user confirmation (Android)
+  
+  ```typescript
+  const result = await LocalAuthentication.authenticateAsync({
+    promptMessage: 'Unlock to continue',
+    fallbackLabel: 'Use passcode',
+    disableDeviceFallback: false,
+  });
+
+  if (result.success) {
+    console.log('Authenticated');
+  } else {
+    console.log('Error:', result.error);
+  }
+  ```
+</ParamField>
+
+<ParamField path="supportedAuthenticationTypesAsync()" type="() => Promise<AuthenticationType[]>">
+  Gets supported authentication types
+  
+  Returns array of: `FINGERPRINT`, `FACIAL_RECOGNITION`, `IRIS`
+  
+  ```typescript
+  const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+  if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+    console.log('Face ID/Face Recognition available');
+  }
+  ```
+</ParamField>
+
+<ParamField path="getEnrolledLevelAsync()" type="() => Promise<SecurityLevel>">
+  Gets security level of enrolled authentication
+  
+  Returns: `NONE`, `SECRET`, `BIOMETRIC`
+  
+  ```typescript
+  const level = await LocalAuthentication.getEnrolledLevelAsync();
+  console.log('Security level:', level);
+  ```
+</ParamField>
+
+<ParamField path="cancelAuthenticate()" type="() => void">
+  Cancels authentication prompt (Android only)
+  
+  ```typescript
+  LocalAuthentication.cancelAuthenticate();
+  ```
+</ParamField>
+
+### Types
+
+#### LocalAuthenticationResult
+
+<ResponseField name="success" type="boolean">
+  Whether authentication was successful
+</ResponseField>
+
+<ResponseField name="error" type="string | undefined">
+  Error message if authentication failed
+</ResponseField>
+
+<ResponseField name="warning" type="string | undefined">
+  Warning message
+</ResponseField>
+
+#### LocalAuthenticationOptions
+
+<ParamField path="promptMessage" type="string">
+  Message displayed in authentication dialog
+</ParamField>
+
+<ParamField path="fallbackLabel" type="string">
+  iOS: Text for fallback button
+</ParamField>
+
+<ParamField path="cancelLabel" type="string">
+  Android: Text for cancel button
+</ParamField>
+
+<ParamField path="disableDeviceFallback" type="boolean">
+  Disable device PIN/pattern fallback. Default: `false`
+</ParamField>
+
+<ParamField path="requireConfirmation" type="boolean">
+  Android: Require explicit confirmation after biometric scan. Default: `true`
+</ParamField>
+
+### Enums
+
+```typescript
+enum AuthenticationType {
+  FINGERPRINT = 1,
+  FACIAL_RECOGNITION = 2,
+  IRIS = 3,
+}
+
+enum SecurityLevel {
+  NONE = 0,
+  SECRET = 1,
+  BIOMETRIC = 2,
+}
+```
+
+## Examples
+
+### Basic Authentication
+
+```typescript
+import * as LocalAuthentication from 'expo-local-authentication';
+
+async function authenticateUser() {
+  const result = await LocalAuthentication.authenticateAsync({
+    promptMessage: 'Authenticate to access your data',
+  });
+
+  if (result.success) {
+    console.log('Authentication successful');
+    return true;
+  } else {
+    console.log('Authentication failed:', result.error);
+    return false;
+  }
+}
+```
+
+### Check Capability
+
+```typescript
+import * as LocalAuthentication from 'expo-local-authentication';
+
+async function checkBiometricCapability() {
+  const hasHardware = await LocalAuthentication.hasHardwareAsync();
+  
+  if (!hasHardware) {
+    return {
+      available: false,
+      reason: 'Device does not have biometric hardware',
+    };
+  }
+
+  const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+  
+  if (!isEnrolled) {
+    return {
+      available: false,
+      reason: 'No biometric records enrolled',
+    };
+  }
+
+  const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+  
+  return {
+    available: true,
+    types,
+  };
+}
+```
+
+### Determine Authentication Type
+
+```typescript
+import * as LocalAuthentication from 'expo-local-authentication';
+
+async function getBiometricType() {
+  const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+  
+  if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+    return 'Face ID';
+  } else if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
+    return 'Touch ID';
+  } else if (types.includes(LocalAuthentication.AuthenticationType.IRIS)) {
+    return 'Iris Recognition';
+  }
+  
+  return 'Unknown';
+}
+
+// Use in prompt
+const biometricType = await getBiometricType();
+await LocalAuthentication.authenticateAsync({
+  promptMessage: `Use ${biometricType} to unlock`,
+});
+```
+
+### Protect Sensitive Action
+
+```typescript
+import * as LocalAuthentication from 'expo-local-authentication';
+
+async function deleteSensitiveData() {
+  const result = await LocalAuthentication.authenticateAsync({
+    promptMessage: 'Authenticate to delete data',
+    fallbackLabel: 'Use passcode instead',
+  });
+
+  if (!result.success) {
+    alert('Authentication required');
+    return;
+  }
+
+  // Proceed with deletion
+  await performDelete();
+}
+```
+
+### With SecureStore Integration
+
+```typescript
+import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from 'expo-secure-store';
+
+async function saveSecureData(key: string, value: string) {
+  const result = await LocalAuthentication.authenticateAsync({
+    promptMessage: 'Authenticate to save secure data',
+  });
+
+  if (!result.success) {
+    throw new Error('Authentication required');
+  }
+
+  await SecureStore.setItemAsync(key, value, {
+    requireAuthentication: true,
+    authenticationPrompt: 'Authenticate to access',
+  });
+}
+
+async function loadSecureData(key: string) {
+  const result = await LocalAuthentication.authenticateAsync({
+    promptMessage: 'Authenticate to view data',
+  });
+
+  if (!result.success) {
+    return null;
+  }
+
+  return await SecureStore.getItemAsync(key);
+}
+```
+
+### Complete Example
+
+```tsx
+import * as LocalAuthentication from 'expo-local-authentication';
+import { useState, useEffect } from 'react';
+import { View, Button, Text, StyleSheet, Alert } from 'react-native';
+
+export default function BiometricAuthExample() {
+  const [isAvailable, setIsAvailable] = useState(false);
+  const [biometricType, setBiometricType] = useState<string>('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    checkBiometrics();
+  }, []);
+
+  async function checkBiometrics() {
+    const hasHardware = await LocalAuthentication.hasHardwareAsync();
+    const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+    
+    setIsAvailable(hasHardware && isEnrolled);
+
+    if (hasHardware && isEnrolled) {
+      const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+      if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+        setBiometricType('Face ID');
+      } else if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
+        setBiometricType('Touch ID / Fingerprint');
+      } else {
+        setBiometricType('Biometric');
+      }
+    }
+  }
+
+  async function handleAuthentication() {
+    try {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: `Authenticate with ${biometricType}`,
+        fallbackLabel: 'Use passcode',
+      });
+
+      if (result.success) {
+        setIsAuthenticated(true);
+        Alert.alert('Success', 'Authentication successful!');
+      } else {
+        Alert.alert('Failed', result.error || 'Authentication failed');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An error occurred');
+    }
+  }
+
+  function handleLogout() {
+    setIsAuthenticated(false);
+  }
+
+  if (!isAvailable) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.message}>
+          Biometric authentication not available
+        </Text>
+        <Text style={styles.subtitle}>
+          Please enable Face ID or Touch ID in your device settings
+        </Text>
+      </View>
+    );
+  }
+
+  if (isAuthenticated) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.success}>✓ Authenticated</Text>
+        <Text style={styles.message}>You have access to sensitive data</Text>
+        <Button title="Logout" onPress={handleLogout} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Biometric Authentication</Text>
+      <Text style={styles.subtitle}>
+        Use {biometricType} to authenticate
+      </Text>
+      <Button title="Authenticate" onPress={handleAuthentication} />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    gap: 15,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  message: {
+    fontSize: 18,
+    textAlign: 'center',
+  },
+  success: {
+    fontSize: 48,
+    color: '#4CAF50',
+  },
+});
+```
+
+## Platform Support
+
+| Platform | Supported | Methods |
+|----------|----------|---------|
+| iOS      | ✅       | Face ID, Touch ID |
+| Android  | ✅       | Fingerprint, Face unlock |
+| Web      | ❌       | Not available |
+
+## Permissions
+
+### iOS
+
+Add to `app.json`:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID."
+        }
+      ]
+    ]
+  }
+}
+```
+
+### Android
+
+Permissions automatically added:
+- `USE_BIOMETRIC` (Android 9+)
+- `USE_FINGERPRINT` (Android 6-8)
+
+## Best Practices
+
+1. **Check Availability**: Always check hardware and enrollment before authenticating
+2. **Graceful Fallback**: Provide alternative authentication if biometrics fail
+3. **Clear Prompts**: Use descriptive `promptMessage` explaining why auth is needed
+4. **Error Handling**: Handle all authentication errors gracefully
+5. **User Choice**: Don't force biometric auth; offer alternatives
+
+<Warning>
+Always check both `hasHardwareAsync()` and `isEnrolledAsync()` before attempting authentication.
+</Warning>
+
+## Common Error Codes
+
+- `user_cancel`: User canceled authentication
+- `system_cancel`: System canceled (e.g., app backgrounded)
+- `authentication_failed`: Biometric scan failed
+- `passcode_not_set`: Device passcode not set
+- `not_available`: Biometric authentication not available
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/local-authentication/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-local-authentication)

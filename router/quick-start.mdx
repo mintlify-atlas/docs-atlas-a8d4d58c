@@ -1,0 +1,360 @@
+---
+title: Quick Start
+description: Build your first app with Expo Router in minutes
+---
+
+# Quick Start
+
+This tutorial walks you through creating a simple multi-screen app with Expo Router.
+
+## Create a New Project
+
+Create a new Expo app with Expo Router:
+
+```bash
+npx create-expo-app@latest my-app
+cd my-app
+```
+
+## Project Structure
+
+Your initial project structure:
+
+```
+my-app/
+  app/
+    _layout.tsx       # Root layout
+    index.tsx         # Home screen
+  package.json
+  app.json
+```
+
+## Building Your First Routes
+
+<Steps>
+  <Step title="Create the Root Layout">
+    The root layout wraps all your routes. Update `app/_layout.tsx`:
+
+    ```tsx app/_layout.tsx
+    import { Stack } from 'expo-router';
+
+    export default function RootLayout() {
+      return (
+        <Stack
+          screenOptions={{
+            headerStyle: {
+              backgroundColor: '#f4511e',
+            },
+            headerTintColor: '#fff',
+            headerTitleStyle: {
+              fontWeight: 'bold',
+            },
+          }}
+        />
+      );
+    }
+    ```
+  </Step>
+
+  <Step title="Create the Home Screen">
+    Update `app/index.tsx` with navigation:
+
+    ```tsx app/index.tsx
+    import { View, Text, StyleSheet, Pressable } from 'react-native';
+    import { Link } from 'expo-router';
+
+    export default function Home() {
+      return (
+        <View style={styles.container}>
+          <Text style={styles.title}>Welcome to Expo Router</Text>
+          
+          <Link href="/about" asChild>
+            <Pressable style={styles.button}>
+              <Text style={styles.buttonText}>About</Text>
+            </Pressable>
+          </Link>
+
+          <Link href="/profile/john" asChild>
+            <Pressable style={styles.button}>
+              <Text style={styles.buttonText}>View Profile</Text>
+            </Pressable>
+          </Link>
+        </View>
+      );
+    }
+
+    const styles = StyleSheet.create({
+      container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+      },
+      title: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 20,
+      },
+      button: {
+        backgroundColor: '#f4511e',
+        paddingVertical: 12,
+        paddingHorizontal: 32,
+        borderRadius: 8,
+        marginTop: 10,
+        minWidth: 200,
+      },
+      buttonText: {
+        color: '#fff',
+        fontSize: 16,
+        textAlign: 'center',
+        fontWeight: '600',
+      },
+    });
+    ```
+  </Step>
+
+  <Step title="Create an About Screen">
+    Create a new file `app/about.tsx`:
+
+    ```tsx app/about.tsx
+    import { View, Text, StyleSheet } from 'react-native';
+    import { Stack, router } from 'expo-router';
+    import { Pressable } from 'react-native';
+
+    export default function About() {
+      return (
+        <>
+          <Stack.Screen
+            options={{
+              title: 'About Us',
+            }}
+          />
+          <View style={styles.container}>
+            <Text style={styles.text}>
+              This app is built with Expo Router!
+            </Text>
+            <Text style={styles.text}>
+              File-based routing makes navigation simple and intuitive.
+            </Text>
+            
+            <Pressable 
+              style={styles.button} 
+              onPress={() => router.back()}
+            >
+              <Text style={styles.buttonText}>Go Back</Text>
+            </Pressable>
+          </View>
+        </>
+      );
+    }
+
+    const styles = StyleSheet.create({
+      container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+      },
+      text: {
+        fontSize: 16,
+        marginBottom: 10,
+        textAlign: 'center',
+      },
+      button: {
+        backgroundColor: '#f4511e',
+        paddingVertical: 12,
+        paddingHorizontal: 32,
+        borderRadius: 8,
+        marginTop: 20,
+      },
+      buttonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+      },
+    });
+    ```
+  </Step>
+
+  <Step title="Create a Dynamic Route">
+    Create `app/profile/[id].tsx` for dynamic user profiles:
+
+    ```tsx app/profile/[id].tsx
+    import { View, Text, StyleSheet } from 'react-native';
+    import { useLocalSearchParams, Stack } from 'expo-router';
+
+    export default function Profile() {
+      const { id } = useLocalSearchParams<{ id: string }>();
+
+      return (
+        <>
+          <Stack.Screen
+            options={{
+              title: `Profile: ${id}`,
+            }}
+          />
+          <View style={styles.container}>
+            <Text style={styles.title}>Profile Screen</Text>
+            <Text style={styles.subtitle}>User ID: {id}</Text>
+            <Text style={styles.text}>
+              This is a dynamic route that receives the ID from the URL.
+            </Text>
+          </View>
+        </>
+      );
+    }
+
+    const styles = StyleSheet.create({
+      container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+      },
+      title: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 10,
+      },
+      subtitle: {
+        fontSize: 18,
+        color: '#666',
+        marginBottom: 20,
+      },
+      text: {
+        fontSize: 16,
+        textAlign: 'center',
+      },
+    });
+    ```
+  </Step>
+
+  <Step title="Run Your App">
+    Start the development server:
+
+    ```bash
+    npx expo start
+    ```
+
+    Then:
+    - Press `i` for iOS simulator
+    - Press `a` for Android emulator
+    - Press `w` for web browser
+    - Scan the QR code with Expo Go app
+  </Step>
+</Steps>
+
+## Your Project Structure
+
+You should now have:
+
+```
+my-app/
+  app/
+    _layout.tsx          # Root layout with Stack navigator
+    index.tsx            # Home screen → /
+    about.tsx            # About screen → /about
+    profile/
+      [id].tsx           # Profile screen → /profile/:id
+```
+
+## Understanding What You Built
+
+### File-Based Routing
+
+Each file in the `app` directory becomes a route:
+
+- `index.tsx` → `/` (root path)
+- `about.tsx` → `/about`
+- `profile/[id].tsx` → `/profile/:id` (dynamic segment)
+
+### Navigation Methods
+
+You used two ways to navigate:
+
+1. **`<Link>` component** - Declarative navigation:
+```tsx
+<Link href="/about">Go to About</Link>
+```
+
+2. **`router` object** - Imperative navigation:
+```tsx
+import { router } from 'expo-router';
+
+router.back();
+router.push('/about');
+```
+
+### Dynamic Parameters
+
+The `[id].tsx` file creates a dynamic route:
+
+```tsx
+const { id } = useLocalSearchParams<{ id: string }>();
+```
+
+Accessing `/profile/john` makes `id` equal to `"john"`.
+
+### Layouts
+
+The `_layout.tsx` file wraps all routes in that directory:
+
+```tsx
+<Stack /> // Provides native stack navigation
+```
+
+## Next Steps
+
+<Steps>
+  <Step title="Add More Routes">
+    Create additional screens:
+    
+    ```tsx app/settings.tsx
+    export default function Settings() {
+      return <Text>Settings Screen</Text>;
+    }
+    ```
+  </Step>
+
+  <Step title="Add Navigation Tabs">
+    Create a tab layout:
+    
+    ```tsx app/(tabs)/_layout.tsx
+    import { Tabs } from 'expo-router';
+    
+    export default function TabLayout() {
+      return <Tabs />;
+    }
+    ```
+  </Step>
+
+  <Step title="Explore Deep Linking">
+    Test deep links:
+    
+    ```bash
+    # iOS
+    xcrun simctl openurl booted myapp://profile/123
+    
+    # Android
+    adb shell am start -W -a android.intent.action.VIEW \
+      -d "myapp://profile/123"
+    ```
+  </Step>
+</Steps>
+
+## Learn More
+
+<CardGroup cols={2}>
+  <Card title="File-Based Routing" icon="folder" href="/router/file-based-routing">
+    Learn all routing conventions
+  </Card>
+  <Card title="Navigation" icon="compass" href="/router/navigation">
+    Master navigation patterns
+  </Card>
+  <Card title="Dynamic Routes" icon="brackets-curly" href="/router/dynamic-routes">
+    Work with dynamic parameters
+  </Card>
+  <Card title="Layouts" icon="layer-group" href="/router/layouts">
+    Share UI across routes
+  </Card>
+</CardGroup>

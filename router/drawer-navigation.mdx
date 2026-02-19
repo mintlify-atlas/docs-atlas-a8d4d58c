@@ -1,0 +1,597 @@
+---
+title: Drawer Navigation
+description: Create side drawer navigation for your app with Expo Router
+---
+
+# Drawer Navigation
+
+Drawer navigation provides a panel that slides in from the side of the screen, typically used for app-wide navigation and settings.
+
+## Installation
+
+Install required dependencies:
+
+```bash
+npx expo install react-native-gesture-handler react-native-reanimated @react-navigation/drawer
+```
+
+From `package.json:84-123`:
+
+```json
+"peerDependencies": {
+  "@react-navigation/drawer": "^7.7.2",
+  "react-native-gesture-handler": "*",
+  "react-native-reanimated": "*"
+},
+"peerDependenciesMeta": {
+  "@react-navigation/drawer": {
+    "optional": true
+  },
+  "react-native-gesture-handler": {
+    "optional": true
+  },
+  "react-native-reanimated": {
+    "optional": true
+  }
+}
+```
+
+## Basic Drawer
+
+Create a drawer layout:
+
+```tsx app/_layout.tsx
+import { Drawer } from 'expo-router/drawer';
+
+export default function Layout() {
+  return <Drawer />;
+}
+```
+
+Add drawer screens:
+
+```
+app/
+  _layout.tsx
+  index.tsx         # Home screen
+  profile.tsx       # Profile screen
+  settings.tsx      # Settings screen
+```
+
+From the source (`Drawer.tsx:1-9`):
+
+```typescript
+import Drawer from './DrawerClient';
+import { Screen } from '../views/Screen';
+
+Drawer.Screen = Screen;
+
+export { Drawer };
+export default Drawer;
+```
+
+## Configure Drawer
+
+Customize drawer appearance:
+
+```tsx app/_layout.tsx
+import { Drawer } from 'expo-router/drawer';
+import { Ionicons } from '@expo/vector-icons';
+
+export default function Layout() {
+  return (
+    <Drawer
+      screenOptions={{
+        drawerStyle: {
+          backgroundColor: '#fff',
+          width: 280,
+        },
+        drawerActiveTintColor: '#f4511e',
+        drawerInactiveTintColor: '#666',
+        drawerLabelStyle: {
+          marginLeft: -16,
+          fontSize: 16,
+        },
+      }}
+    >
+      <Drawer.Screen
+        name="index"
+        options={{
+          drawerLabel: 'Home',
+          title: 'Home',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="profile"
+        options={{
+          drawerLabel: 'Profile',
+          title: 'Profile',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="person" size={size} color={color} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="settings"
+        options={{
+          drawerLabel: 'Settings',
+          title: 'Settings',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="settings" size={size} color={color} />
+          ),
+        }}
+      />
+    </Drawer>
+  );
+}
+```
+
+## Drawer Icons
+
+### Icon Library
+
+```tsx
+import { MaterialIcons, FontAwesome } from '@expo/vector-icons';
+
+<Drawer.Screen
+  name="home"
+  options={{
+    drawerIcon: ({ color, size }) => (
+      <MaterialIcons name="dashboard" size={size} color={color} />
+    ),
+  }}
+/>
+```
+
+### Custom Icons
+
+```tsx
+import { Image } from 'react-native';
+
+<Drawer.Screen
+  name="home"
+  options={{
+    drawerIcon: ({ focused }) => (
+      <Image
+        source={focused ? require('./icon-active.png') : require('./icon.png')}
+        style={{ width: 24, height: 24 }}
+      />
+    ),
+  }}
+/>
+```
+
+## Drawer Position
+
+```tsx
+<Drawer
+  screenOptions={{
+    drawerPosition: 'left', // or 'right'
+  }}
+/>
+```
+
+## Drawer Type
+
+### Slide (Default)
+
+```tsx
+<Drawer
+  screenOptions={{
+    drawerType: 'slide',
+  }}
+/>
+```
+
+### Front
+
+```tsx
+<Drawer
+  screenOptions={{
+    drawerType: 'front',
+  }}
+/>
+```
+
+### Back
+
+```tsx
+<Drawer
+  screenOptions={{
+    drawerType: 'back',
+  }}
+/>
+```
+
+### Permanent
+
+```tsx
+<Drawer
+  screenOptions={{
+    drawerType: 'permanent',
+  }}
+/>
+```
+
+## Custom Drawer Content
+
+Create custom drawer:
+
+```tsx app/_layout.tsx
+import { Drawer } from 'expo-router/drawer';
+import {
+  DrawerContentScrollView,
+  DrawerItemList,
+  DrawerItem,
+} from '@react-navigation/drawer';
+import { View, Text, Image } from 'react-native';
+
+function CustomDrawerContent(props) {
+  return (
+    <DrawerContentScrollView {...props}>
+      <View style={{ padding: 20, borderBottomWidth: 1, borderBottomColor: '#ddd' }}>
+        <Image
+          source={{ uri: 'https://example.com/avatar.jpg' }}
+          style={{ width: 60, height: 60, borderRadius: 30 }}
+        />
+        <Text style={{ marginTop: 10, fontSize: 18, fontWeight: 'bold' }}>
+          John Doe
+        </Text>
+        <Text style={{ color: '#666' }}>john@example.com</Text>
+      </View>
+      
+      <DrawerItemList {...props} />
+      
+      <DrawerItem
+        label="Logout"
+        onPress={() => handleLogout()}
+        icon={({ color, size }) => (
+          <Ionicons name="log-out" size={size} color={color} />
+        )}
+      />
+    </DrawerContentScrollView>
+  );
+}
+
+export default function Layout() {
+  return (
+    <Drawer
+      drawerContent={(props) => <CustomDrawerContent {...props} />}
+    >
+      <Drawer.Screen name="index" options={{ title: 'Home' }} />
+      <Drawer.Screen name="profile" options={{ title: 'Profile' }} />
+    </Drawer>
+  );
+}
+```
+
+## Opening the Drawer
+
+### Toggle Drawer
+
+```tsx
+import { useNavigation } from 'expo-router';
+import { DrawerActions } from '@react-navigation/native';
+import { Button } from 'react-native';
+
+export default function Screen() {
+  const navigation = useNavigation();
+  
+  return (
+    <Button
+      title="Open Drawer"
+      onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+    />
+  );
+}
+```
+
+### Custom Header Button
+
+```tsx app/_layout.tsx
+import { Drawer } from 'expo-router/drawer';
+import { Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from 'expo-router';
+import { DrawerActions } from '@react-navigation/native';
+
+function DrawerToggle() {
+  const navigation = useNavigation();
+  
+  return (
+    <Pressable
+      onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
+      style={{ marginLeft: 16 }}
+    >
+      <Ionicons name="menu" size={24} />
+    </Pressable>
+  );
+}
+
+export default function Layout() {
+  return (
+    <Drawer
+      screenOptions={{
+        headerLeft: () => <DrawerToggle />,
+      }}
+    />
+  );
+}
+```
+
+## Drawer with Tabs
+
+Combine drawer with tabs:
+
+```
+app/
+  _layout.tsx           # Drawer layout
+  (tabs)/
+    _layout.tsx         # Tabs layout
+    index.tsx
+    profile.tsx
+  settings.tsx          # Drawer screen
+  about.tsx             # Drawer screen
+```
+
+```tsx app/_layout.tsx
+import { Drawer } from 'expo-router/drawer';
+
+export default function RootLayout() {
+  return (
+    <Drawer>
+      <Drawer.Screen
+        name="(tabs)"
+        options={{
+          drawerLabel: 'Home',
+          title: 'Home',
+        }}
+      />
+      <Drawer.Screen
+        name="settings"
+        options={{
+          drawerLabel: 'Settings',
+          title: 'Settings',
+        }}
+      />
+      <Drawer.Screen
+        name="about"
+        options={{
+          drawerLabel: 'About',
+          title: 'About',
+        }}
+      />
+    </Drawer>
+  );
+}
+```
+
+## Gesture Configuration
+
+```tsx
+<Drawer
+  screenOptions={{
+    swipeEnabled: true,
+    swipeEdgeWidth: 50,
+    gestureHandlerProps: {
+      enableTrackpadTwoFingerGesture: true,
+    },
+  }}
+/>
+```
+
+## Hide Drawer Items
+
+```tsx
+<Drawer.Screen
+  name="hidden"
+  options={{
+    drawerItemStyle: { display: 'none' },
+  }}
+/>
+```
+
+## Drawer Sections
+
+Group drawer items:
+
+```tsx
+function CustomDrawerContent(props) {
+  return (
+    <DrawerContentScrollView {...props}>
+      <View>
+        <Text style={{ padding: 16, fontWeight: 'bold' }}>Main</Text>
+        <DrawerItem label="Home" onPress={() => {}} />
+        <DrawerItem label="Explore" onPress={() => {}} />
+      </View>
+      
+      <View>
+        <Text style={{ padding: 16, fontWeight: 'bold' }}>Account</Text>
+        <DrawerItem label="Profile" onPress={() => {}} />
+        <DrawerItem label="Settings" onPress={() => {}} />
+      </View>
+      
+      <View>
+        <Text style={{ padding: 16, fontWeight: 'bold' }}>Other</Text>
+        <DrawerItem label="Help" onPress={() => {}} />
+        <DrawerItem label="About" onPress={() => {}} />
+      </View>
+    </DrawerContentScrollView>
+  );
+}
+```
+
+## Drawer Badge
+
+```tsx
+<Drawer.Screen
+  name="notifications"
+  options={{
+    drawerLabel: 'Notifications',
+    drawerBadge: 3,
+    drawerBadgeStyle: {
+      backgroundColor: '#f4511e',
+    },
+  }}
+/>
+```
+
+## Responsive Drawer
+
+```tsx
+import { useWindowDimensions } from 'react-native';
+
+export default function Layout() {
+  const dimensions = useWindowDimensions();
+  const isLargeScreen = dimensions.width >= 768;
+  
+  return (
+    <Drawer
+      screenOptions={{
+        drawerType: isLargeScreen ? 'permanent' : 'slide',
+        drawerStyle: {
+          width: isLargeScreen ? 280 : 240,
+        },
+      }}
+    />
+  );
+}
+```
+
+## Common Patterns
+
+### User Profile Header
+
+```tsx
+function CustomDrawerContent(props) {
+  const { user } = useAuth();
+  
+  return (
+    <DrawerContentScrollView {...props}>
+      <Pressable
+        onPress={() => router.push('/profile')}
+        style={styles.profileHeader}
+      >
+        <Image source={{ uri: user.avatar }} style={styles.avatar} />
+        <View>
+          <Text style={styles.name}>{user.name}</Text>
+          <Text style={styles.email}>{user.email}</Text>
+        </View>
+      </Pressable>
+      
+      <DrawerItemList {...props} />
+    </DrawerContentScrollView>
+  );
+}
+```
+
+### Logout Button
+
+```tsx
+function CustomDrawerContent(props) {
+  const { logout } = useAuth();
+  
+  return (
+    <DrawerContentScrollView {...props}>
+      <DrawerItemList {...props} />
+      
+      <View style={{ marginTop: 'auto' }}>
+        <DrawerItem
+          label="Logout"
+          onPress={logout}
+          icon={({ color, size }) => (
+            <Ionicons name="log-out" size={size} color={color} />
+          )}
+          labelStyle={{ color: '#f44336' }}
+        />
+      </View>
+    </DrawerContentScrollView>
+  );
+}
+```
+
+### Theme Toggle
+
+```tsx
+function CustomDrawerContent(props) {
+  const { theme, toggleTheme } = useTheme();
+  
+  return (
+    <DrawerContentScrollView {...props}>
+      <DrawerItemList {...props} />
+      
+      <DrawerItem
+        label={theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+        onPress={toggleTheme}
+        icon={({ size }) => (
+          <Ionicons
+            name={theme === 'light' ? 'moon' : 'sunny'}
+            size={size}
+          />
+        )}
+      />
+    </DrawerContentScrollView>
+  );
+}
+```
+
+## Best Practices
+
+### Use for Top-Level Navigation
+
+```tsx
+// Good: Top-level app sections
+<Drawer>
+  <Drawer.Screen name="home" />
+  <Drawer.Screen name="discover" />
+  <Drawer.Screen name="settings" />
+</Drawer>
+
+// Avoid: Too many nested levels
+<Drawer>
+  <Drawer.Screen name="section1/subsection1/page1" />
+</Drawer>
+```
+
+### Combine with Other Navigators
+
+```tsx
+// Good: Drawer for main navigation, tabs/stacks within
+<Drawer>
+  <Drawer.Screen name="(tabs)" />  {/* Tabs inside drawer */}
+  <Drawer.Screen name="settings" />
+</Drawer>
+```
+
+### Clear Labels and Icons
+
+```tsx
+// Good: Descriptive labels with appropriate icons
+<Drawer.Screen
+  name="home"
+  options={{
+    drawerLabel: 'Home',
+    drawerIcon: ({ color }) => <Ionicons name="home" color={color} />,
+  }}
+/>
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Stack Navigation" icon="layer-group" href="/router/stack-navigation">
+    Combine with stack navigation
+  </Card>
+  <Card title="Tab Navigation" icon="table-cells" href="/router/tab-navigation">
+    Alternative to drawer
+  </Card>
+  <Card title="Layouts" icon="folder" href="/router/layouts">
+    Understand drawer layouts
+  </Card>
+  <Card title="Navigation" icon="compass" href="/router/navigation">
+    Navigate from drawer
+  </Card>
+</CardGroup>

@@ -1,0 +1,739 @@
+---
+title: Navigation
+description: Learn how to navigate between screens using Link components and programmatic navigation
+---
+
+# Navigation
+
+Expo Router provides multiple ways to navigate between screens: declarative `Link` components and imperative `router` methods.
+
+## Link Component
+
+The `Link` component provides declarative navigation:
+
+```tsx
+import { Link } from 'expo-router';
+import { Text } from 'react-native';
+
+export default function Home() {
+  return (
+    <Link href="/about">
+      <Text>Go to About</Text>
+    </Link>
+  );
+}
+```
+
+### Basic Usage
+
+```tsx
+import { Link } from 'expo-router';
+
+// Simple text link
+<Link href="/about">About</Link>
+
+// Link with custom styling
+<Link href="/profile" style={{ color: 'blue', fontSize: 16 }}>
+  View Profile
+</Link>
+```
+
+### Using with Custom Components
+
+Use `asChild` to render a custom component:
+
+```tsx
+import { Link } from 'expo-router';
+import { Pressable, Text } from 'react-native';
+
+export default function Home() {
+  return (
+    <Link href="/about" asChild>
+      <Pressable style={styles.button}>
+        <Text style={styles.buttonText}>About</Text>
+      </Pressable>
+    </Link>
+  );
+}
+```
+
+### Link with Parameters
+
+Pass parameters using the `href` object:
+
+```tsx
+// String with query params
+<Link href="/profile?id=123&name=John">
+  View Profile
+</Link>
+
+// Object with pathname and params
+<Link
+  href={{
+    pathname: '/profile/[id]',
+    params: { id: '123', name: 'John' }
+  }}
+>
+  View Profile
+</Link>
+```
+
+### Dynamic Hrefs
+
+Construct hrefs dynamically:
+
+```tsx
+import { Link } from 'expo-router';
+import { View } from 'react-native';
+
+const users = [
+  { id: '1', name: 'Alice' },
+  { id: '2', name: 'Bob' },
+];
+
+export default function UserList() {
+  return (
+    <View>
+      {users.map((user) => (
+        <Link
+          key={user.id}
+          href={{
+            pathname: '/user/[id]',
+            params: { id: user.id, name: user.name }
+          }}
+        >
+          {user.name}
+        </Link>
+      ))}
+    </View>
+  );
+}
+```
+
+### Link Behavior
+
+Control navigation behavior:
+
+```tsx
+// Replace current screen (no back)
+<Link href="/home" replace>
+  Go Home
+</Link>
+
+// Push to stack (default)
+<Link href="/details" push>
+  View Details
+</Link>
+```
+
+## Programmatic Navigation
+
+Use the `router` object for imperative navigation:
+
+```tsx
+import { router } from 'expo-router';
+import { Pressable, Text } from 'react-native';
+
+export default function Home() {
+  return (
+    <Pressable onPress={() => router.push('/about')}>
+      <Text>Go to About</Text>
+    </Pressable>
+  );
+}
+```
+
+### router.push()
+
+Navigate forward, adding to history:
+
+```tsx
+import { router } from 'expo-router';
+
+// Navigate to route
+router.push('/about');
+
+// With parameters
+router.push({
+  pathname: '/profile/[id]',
+  params: { id: '123' }
+});
+
+// With query string
+router.push('/profile?id=123&tab=posts');
+```
+
+From the source (`imperative-api.tsx:48-50`):
+
+```typescript
+/**
+ * Navigates to the provided href using a push operation if possible.
+ */
+push: (href: Href, options?: NavigationOptions) => void;
+```
+
+### router.navigate()
+
+Navigate to a route, replacing if already in stack:
+
+```tsx
+import { router } from 'expo-router';
+
+// Navigate to route
+router.navigate('/home');
+
+// With parameters
+router.navigate({
+  pathname: '/user/[id]',
+  params: { id: '456' }
+});
+```
+
+From the source (`imperative-api.tsx:52-54`):
+
+```typescript
+/**
+ * Navigates to the provided href.
+ */
+navigate: (href: Href, options?: NavigationOptions) => void;
+```
+
+### router.replace()
+
+Replace current screen without adding to history:
+
+```tsx
+import { router } from 'expo-router';
+
+// Replace current screen
+router.replace('/login');
+
+// Useful for redirects
+router.replace({
+  pathname: '/home',
+  params: { welcome: 'true' }
+});
+```
+
+From the source (`imperative-api.tsx:56-62`):
+
+```typescript
+/**
+ * Navigates to route without appending to the history. Can be used with
+ * useFocusEffect to redirect imperatively to a new screen.
+ */
+replace: (href: Href, options?: NavigationOptions) => void;
+```
+
+### router.back()
+
+Go back to previous screen:
+
+```tsx
+import { router } from 'expo-router';
+
+// Go back
+router.back();
+
+// Check if can go back first
+if (router.canGoBack()) {
+  router.back();
+} else {
+  router.replace('/home');
+}
+```
+
+From the source (`imperative-api.tsx:40-42`):
+
+```typescript
+/**
+ * Goes back in the navigation history.
+ */
+back: () => void;
+```
+
+### router.dismiss()
+
+Dismiss screens in a modal or stack:
+
+```tsx
+import { router } from 'expo-router';
+
+// Dismiss one screen
+router.dismiss();
+
+// Dismiss multiple screens
+router.dismiss(2);
+
+// Dismiss all screens in stack
+router.dismissAll();
+```
+
+From the source (`imperative-api.tsx:64-76`):
+
+```typescript
+/**
+ * Navigates to the a stack lower than the current screen using the 
+ * provided count if possible, otherwise 1.
+ *
+ * If the current screen is the only route, it will dismiss the entire stack.
+ */
+dismiss: (count?: number) => void;
+
+/**
+ * Returns to the first screen in the closest stack.
+ */
+dismissAll: () => void;
+```
+
+### router.dismissTo()
+
+Dismiss until reaching a specific route:
+
+```tsx
+import { router } from 'expo-router';
+
+// Dismiss until reaching home
+router.dismissTo('/home');
+
+// With parameters
+router.dismissTo({
+  pathname: '/tabs',
+  params: { tab: 'profile' }
+});
+```
+
+From the source (`imperative-api.tsx:70-72`):
+
+```typescript
+/**
+ * Dismisses screens until the provided href is reached.
+ */
+dismissTo: (href: Href, options?: NavigationOptions) => void;
+```
+
+### router.canGoBack()
+
+Check if navigation can go back:
+
+```tsx
+import { router } from 'expo-router';
+
+if (router.canGoBack()) {
+  router.back();
+} else {
+  // At root, navigate elsewhere
+  router.push('/home');
+}
+```
+
+### router.canDismiss()
+
+Check if can dismiss current screen:
+
+```tsx
+import { router } from 'expo-router';
+
+if (router.canDismiss()) {
+  router.dismiss();
+}
+```
+
+From the source (`imperative-api.tsx:78-83`):
+
+```typescript
+/**
+ * Checks if it is possible to dismiss the current screen. Returns true if the
+ * router is within the stack with more than one screen in stack's history.
+ */
+canDismiss: () => boolean;
+```
+
+### router.setParams()
+
+Update current route parameters:
+
+```tsx
+import { router } from 'expo-router';
+
+// Update params without navigation
+router.setParams({ tab: 'profile', filter: 'recent' });
+```
+
+From the source (`imperative-api.tsx:85-87`):
+
+```typescript
+/**
+ * Updates the current route's query params.
+ */
+setParams: (params: Partial<RouteInputParams>) => void;
+```
+
+### router.prefetch()
+
+Prefetch a screen in the background:
+
+```tsx
+import { router } from 'expo-router';
+
+// Prefetch before navigating
+router.prefetch('/profile');
+
+// Later, navigate instantly
+router.push('/profile');
+```
+
+## Navigation Hooks
+
+### useRouter()
+
+Get the router object in a component:
+
+```tsx
+import { useRouter } from 'expo-router';
+import { Button } from 'react-native';
+
+export default function Screen() {
+  const router = useRouter();
+  
+  return (
+    <Button
+      title="Go Back"
+      onPress={() => router.back()}
+    />
+  );
+}
+```
+
+From the source (`hooks.ts:98-121`):
+
+```typescript
+/**
+ * Returns the Router object for imperative navigation.
+ */
+export function useRouter(): Router {
+  const { isPreview } = usePreviewInfo();
+  if (isPreview) {
+    return routerWithWarnings;
+  }
+  return router;
+}
+```
+
+### usePathname()
+
+Get current route pathname:
+
+```tsx
+import { usePathname } from 'expo-router';
+import { Text } from 'react-native';
+
+export default function Screen() {
+  const pathname = usePathname();
+  // pathname = "/profile/123" for route /profile/[id]
+  
+  return <Text>Current path: {pathname}</Text>;
+}
+```
+
+From the source (`hooks.ts:177-196`):
+
+```typescript
+/**
+ * Returns the currently selected route location without search parameters.
+ * For example, `/acme?foo=bar` returns `/acme`.
+ * Segments will be normalized. For example, `/[id]?id=normal` becomes `/normal`.
+ */
+export function usePathname(): string {
+  return useRouteInfo().pathname;
+}
+```
+
+### useSegments()
+
+Get current route segments:
+
+```tsx
+import { useSegments } from 'expo-router';
+import { Text } from 'react-native';
+
+export default function Screen() {
+  const segments = useSegments();
+  // segments = ["profile", "[id]"] for /profile/123
+  
+  return <Text>Segments: {segments.join('/')}</Text>;
+}
+```
+
+From the source (`hooks.ts:132-175`):
+
+```typescript
+/**
+ * Returns a list of selected file segments for the currently selected route.
+ * Segments are not normalized, so they will be the same as the file path.
+ * For example, `/[id]?id=normal` becomes `["[id]"]`.
+ */
+export function useSegments(): RouteSegments;
+```
+
+### useLocalSearchParams()
+
+Get route parameters for current screen:
+
+```tsx
+import { useLocalSearchParams } from 'expo-router';
+import { Text } from 'react-native';
+
+export default function Profile() {
+  const { id, name } = useLocalSearchParams();
+  
+  return (
+    <Text>Profile {id}: {name}</Text>
+  );
+}
+```
+
+From the source (`hooks.ts:244-314`):
+
+```typescript
+/**
+ * Returns the URL parameters for the contextually focused route.
+ * For dynamic routes, both the route parameters and the search 
+ * parameters are returned.
+ */
+export function useLocalSearchParams(): RouteParams;
+```
+
+### useGlobalSearchParams()
+
+Get parameters for globally selected route:
+
+```tsx
+import { useGlobalSearchParams } from 'expo-router';
+import { Text } from 'react-native';
+
+// Updates even when screen is not focused
+export default function Analytics() {
+  const params = useGlobalSearchParams();
+  
+  // Track navigation changes
+  React.useEffect(() => {
+    trackPage(params);
+  }, [params]);
+  
+  return <Text>Tracking...</Text>;
+}
+```
+
+From the source (`hooks.ts:198-242`):
+
+```typescript
+/**
+ * Returns URL parameters for globally selected route, including 
+ * dynamic path segments. This function updates even when the route 
+ * is not focused.
+ */
+export function useGlobalSearchParams(): RouteParams;
+```
+
+## Navigation Options
+
+Configure navigation behavior:
+
+```tsx
+import { router } from 'expo-router';
+
+// With anchor (respects initialRouteName)
+router.push('/profile', { withAnchor: true });
+
+// Without anchor
+router.push('/profile', { withAnchor: false });
+```
+
+From test file (`navigation.test.ios.tsx:77-80`):
+
+```typescript
+act(() => router.push('/banana', { withAnchor: true }));
+expect(screen.getByTestId('banana')).toBeVisible();
+act(() => router.back());
+expect(screen.getByTestId('apple')).toBeVisible();
+```
+
+## Relative Paths
+
+Use relative navigation:
+
+```tsx
+import { Link } from 'expo-router';
+
+// Navigate to sibling
+<Link href="../settings">Settings</Link>
+
+// Navigate to child
+<Link href="./details">Details</Link>
+
+// Navigate up
+<Link href="..">Back</Link>
+```
+
+## External URLs
+
+Navigate to external URLs:
+
+```tsx
+import { Link } from 'expo-router';
+
+// Opens in browser
+<Link href="https://expo.dev">
+  Visit Expo
+</Link>
+
+// Custom scheme
+<Link href="mailto:support@example.com">
+  Email Support
+</Link>
+```
+
+## Best Practices
+
+### Use Links for Static Navigation
+
+Prefer `<Link>` for navigation that's always visible:
+
+```tsx
+// Good: Static link
+<Link href="/about">About</Link>
+
+// Less ideal: Button with router
+<Button onPress={() => router.push('/about')} />
+```
+
+### Use Router for Dynamic Navigation
+
+Use `router` for conditional or event-driven navigation:
+
+```tsx
+const handleSave = async () => {
+  await saveData();
+  router.back();
+};
+
+const handleAuth = () => {
+  if (isLoggedIn) {
+    router.replace('/home');
+  } else {
+    router.replace('/login');
+  }
+};
+```
+
+### Check Before Going Back
+
+Always check if you can go back:
+
+```tsx
+const handleBack = () => {
+  if (router.canGoBack()) {
+    router.back();
+  } else {
+    router.replace('/home');
+  }
+};
+```
+
+### Prefetch Important Routes
+
+Prefetch routes users are likely to visit:
+
+```tsx
+import { router } from 'expo-router';
+import { useEffect } from 'react';
+
+export default function Home() {
+  useEffect(() => {
+    // Prefetch likely next screens
+    router.prefetch('/profile');
+    router.prefetch('/settings');
+  }, []);
+  
+  return <View>...</View>;
+}
+```
+
+## Common Patterns
+
+### Authentication Flow
+
+```tsx
+import { router } from 'expo-router';
+import { useAuth } from './auth';
+
+export default function Login() {
+  const { login } = useAuth();
+  
+  const handleLogin = async () => {
+    await login(email, password);
+    router.replace('/home');
+  };
+  
+  return <Button onPress={handleLogin} title="Login" />;
+}
+```
+
+### Modal Navigation
+
+```tsx
+import { router } from 'expo-router';
+
+export default function Profile() {
+  return (
+    <>
+      <Button
+        title="Edit Profile"
+        onPress={() => router.push('/modal/edit-profile')}
+      />
+      <Button
+        title="Close"
+        onPress={() => router.dismiss()}
+      />
+    </>
+  );
+}
+```
+
+### Conditional Navigation
+
+```tsx
+import { router } from 'expo-router';
+import { useEffect } from 'react';
+import { useAuth } from './auth';
+
+export default function Protected() {
+  const { isAuthenticated } = useAuth();
+  
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/login');
+    }
+  }, [isAuthenticated]);
+  
+  return <View>...</View>;
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Dynamic Routes" icon="brackets-curly" href="/router/dynamic-routes">
+    Work with route parameters
+  </Card>
+  <Card title="Layouts" icon="layer-group" href="/router/layouts">
+    Share UI across routes
+  </Card>
+  <Card title="Deep Linking" icon="link" href="/router/deep-linking">
+    Configure deep links
+  </Card>
+  <Card title="Typed Routes" icon="code" href="/router/typed-routes">
+    Type-safe navigation
+  </Card>
+</CardGroup>

@@ -1,0 +1,85 @@
+---
+title: expo-task-manager
+description: Manage background tasks for location tracking, background fetch, and more
+---
+
+# expo-task-manager
+
+**Version:** 55.0.6
+
+Expo module that provides support for tasks that can run in the background. Used by expo-location, expo-background-fetch, and other modules.
+
+## Installation
+
+```bash
+npx expo install expo-task-manager
+```
+
+## Usage
+
+```typescript
+import * as TaskManager from 'expo-task-manager';
+
+const TASK_NAME = 'my-background-task';
+
+// Define task
+TaskManager.defineTask(TASK_NAME, ({ data, error }) => {
+  if (error) {
+    console.error(error);
+    return;
+  }
+  console.log('Task data:', data);
+});
+
+// Check if task is registered
+const isRegistered = await TaskManager.isTaskRegisteredAsync(TASK_NAME);
+
+// Get registered tasks
+const tasks = await TaskManager.getRegisteredTasksAsync();
+
+// Unregister task
+await TaskManager.unregisterTaskAsync(TASK_NAME);
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="defineTask(taskName, task)" type="(taskName: string, task: TaskManagerTask) => void">
+  Defines a background task
+  
+  ```typescript
+  TaskManager.defineTask('my-task', ({ data, error }) => {
+    // Handle task execution
+  });
+  ```
+</ParamField>
+
+<ParamField path="isTaskRegisteredAsync(taskName)" type="(taskName: string) => Promise<boolean>">
+  Checks if task is registered
+</ParamField>
+
+<ParamField path="getRegisteredTasksAsync()" type="() => Promise<TaskManagerTaskDescriptor[]>">
+  Gets all registered tasks
+</ParamField>
+
+<ParamField path="unregisterTaskAsync(taskName)" type="(taskName: string) => Promise<void>">
+  Unregisters a task
+</ParamField>
+
+<ParamField path="unregisterAllTasksAsync()" type="() => Promise<void>">
+  Unregisters all tasks
+</ParamField>
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ❌       |
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/task-manager/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-task-manager)

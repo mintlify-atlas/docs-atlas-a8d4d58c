@@ -1,0 +1,190 @@
+---
+title: expo-video
+description: Cross-platform video player component with playback controls
+---
+
+# expo-video
+
+**Version:** 55.0.6
+
+A cross-platform, performant video component for React Native and Expo with Web support.
+
+## Installation
+
+```bash
+npx expo install expo-video
+```
+
+## Usage
+
+```tsx
+import { VideoView, useVideoPlayer } from 'expo-video';
+import { useEffect, useRef } from 'react';
+
+function App() {
+  const videoSource = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+  
+  const player = useVideoPlayer(videoSource, (player) => {
+    player.loop = true;
+    player.play();
+  });
+
+  return (
+    <VideoView
+      style={{ width: 400, height: 300 }}
+      player={player}
+      allowsFullscreen
+      allowsPictureInPicture
+    />
+  );
+}
+```
+
+## API Reference
+
+### VideoView Props
+
+<ParamField path="player" type="VideoPlayer" required>
+  Video player instance created with `useVideoPlayer`
+</ParamField>
+
+<ParamField path="nativeControls" type="boolean" default="true">
+  Show native playback controls
+</ParamField>
+
+<ParamField path="allowsFullscreen" type="boolean">
+  Enable fullscreen mode
+</ParamField>
+
+<ParamField path="allowsPictureInPicture" type="boolean">
+  Enable picture-in-picture mode
+</ParamField>
+
+<ParamField path="contentFit" type="'contain' | 'cover' | 'fill'" default="contain">
+  Video scaling mode
+</ParamField>
+
+### useVideoPlayer Hook
+
+<ParamField path="useVideoPlayer(source, setup)" type="(source: VideoSource, setup?: (player: VideoPlayer) => void) => VideoPlayer">
+  Creates a video player instance
+  
+  ```tsx
+  const player = useVideoPlayer(videoUri, (player) => {
+    player.volume = 0.5;
+    player.play();
+  });
+  ```
+</ParamField>
+
+### VideoPlayer Methods
+
+<ParamField path="player.play()" type="() => void">
+  Starts playback
+</ParamField>
+
+<ParamField path="player.pause()" type="() => void">
+  Pauses playback
+</ParamField>
+
+<ParamField path="player.replace(source)" type="(source: VideoSource) => void">
+  Replaces current video source
+</ParamField>
+
+### VideoPlayer Properties
+
+<ResponseField name="player.playing" type="boolean">
+  Whether video is currently playing
+</ResponseField>
+
+<ResponseField name="player.muted" type="boolean">
+  Audio mute state
+</ResponseField>
+
+<ResponseField name="player.volume" type="number">
+  Volume level (0-1)
+</ResponseField>
+
+<ResponseField name="player.loop" type="boolean">
+  Whether video should loop
+</ResponseField>
+
+<ResponseField name="player.currentTime" type="number">
+  Current playback position in seconds
+</ResponseField>
+
+<ResponseField name="player.duration" type="number">
+  Total video duration in seconds
+</ResponseField>
+
+## Examples
+
+### Basic Video Player
+
+```tsx
+import { VideoView, useVideoPlayer } from 'expo-video';
+
+function VideoPlayer() {
+  const player = useVideoPlayer(
+    'https://example.com/video.mp4',
+    (player) => player.play()
+  );
+
+  return (
+    <VideoView
+      player={player}
+      style={{ width: '100%', height: 300 }}
+      nativeControls
+    />
+  );
+}
+```
+
+### Custom Controls
+
+```tsx
+import { VideoView, useVideoPlayer } from 'expo-video';
+import { useState } from 'react';
+import { Button, View } from 'react-native';
+
+function CustomVideoPlayer() {
+  const player = useVideoPlayer('https://example.com/video.mp4');
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const togglePlayback = () => {
+    if (player.playing) {
+      player.pause();
+    } else {
+      player.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  return (
+    <View>
+      <VideoView
+        player={player}
+        style={{ width: '100%', height: 300 }}
+        nativeControls={false}
+      />
+      <Button
+        title={isPlaying ? 'Pause' : 'Play'}
+        onPress={togglePlayback}
+      />
+    </View>
+  );
+}
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ✅       |
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/video/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-video)

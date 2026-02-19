@@ -1,0 +1,125 @@
+---
+title: expo-checkbox
+description: Cross-platform checkbox component for boolean input
+---
+
+# expo-checkbox
+
+**Version:** 55.0.3
+
+Basic boolean input component for Android, iOS and web.
+
+## Installation
+
+```bash
+npx expo install expo-checkbox
+```
+
+## Usage
+
+```tsx
+import Checkbox from 'expo-checkbox';
+import { useState } from 'react';
+import { Text, View } from 'react-native';
+
+function App() {
+  const [checked, setChecked] = useState(false);
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <Checkbox value={checked} onValueChange={setChecked} />
+      <Text>Agree to terms</Text>
+    </View>
+  );
+}
+```
+
+## API Reference
+
+### Checkbox Props
+
+<ParamField path="value" type="boolean" required>
+  Checkbox state
+</ParamField>
+
+<ParamField path="onValueChange" type="(value: boolean) => void">
+  Called when checkbox state changes
+</ParamField>
+
+<ParamField path="disabled" type="boolean">
+  Disables the checkbox
+</ParamField>
+
+<ParamField path="color" type="string">
+  Color when checked
+  
+  ```tsx
+  <Checkbox value={checked} color="#007AFF" />
+  ```
+</ParamField>
+
+## Examples
+
+### Basic Checkbox
+
+```tsx
+import Checkbox from 'expo-checkbox';
+import { useState } from 'react';
+
+function BasicCheckbox() {
+  const [checked, setChecked] = useState(false);
+
+  return (
+    <Checkbox
+      value={checked}
+      onValueChange={setChecked}
+      color="#007AFF"
+    />
+  );
+}
+```
+
+### Checkbox List
+
+```tsx
+import Checkbox from 'expo-checkbox';
+import { useState } from 'react';
+import { View, Text } from 'react-native';
+
+function CheckboxList() {
+  const [selections, setSelections] = useState({
+    option1: false,
+    option2: false,
+    option3: false
+  });
+
+  return (
+    <View>
+      {Object.entries(selections).map(([key, value]) => (
+        <View key={key} style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+          <Checkbox
+            value={value}
+            onValueChange={(newValue) =>
+              setSelections(prev => ({ ...prev, [key]: newValue }))
+            }
+          />
+          <Text>{key}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ✅       |
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/checkbox)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-checkbox)

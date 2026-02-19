@@ -1,0 +1,394 @@
+---
+title: expo-font
+description: Load custom fonts at runtime and use them in React Native components
+---
+
+# expo-font
+
+**Version:** 55.0.4
+
+Load custom fonts at runtime and use them in React Native components. Supports TTF, OTF, and web fonts with automatic loading and caching.
+
+## Installation
+
+```bash
+npx expo install expo-font
+```
+
+## Usage
+
+```typescript
+import { useFonts } from 'expo-font';
+import { Text } from 'react-native';
+
+function App() {
+  const [loaded, error] = useFonts({
+    'Inter-Black': require('./assets/fonts/Inter-Black.otf'),
+    'Inter-Regular': require('./assets/fonts/Inter-Regular.otf'),
+  });
+
+  if (!loaded && !error) {
+    return null;
+  }
+
+  return <Text style={{ fontFamily: 'Inter-Black' }}>Hello</Text>;
+}
+```
+
+## API Reference
+
+### useFonts Hook
+
+<ParamField path="useFonts(fontMap)" type="(fontMap: FontSource) => [boolean, Error | null]">
+  Loads fonts and returns loading state
+  
+  Returns `[loaded, error]` tuple:
+  - `loaded`: `true` when fonts are loaded
+  - `error`: Error object if loading failed
+  
+  ```typescript
+  const [loaded, error] = useFonts({
+    'CustomFont': require('./font.ttf')
+  });
+  ```
+</ParamField>
+
+### loadAsync Method
+
+<ParamField path="Font.loadAsync(fontMap)" type="(fontMap: FontSource) => Promise<void>">
+  Loads fonts asynchronously
+  
+  ```typescript
+  import * as Font from 'expo-font';
+  
+  await Font.loadAsync({
+    'Inter': require('./Inter.ttf'),
+    'Roboto': 'https://example.com/Roboto.ttf'
+  });
+  ```
+</ParamField>
+
+<ParamField path="Font.isLoaded(fontFamily)" type="(fontFamily: string) => boolean">
+  Checks if a font is loaded
+  
+  ```typescript
+  if (Font.isLoaded('Inter-Black')) {
+    console.log('Font is ready');
+  }
+  ```
+</ParamField>
+
+<ParamField path="Font.isLoading(fontFamily)" type="(fontFamily: string) => boolean">
+  Checks if a font is currently loading
+</ParamField>
+
+### FontSource Type
+
+```typescript
+type FontSource = {
+  [fontFamily: string]:
+    | string              // URL or file path
+    | number              // require() result
+    | Asset               // expo-asset Asset
+    | FontResource;       // Font resource object
+};
+```
+
+## Examples
+
+### Basic Font Loading
+
+```tsx
+import { useFonts } from 'expo-font';
+import { Text, View } from 'react-native';
+
+function App() {
+  const [fontsLoaded] = useFonts({
+    'SpaceGrotesk-Bold': require('./assets/fonts/SpaceGrotesk-Bold.ttf'),
+    'SpaceGrotesk-Regular': require('./assets/fonts/SpaceGrotesk-Regular.ttf'),
+  });
+
+  if (!fontsLoaded) {
+    return null; // or <LoadingScreen />
+  }
+
+  return (
+    <View>
+      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 24 }}>
+        Bold Title
+      </Text>
+      <Text style={{ fontFamily: 'SpaceGrotesk-Regular', fontSize: 16 }}>
+        Regular body text
+      </Text>
+    </View>
+  );
+}
+```
+
+### With Splash Screen
+
+```tsx
+import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
+
+// Keep splash screen visible while loading
+SplashScreen.preventAutoHideAsync();
+
+function App() {
+  const [fontsLoaded, fontError] = useFonts({
+    'Inter-Black': require('./assets/fonts/Inter-Black.otf'),
+    'Inter-Regular': require('./assets/fonts/Inter-Regular.otf'),
+  });
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      // Hide splash screen after fonts load
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
+
+  return <YourApp />;
+}
+```
+
+### Load Remote Fonts
+
+```typescript
+import * as Font from 'expo-font';
+
+await Font.loadAsync({
+  'Roboto': 'https://fonts.gstatic.com/s/roboto/v27/KFOmCnqEu92Fr1Mu4mxK.woff2',
+  'OpenSans': 'https://fonts.gstatic.com/s/opensans/v27/mem8YaGs126MiZpBA.woff2'
+});
+```
+
+### Multiple Font Weights
+
+```tsx
+import { useFonts } from 'expo-font';
+import { Text, View } from 'react-native';
+
+function App() {
+  const [fontsLoaded] = useFonts({
+    'Inter-Thin': require('./assets/fonts/Inter-Thin.ttf'),
+    'Inter-Light': require('./assets/fonts/Inter-Light.ttf'),
+    'Inter-Regular': require('./assets/fonts/Inter-Regular.ttf'),
+    'Inter-Medium': require('./assets/fonts/Inter-Medium.ttf'),
+    'Inter-Bold': require('./assets/fonts/Inter-Bold.ttf'),
+    'Inter-Black': require('./assets/fonts/Inter-Black.ttf'),
+  });
+
+  if (!fontsLoaded) return null;
+
+  return (
+    <View>
+      <Text style={{ fontFamily: 'Inter-Thin' }}>Thin</Text>
+      <Text style={{ fontFamily: 'Inter-Light' }}>Light</Text>
+      <Text style={{ fontFamily: 'Inter-Regular' }}>Regular</Text>
+      <Text style={{ fontFamily: 'Inter-Medium' }}>Medium</Text>
+      <Text style={{ fontFamily: 'Inter-Bold' }}>Bold</Text>
+      <Text style={{ fontFamily: 'Inter-Black' }}>Black</Text>
+    </View>
+  );
+}
+```
+
+### Error Handling
+
+```tsx
+import { useFonts } from 'expo-font';
+import { Text, View } from 'react-native';
+
+function App() {
+  const [fontsLoaded, fontError] = useFonts({
+    'CustomFont': require('./assets/fonts/CustomFont.ttf'),
+  });
+
+  if (fontError) {
+    return (
+      <View>
+        <Text>Error loading fonts: {fontError.message}</Text>
+      </View>
+    );
+  }
+
+  if (!fontsLoaded) {
+    return <Text>Loading fonts...</Text>;
+  }
+
+  return <Text style={{ fontFamily: 'CustomFont' }}>Hello</Text>;
+}
+```
+
+### Programmatic Loading
+
+```typescript
+import * as Font from 'expo-font';
+
+async function loadFontsAsync() {
+  try {
+    await Font.loadAsync({
+      'Montserrat-Regular': require('./fonts/Montserrat-Regular.ttf'),
+      'Montserrat-Bold': require('./fonts/Montserrat-Bold.ttf'),
+    });
+    console.log('Fonts loaded successfully');
+  } catch (error) {
+    console.error('Error loading fonts:', error);
+  }
+}
+
+// Use in app initialization
+loadFontsAsync();
+```
+
+### Check Font Status
+
+```typescript
+import * as Font from 'expo-font';
+
+// Load font
+await Font.loadAsync({
+  'CustomFont': require('./font.ttf')
+});
+
+// Check if loaded
+if (Font.isLoaded('CustomFont')) {
+  console.log('Font is ready to use');
+}
+
+// Check if loading
+if (Font.isLoading('CustomFont')) {
+  console.log('Font is still loading');
+}
+```
+
+### Google Fonts Integration
+
+Use with `@expo-google-fonts`:
+
+```bash
+npx expo install @expo-google-fonts/inter expo-font
+```
+
+```tsx
+import { useFonts, Inter_400Regular, Inter_700Bold } from '@expo-google-fonts/inter';
+import { Text } from 'react-native';
+
+function App() {
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_700Bold,
+  });
+
+  if (!fontsLoaded) return null;
+
+  return (
+    <>
+      <Text style={{ fontFamily: 'Inter_400Regular' }}>Regular</Text>
+      <Text style={{ fontFamily: 'Inter_700Bold' }}>Bold</Text>
+    </>
+  );
+}
+```
+
+### Custom Font Hook
+
+```typescript
+import { useFonts } from 'expo-font';
+import { useEffect, useState } from 'react';
+
+function useFontLoader() {
+  const [loaded, error] = useFonts({
+    'AppFont-Regular': require('./assets/fonts/Regular.ttf'),
+    'AppFont-Bold': require('./assets/fonts/Bold.ttf'),
+  });
+  
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (loaded || error) {
+      setReady(true);
+    }
+  }, [loaded, error]);
+
+  return { ready, error };
+}
+
+// Usage
+function App() {
+  const { ready, error } = useFontLoader();
+  
+  if (error) return <ErrorScreen error={error} />;
+  if (!ready) return <LoadingScreen />;
+  
+  return <MainApp />;
+}
+```
+
+## Config Plugin
+
+Embed fonts in native projects:
+
+**app.json:**
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/Inter-Regular.ttf",
+            "./assets/fonts/Inter-Bold.ttf"
+          ]
+        }
+      ]
+    ]
+  }
+}
+```
+
+Then rebuild:
+```bash
+npx expo prebuild
+```
+
+## TypeScript
+
+```typescript
+import { useFonts } from 'expo-font';
+import type { FontSource } from 'expo-font';
+
+const fonts: FontSource = {
+  'MyFont': require('./font.ttf')
+};
+
+const [loaded, error]: [boolean, Error | null] = useFonts(fonts);
+```
+
+## Platform Support
+
+| Platform | Supported | Font Formats |
+|----------|-----------|-------------|
+| iOS      | ✅       | TTF, OTF    |
+| Android  | ✅       | TTF, OTF    |
+| Web      | ✅       | TTF, OTF, WOFF, WOFF2 |
+
+## Best Practices
+
+1. **Keep Splash Screen**: Use `expo-splash-screen` while fonts load
+2. **Subset Fonts**: Only include needed characters to reduce file size
+3. **Preload Critical Fonts**: Load essential fonts during app initialization
+4. **Handle Errors**: Always check for font loading errors
+5. **Use Font Weights**: Load separate files for different weights rather than relying on synthetic bold
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/font/)
+- [Google Fonts Package](https://github.com/expo/google-fonts)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-font)

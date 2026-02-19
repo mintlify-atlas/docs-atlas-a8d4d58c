@@ -1,0 +1,303 @@
+---
+title: Installation
+description: Install Expo Router and configure your project for file-based routing
+---
+
+# Installation
+
+This guide covers installing Expo Router and its required dependencies in your project.
+
+## Prerequisites
+
+- Node.js 18 or later
+- Expo CLI
+- An Expo project (SDK 52 or later recommended)
+
+## Automatic Installation
+
+The easiest way to get started is to use `create-expo-app` with the default template:
+
+```bash
+npx create-expo-app@latest my-app
+cd my-app
+```
+
+This automatically sets up Expo Router with all required dependencies.
+
+## Manual Installation
+
+If you have an existing Expo project, install Expo Router and its dependencies:
+
+<Tabs>
+  <Tab title="npm">
+    ```bash
+    npm install expo-router
+    ```
+  </Tab>
+  <Tab title="yarn">
+    ```bash
+    yarn add expo-router
+    ```
+  </Tab>
+  <Tab title="pnpm">
+    ```bash
+    pnpm add expo-router
+    ```
+  </Tab>
+</Tabs>
+
+### Required Dependencies
+
+Expo Router requires these peer dependencies:
+
+<Tabs>
+  <Tab title="npm">
+    ```bash
+    npx expo install expo-linking expo-constants expo-status-bar \
+      react-native-safe-area-context react-native-screens
+    ```
+  </Tab>
+  <Tab title="yarn">
+    ```bash
+    yarn expo install expo-linking expo-constants expo-status-bar \
+      react-native-safe-area-context react-native-screens
+    ```
+  </Tab>
+  <Tab title="pnpm">
+    ```bash
+    pnpm expo install expo-linking expo-constants expo-status-bar \
+      react-native-safe-area-context react-native-screens
+    ```
+  </Tab>
+</Tabs>
+
+### Optional Dependencies
+
+For additional navigation features:
+
+<Tabs>
+  <Tab title="npm">
+    ```bash
+    # For drawer navigation
+    npx expo install react-native-gesture-handler react-native-reanimated \
+      @react-navigation/drawer
+    
+    # For web support
+    npm install react-dom react-native-web
+    ```
+  </Tab>
+  <Tab title="yarn">
+    ```bash
+    # For drawer navigation
+    yarn expo install react-native-gesture-handler react-native-reanimated \
+      @react-navigation/drawer
+    
+    # For web support
+    yarn add react-dom react-native-web
+    ```
+  </Tab>
+</Tabs>
+
+## Project Setup
+
+### 1. Update Entry Point
+
+Modify your `package.json` to use Expo Router's entry point:
+
+```json package.json
+{
+  "main": "expo-router/entry"
+}
+```
+
+### 2. Add Expo Router Plugin
+
+Update your `app.json` or `app.config.js`:
+
+```json app.json
+{
+  "expo": {
+    "scheme": "myapp",
+    "plugins": ["expo-router"]
+  }
+}
+```
+
+For `app.config.js`:
+
+```js app.config.js
+export default {
+  expo: {
+    scheme: 'myapp',
+    plugins: ['expo-router'],
+  },
+};
+```
+
+<Note>
+  The `scheme` is required for deep linking. Choose a unique scheme for your app.
+</Note>
+
+### 3. Modify TypeScript Config
+
+If using TypeScript, extend the Expo Router TypeScript config in `tsconfig.json`:
+
+```json tsconfig.json
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true
+  }
+}
+```
+
+### 4. Configure Metro Bundler
+
+Create or update `metro.config.js`:
+
+```js metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+module.exports = config;
+```
+
+### 5. Clear Cache
+
+After installation, clear the Metro bundler cache:
+
+```bash
+npx expo start --clear
+```
+
+## Project Structure
+
+Create the `app` directory in your project root:
+
+```
+my-app/
+  app/
+    _layout.tsx
+    index.tsx
+  package.json
+  app.json
+```
+
+## Verify Installation
+
+Create a simple layout and index file to verify everything works:
+
+```tsx app/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function Layout() {
+  return <Stack />;
+}
+```
+
+```tsx app/index.tsx
+import { View, Text } from 'react-native';
+
+export default function Home() {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <Text>Welcome to Expo Router!</Text>
+    </View>
+  );
+}
+```
+
+Start your development server:
+
+```bash
+npx expo start
+```
+
+Press `i` for iOS simulator, `a` for Android emulator, or `w` for web.
+
+## Platform-Specific Setup
+
+### iOS
+
+For iOS, run:
+
+```bash
+cd ios && pod install && cd ..
+```
+
+Or if using Expo Go:
+
+```bash
+npx expo run:ios
+```
+
+### Android
+
+For Android:
+
+```bash
+npx expo run:android
+```
+
+### Web
+
+For web development:
+
+```bash
+npx expo start --web
+```
+
+## Troubleshooting
+
+### Metro Bundler Issues
+
+If you encounter caching issues:
+
+```bash
+npx expo start --clear
+# or
+rm -rf node_modules/.cache
+```
+
+### Type Errors
+
+If TypeScript doesn't recognize routes:
+
+```bash
+rm -rf node_modules/.cache
+npx expo start
+```
+
+Expo Router generates types automatically when the dev server starts.
+
+### Deep Linking Not Working
+
+Ensure your `scheme` is set in `app.json`:
+
+```json app.json
+{
+  "expo": {
+    "scheme": "myapp"
+  }
+}
+```
+
+### React Native Screens
+
+If navigation isn't working properly:
+
+1. Ensure `react-native-screens` is installed
+2. For bare React Native apps, follow the [react-native-screens installation guide](https://github.com/software-mansion/react-native-screens)
+3. Rebuild your app after installing native dependencies
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/router/quick-start">
+    Build your first app with Expo Router
+  </Card>
+  <Card title="File-Based Routing" icon="folder" href="/router/file-based-routing">
+    Learn routing conventions
+  </Card>
+</CardGroup>

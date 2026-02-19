@@ -1,0 +1,679 @@
+---
+title: Deep Linking
+description: Configure and test deep links with Expo Router's built-in deep linking support
+---
+
+# Deep Linking
+
+Expo Router provides automatic deep linking for all routes. Every route you create is automatically accessible via deep links on all platforms.
+
+## How Deep Linking Works
+
+Expo Router automatically creates deep link patterns for every route:
+
+```
+app/
+  index.tsx          → myapp://
+  about.tsx          → myapp://about
+  profile/[id].tsx   → myapp://profile/123
+```
+
+From the source (`linking.ts:18-22`):
+
+```typescript
+// A custom getInitialURL is used on native to ensure the app always starts
+// at the root path if it's launched from something other than a deep link.
+// This helps keep the native functionality working like the web functionality.
+export function getInitialURL() {
+  // Platform-specific URL handling
+}
+```
+
+## Scheme Configuration
+
+### Set Your Scheme
+
+Configure your app's URL scheme in `app.json`:
+
+```json app.json
+{
+  "expo": {
+    "scheme": "myapp",
+    "name": "My App",
+    "slug": "my-app"
+  }
+}
+```
+
+This creates the scheme:
+- iOS: `myapp://`
+- Android: `myapp://`
+- Web: `https://yourdomain.com/`
+
+### Multiple Schemes
+
+Support multiple URL schemes:
+
+```json app.json
+{
+  "expo": {
+    "scheme": ["myapp", "com.company.myapp"],
+    "name": "My App"
+  }
+}
+```
+
+## Universal Links
+
+Universal links allow your app to open using regular HTTPS URLs.
+
+### iOS Universal Links
+
+Configure in `app.json`:
+
+```json app.json
+{
+  "expo": {
+    "ios": {
+      "bundleIdentifier": "com.company.myapp",
+      "associatedDomains": [
+        "applinks:myapp.com",
+        "applinks:www.myapp.com"
+      ]
+    }
+  }
+}
+```
+
+Create `apple-app-site-association` file at `https://myapp.com/.well-known/apple-app-site-association`:
+
+```json
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAMID.com.company.myapp",
+        "paths": ["*"]
+      }
+    ]
+  }
+}
+```
+
+### Android App Links
+
+Configure in `app.json`:
+
+```json app.json
+{
+  "expo": {
+    "android": {
+      "package": "com.company.myapp",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "myapp.com",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    }
+  }
+}
+```
+
+Create `assetlinks.json` at `https://myapp.com/.well-known/assetlinks.json`:
+
+```json
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.company.myapp",
+      "sha256_cert_fingerprints": [
+        "YOUR_SHA256_CERT_FINGERPRINT"
+      ]
+    }
+  }
+]
+```
+
+## Testing Deep Links
+
+### iOS Simulator
+
+```bash
+# Using xcrun
+xcrun simctl openurl booted myapp://profile/123
+
+# With parameters
+xcrun simctl openurl booted "myapp://search?q=expo&filter=recent"
+
+# Universal link
+xcrun simctl openurl booted https://myapp.com/profile/123
+```
+
+### Android Emulator
+
+```bash
+# Using adb
+adb shell am start -W -a android.intent.action.VIEW -d "myapp://profile/123"
+
+# With parameters  
+adb shell am start -W -a android.intent.action.VIEW \
+  -d "myapp://search?q=expo&filter=recent"
+
+# App link
+adb shell am start -W -a android.intent.action.VIEW \
+  -d "https://myapp.com/profile/123"
+```
+
+### Physical Devices
+
+Send yourself a message or email with the link:
+
+```
+myapp://profile/123
+https://myapp.com/profile/123
+```
+
+Tap the link to test.
+
+### Development Testing
+
+In Expo Go during development:
+
+```bash
+# Replace exp://... with your dev server URL
+exp://192.168.1.100:8081/--/profile/123
+```
+
+## Handling Deep Links
+
+### Automatic Handling
+
+Expo Router handles deep links automatically:
+
+```tsx app/profile/[id].tsx
+import { useLocalSearchParams } from 'expo-router';
+import { Text } from 'react-native';
+
+export default function Profile() {
+  // Automatically populated from deep link
+  const { id } = useLocalSearchParams();
+  
+  return <Text>Profile {id}</Text>;
+}
+```
+
+**Deep link:** `myapp://profile/123`  
+**Result:** `id = "123"`
+
+### Initial URL
+
+Handle the initial deep link that opened the app:
+
+```tsx app/_layout.tsx
+import { useEffect } from 'react';
+import { useRouter, usePathname } from 'expo-router';
+import * as Linking from 'expo-linking';
+
+export default function RootLayout() {
+  const router = useRouter();
+  const pathname = usePathname();
+  
+  useEffect(() => {
+    // Log the initial route
+    console.log('App opened at:', pathname);
+  }, []);
+  
+  return <Stack />;
+}
+```
+
+### Listening for Deep Links
+
+Listen for deep links while app is running:
+
+```tsx app/index.tsx
+import { useEffect } from 'react';
+import * as Linking from 'expo-linking';
+import { router } from 'expo-router';
+
+export default function Home() {
+  useEffect(() => {
+    // Get initial URL
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        console.log('Initial URL:', url);
+      }
+    });
+
+    // Listen for deep links
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      console.log('Deep link received:', url);
+      // Expo Router handles navigation automatically
+    });
+
+    return () => subscription.remove();
+  }, []);
+  
+  return <Text>Home</Text>;
+}
+```
+
+## Query Parameters
+
+Deep links can include query parameters:
+
+```tsx
+// Deep link
+myapp://search?q=expo&category=docs&sort=recent
+```
+
+```tsx app/search.tsx
+import { useLocalSearchParams } from 'expo-router';
+
+export default function Search() {
+  const { q, category, sort } = useLocalSearchParams<{
+    q: string;
+    category?: string;
+    sort?: string;
+  }>();
+  
+  return (
+    <View>
+      <Text>Search: {q}</Text>
+      <Text>Category: {category}</Text>
+      <Text>Sort: {sort}</Text>
+    </View>
+  );
+}
+```
+
+## Dynamic Routes
+
+Dynamic routes work automatically with deep links:
+
+```tsx app/posts/[id].tsx
+import { useLocalSearchParams } from 'expo-router';
+
+export default function Post() {
+  const { id } = useLocalSearchParams();
+  return <Text>Post {id}</Text>;
+}
+```
+
+**Deep links:**
+- `myapp://posts/123` → `{ id: '123' }`
+- `myapp://posts/abc-def` → `{ id: 'abc-def' }`
+
+## Redirects
+
+Redirect deep links to different routes:
+
+```tsx app/_layout.tsx
+import { useEffect } from 'react';
+import { useRouter, usePathname } from 'expo-router';
+
+export default function RootLayout() {
+  const router = useRouter();
+  const pathname = usePathname();
+  
+  useEffect(() => {
+    // Redirect old URLs
+    if (pathname === '/old-profile') {
+      router.replace('/profile');
+    }
+  }, [pathname]);
+  
+  return <Stack />;
+}
+```
+
+## Authentication
+
+Handle authentication with deep links:
+
+```tsx app/_layout.tsx
+import { useEffect } from 'react';
+import { useRouter, useSegments } from 'expo-router';
+import { useAuth } from '../context/auth';
+
+export default function RootLayout() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (!isAuthenticated && !inAuthGroup) {
+      // Redirect to login but preserve the intended destination
+      router.replace('/login');
+    } else if (isAuthenticated && inAuthGroup) {
+      // Redirect to home after login
+      router.replace('/');
+    }
+  }, [isAuthenticated, isLoading, segments]);
+
+  return <Stack screenOptions={{ headerShown: false }} />;
+}
+```
+
+### Preserve Deep Link Destination
+
+```tsx app/(auth)/login.tsx
+import { router, useLocalSearchParams } from 'expo-router';
+import { useAuth } from '../../context/auth';
+
+export default function Login() {
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const { login } = useAuth();
+  
+  const handleLogin = async () => {
+    await login();
+    
+    // Navigate to intended destination or home
+    if (returnTo) {
+      router.replace(returnTo);
+    } else {
+      router.replace('/');
+    }
+  };
+  
+  return <Button onPress={handleLogin} title="Login" />;
+}
+```
+
+Protected route redirects to login with return path:
+
+```tsx
+if (!isAuthenticated) {
+  router.replace(`/login?returnTo=${pathname}`);
+}
+```
+
+## Custom Scheme Handling
+
+Handle custom URL schemes:
+
+```json app.json
+{
+  "expo": {
+    "scheme": "myapp",
+    "ios": {
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": ["myapp", "mailto", "tel"]
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+```tsx
+import * as Linking from 'expo-linking';
+
+// Open external app
+Linking.openURL('mailto:support@example.com');
+Linking.openURL('tel:+1234567890');
+Linking.openURL('https://expo.dev');
+
+// Check if can open
+Linking.canOpenURL('mailto:support@example.com').then((supported) => {
+  if (supported) {
+    Linking.openURL('mailto:support@example.com');
+  }
+});
+```
+
+## Native Intent (Android)
+
+Create custom native intent handling:
+
+```tsx app/+native-intent.ts
+import { router } from 'expo-router';
+
+export function redirectSystemPath({ path, initial }) {
+  // Custom path handling logic
+  if (path.startsWith('/legacy/')) {
+    return path.replace('/legacy/', '/new/');
+  }
+  return path;
+}
+
+export function legacy_subscribe(listener: (url: string) => void) {
+  // Custom subscription logic
+  return () => {
+    // Cleanup
+  };
+}
+```
+
+## Debugging
+
+### Log All Navigation
+
+```tsx app/_layout.tsx
+import { useEffect } from 'react';
+import { usePathname, useGlobalSearchParams } from 'expo-router';
+
+export default function RootLayout() {
+  const pathname = usePathname();
+  const params = useGlobalSearchParams();
+  
+  useEffect(() => {
+    console.log('Navigation:', { pathname, params });
+  }, [pathname, params]);
+  
+  return <Stack />;
+}
+```
+
+### Test Deep Link Parsing
+
+```tsx
+import * as Linking from 'expo-linking';
+
+// Parse URL
+const url = 'myapp://profile/123?tab=posts';
+const { hostname, path, queryParams } = Linking.parse(url);
+
+console.log(hostname); // 'profile'
+console.log(path); // '123'
+console.log(queryParams); // { tab: 'posts' }
+```
+
+### View Route Tree
+
+In development, visit `/_sitemap` to see all routes:
+
+```
+http://localhost:8081/_sitemap
+```
+
+## Common Patterns
+
+### Email Verification
+
+```tsx app/verify-email.tsx
+import { useEffect } from 'react';
+import { useLocalSearchParams, router } from 'expo-router';
+
+export default function VerifyEmail() {
+  const { token } = useLocalSearchParams<{ token: string }>();
+  
+  useEffect(() => {
+    if (token) {
+      verifyEmailToken(token).then((success) => {
+        if (success) {
+          router.replace('/login?verified=true');
+        }
+      });
+    }
+  }, [token]);
+  
+  return <LoadingSpinner />;
+}
+```
+
+Deep link: `myapp://verify-email?token=abc123`
+
+### Password Reset
+
+```tsx app/reset-password.tsx
+import { useState } from 'react';
+import { useLocalSearchParams, router } from 'expo-router';
+
+export default function ResetPassword() {
+  const { token } = useLocalSearchParams<{ token: string }>();
+  const [password, setPassword] = useState('');
+  
+  const handleReset = async () => {
+    await resetPassword(token, password);
+    router.replace('/login?reset=true');
+  };
+  
+  return (
+    <View>
+      <TextInput
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+      />
+      <Button onPress={handleReset} title="Reset Password" />
+    </View>
+  );
+}
+```
+
+Deep link: `myapp://reset-password?token=xyz789`
+
+### Referral Links
+
+```tsx app/index.tsx
+import { useEffect } from 'react';
+import { useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+export default function Home() {
+  const { ref } = useLocalSearchParams<{ ref?: string }>();
+  
+  useEffect(() => {
+    if (ref) {
+      // Store referral code
+      AsyncStorage.setItem('referralCode', ref);
+      trackReferral(ref);
+    }
+  }, [ref]);
+  
+  return <HomeScreen />;
+}
+```
+
+Deep link: `myapp://?ref=friend123`
+
+### Share Links
+
+```tsx
+import { Share } from 'react-native';
+import * as Linking from 'expo-linking';
+
+const sharePost = async (postId: string) => {
+  const url = Linking.createURL(`/posts/${postId}`);
+  
+  await Share.share({
+    message: 'Check out this post!',
+    url,
+  });
+};
+```
+
+## Best Practices
+
+### Use Descriptive Schemes
+
+```json
+// Good: Unique and descriptive
+"scheme": "mycompanyapp"
+
+// Avoid: Generic or common
+"scheme": "app"
+```
+
+### Handle Missing Parameters
+
+```tsx
+import { useLocalSearchParams, router } from 'expo-router';
+
+export default function Post() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  
+  if (!id) {
+    router.replace('/');
+    return null;
+  }
+  
+  return <PostContent id={id} />;
+}
+```
+
+### Validate Deep Link Data
+
+```tsx
+import { useEffect } from 'react';
+import { useLocalSearchParams, router } from 'expo-router';
+
+export default function User() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  
+  useEffect(() => {
+    // Validate ID format
+    if (!/^\d+$/.test(id)) {
+      router.replace('/404');
+    }
+  }, [id]);
+  
+  return <UserProfile id={id} />;
+}
+```
+
+### Test on All Platforms
+
+Test deep links on:
+- iOS Simulator
+- Android Emulator
+- Physical iOS device
+- Physical Android device
+- Web browser
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Dynamic Routes" icon="brackets-curly" href="/router/dynamic-routes">
+    Handle dynamic deep link parameters
+  </Card>
+  <Card title="Typed Routes" icon="code" href="/router/typed-routes">
+    Type-safe deep link navigation
+  </Card>
+  <Card title="Navigation" icon="compass" href="/router/navigation">
+    Navigate to deep link routes
+  </Card>
+  <Card title="API Routes" icon="server" href="/router/api-routes">
+    Create deep linkable API endpoints
+  </Card>
+</CardGroup>

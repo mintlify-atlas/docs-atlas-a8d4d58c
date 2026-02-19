@@ -1,0 +1,168 @@
+---
+title: expo-calendar
+description: Access and manage device calendars, events, and reminders
+---
+
+# expo-calendar
+
+**Version:** 55.0.6
+
+Provides an API for interacting with the device's system calendars, events, reminders, and associated records.
+
+## Installation
+
+```bash
+npx expo install expo-calendar
+```
+
+## Usage
+
+```typescript
+import * as Calendar from 'expo-calendar';
+
+// Request permissions
+const { status } = await Calendar.requestCalendarPermissionsAsync();
+if (status === 'granted') {
+  // Get calendars
+  const calendars = await Calendar.getCalendarsAsync(
+    Calendar.EntityTypes.EVENT
+  );
+  console.log('Calendars:', calendars);
+
+  // Create event
+  const calendarId = calendars[0].id;
+  const eventId = await Calendar.createEventAsync(calendarId, {
+    title: 'Meeting',
+    startDate: new Date(),
+    endDate: new Date(Date.now() + 3600000),
+    location: 'Office',
+  });
+}
+```
+
+## API Reference
+
+### Permissions
+
+<ParamField path="requestCalendarPermissionsAsync()" type="() => Promise<PermissionResponse>">
+  Requests calendar permissions
+</ParamField>
+
+<ParamField path="requestRemindersPermissionsAsync()" type="() => Promise<PermissionResponse>">
+  Requests reminders permissions
+</ParamField>
+
+### Calendars
+
+<ParamField path="getCalendarsAsync(entityType)" type="(entityType?: EntityType) => Promise<Calendar[]>">
+  Gets calendars
+  
+  ```typescript
+  const calendars = await Calendar.getCalendarsAsync(
+    Calendar.EntityTypes.EVENT
+  );
+  ```
+</ParamField>
+
+<ParamField path="createCalendarAsync(details)" type="(details: CalendarDetails) => Promise<string>">
+  Creates calendar
+</ParamField>
+
+<ParamField path="deleteCalendarAsync(id)" type="(id: string) => Promise<void>">
+  Deletes calendar
+</ParamField>
+
+### Events
+
+<ParamField path="createEventAsync(calendarId, eventData)" type="(calendarId: string, eventData: Event) => Promise<string>">
+  Creates event
+  
+  ```typescript
+  const id = await Calendar.createEventAsync(calendarId, {
+    title: 'Team Meeting',
+    startDate: new Date('2026-03-01T10:00:00'),
+    endDate: new Date('2026-03-01T11:00:00'),
+    timeZone: 'America/Los_Angeles',
+  });
+  ```
+</ParamField>
+
+<ParamField path="getEventAsync(id, recurringEventOptions)" type="(id: string, recurringEventOptions?: RecurringEventOptions) => Promise<Event>">
+  Gets event by ID
+</ParamField>
+
+<ParamField path="getEventsAsync(calendarIds, startDate, endDate)" type="(calendarIds: string[], startDate: Date, endDate: Date) => Promise<Event[]>">
+  Gets events in date range
+  
+  ```typescript
+  const events = await Calendar.getEventsAsync(
+    [calendarId],
+    new Date(),
+    new Date(Date.now() + 86400000 * 7) // Next 7 days
+  );
+  ```
+</ParamField>
+
+<ParamField path="updateEventAsync(id, details, recurringEventOptions)" type="(id: string, details: Event, recurringEventOptions?: RecurringEventOptions) => Promise<void>">
+  Updates event
+</ParamField>
+
+<ParamField path="deleteEventAsync(id, recurringEventOptions)" type="(id: string, recurringEventOptions?: RecurringEventOptions) => Promise<void>">
+  Deletes event
+</ParamField>
+
+## Examples
+
+### Create Event
+
+```typescript
+import * as Calendar from 'expo-calendar';
+
+async function createMeeting() {
+  const { status } = await Calendar.requestCalendarPermissionsAsync();
+  if (status !== 'granted') return;
+
+  const calendars = await Calendar.getCalendarsAsync();
+  const defaultCalendar = calendars.find(cal => cal.isPrimary);
+
+  if (defaultCalendar) {
+    await Calendar.createEventAsync(defaultCalendar.id, {
+      title: 'Team Standup',
+      startDate: new Date('2026-03-15T09:00:00'),
+      endDate: new Date('2026-03-15T09:30:00'),
+      location: 'Conference Room A',
+      notes: 'Daily standup meeting',
+      alarms: [{ relativeOffset: -15 }], // 15 minutes before
+    });
+  }
+}
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ❌       |
+
+## Permissions
+
+**iOS:** Add to `app.json`:
+```json
+{
+  "plugins": [
+    [
+      "expo-calendar",
+      {
+        "calendarPermission": "Allow app to access your calendar."
+      }
+    ]
+  ]
+}
+```
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/calendar/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-calendar)

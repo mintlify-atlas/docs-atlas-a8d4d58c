@@ -1,0 +1,522 @@
+---
+title: expo-media-library
+description: Access and manage photos and videos from the device's media library
+---
+
+# expo-media-library
+
+**Version:** 55.0.6
+
+Provides access to the user's media library, allowing you to read, create, and manage photos and videos on the device. Works with the camera roll on iOS and the media store on Android.
+
+## Installation
+
+```bash
+npx expo install expo-media-library
+```
+
+## Usage
+
+```typescript
+import * as MediaLibrary from 'expo-media-library';
+import { Button, View, FlatList, Image } from 'react-native';
+import { useState, useEffect } from 'react';
+
+export default function App() {
+  const [photos, setPhotos] = useState<MediaLibrary.Asset[]>([]);
+  const [permission, requestPermission] = MediaLibrary.usePermissions();
+
+  useEffect(() => {
+    loadPhotos();
+  }, []);
+
+  const loadPhotos = async () => {
+    if (permission?.granted) {
+      const { assets } = await MediaLibrary.getAssetsAsync({
+        first: 20,
+        mediaType: 'photo',
+      });
+      setPhotos(assets);
+    }
+  };
+
+  return (
+    <View>
+      {!permission?.granted && (
+        <Button title="Request Permission" onPress={requestPermission} />
+      )}
+      <FlatList
+        data={photos}
+        renderItem={({ item }) => (
+          <Image source={{ uri: item.uri }} style={{ width: 100, height: 100 }} />
+        )}
+      />
+    </View>
+  );
+}
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="getAssetsAsync(options)" type="(options?: AssetQueryOptions) => Promise<PagedInfo>">
+  Retrieves assets from the media library
+  
+  ```typescript
+  const { assets, endCursor, hasNextPage } = await MediaLibrary.getAssetsAsync({
+    first: 20,
+    mediaType: 'photo',
+    sortBy: 'creationTime',
+  });
+  ```
+</ParamField>
+
+<ParamField path="getAssetInfoAsync(asset)" type="(asset: Asset | string) => Promise<AssetInfo>">
+  Gets detailed information about a specific asset
+  
+  ```typescript
+  const info = await MediaLibrary.getAssetInfoAsync(asset);
+  console.log('Location:', info.location);
+  console.log('EXIF:', info.exif);
+  ```
+</ParamField>
+
+<ParamField path="createAssetAsync(localUri)" type="(localUri: string) => Promise<Asset>">
+  Saves a file to the media library
+  
+  ```typescript
+  const asset = await MediaLibrary.createAssetAsync('file:///path/to/photo.jpg');
+  console.log('Saved asset:', asset.id);
+  ```
+</ParamField>
+
+<ParamField path="saveToLibraryAsync(localUri)" type="(localUri: string) => Promise<void>">
+  Saves an image or video to the library
+  
+  ```typescript
+  await MediaLibrary.saveToLibraryAsync('file:///path/to/image.jpg');
+  ```
+</ParamField>
+
+<ParamField path="deleteAssetsAsync(assets)" type="(assets: Asset[] | string[]) => Promise<boolean>">
+  Deletes assets from the library
+  
+  ```typescript
+  const deleted = await MediaLibrary.deleteAssetsAsync([asset1, asset2]);
+  ```
+</ParamField>
+
+<ParamField path="getAlbumsAsync(options)" type="(options?: AlbumQueryOptions) => Promise<Album[]>">
+  Gets list of albums
+  
+  ```typescript
+  const albums = await MediaLibrary.getAlbumsAsync();
+  ```
+</ParamField>
+
+<ParamField path="getAlbumAsync(title)" type="(title: string) => Promise<Album | null>">
+  Gets album by title
+  
+  ```typescript
+  const album = await MediaLibrary.getAlbumAsync('MyAlbum');
+  ```
+</ParamField>
+
+<ParamField path="createAlbumAsync(albumName, asset, copyAsset)" type="(albumName: string, asset?: Asset | string, copyAsset?: boolean) => Promise<Album>">
+  Creates a new album
+  
+  ```typescript
+  const album = await MediaLibrary.createAlbumAsync('Vacation', asset);
+  ```
+</ParamField>
+
+<ParamField path="addAssetsToAlbumAsync(assets, album, copyAssets)" type="(assets: Asset[] | string[], album: Album | string, copyAssets?: boolean) => Promise<boolean>">
+  Adds assets to an album
+  
+  ```typescript
+  await MediaLibrary.addAssetsToAlbumAsync([asset1, asset2], album);
+  ```
+</ParamField>
+
+<ParamField path="removeAssetsFromAlbumAsync(assets, album)" type="(assets: Asset[] | string[], album: Album | string) => Promise<boolean>">
+  Removes assets from an album
+  
+  ```typescript
+  await MediaLibrary.removeAssetsFromAlbumAsync([asset], album);
+  ```
+</ParamField>
+
+<ParamField path="deleteAlbumsAsync(albums)" type="(albums: Album[] | string[]) => Promise<boolean>">
+  Deletes albums
+  
+  ```typescript
+  await MediaLibrary.deleteAlbumsAsync([album]);
+  ```
+</ParamField>
+
+<ParamField path="requestPermissionsAsync(writeOnly)" type="(writeOnly?: boolean) => Promise<PermissionResponse>">
+  Requests media library permissions
+  
+  ```typescript
+  const { status } = await MediaLibrary.requestPermissionsAsync();
+  ```
+</ParamField>
+
+<ParamField path="getPermissionsAsync(writeOnly)" type="(writeOnly?: boolean) => Promise<PermissionResponse>">
+  Checks current permission status
+</ParamField>
+
+### Hooks
+
+<ParamField path="usePermissions(options)" type="(options?: { writeOnly?: boolean }) => [PermissionResponse | null, () => Promise<PermissionResponse>, () => Promise<PermissionResponse>]">
+  Hook for managing permissions
+  
+  ```typescript
+  const [permission, requestPermission] = MediaLibrary.usePermissions();
+  ```
+</ParamField>
+
+### Types
+
+#### Asset
+
+<ResponseField name="id" type="string">
+  Asset identifier
+</ResponseField>
+
+<ResponseField name="filename" type="string">
+  File name
+</ResponseField>
+
+<ResponseField name="uri" type="string">
+  Asset URI
+</ResponseField>
+
+<ResponseField name="mediaType" type="MediaType">
+  Type: `'photo'`, `'video'`, `'audio'`, `'unknown'`
+</ResponseField>
+
+<ResponseField name="width" type="number">
+  Width in pixels
+</ResponseField>
+
+<ResponseField name="height" type="number">
+  Height in pixels
+</ResponseField>
+
+<ResponseField name="creationTime" type="number">
+  Creation timestamp
+</ResponseField>
+
+<ResponseField name="modificationTime" type="number">
+  Modification timestamp
+</ResponseField>
+
+<ResponseField name="duration" type="number">
+  Duration for videos in seconds
+</ResponseField>
+
+#### AssetInfo
+
+Extends `Asset` with additional fields:
+
+<ResponseField name="localUri" type="string">
+  Local file URI
+</ResponseField>
+
+<ResponseField name="location" type="Location">
+  GPS location data
+</ResponseField>
+
+<ResponseField name="exif" type="object">
+  EXIF metadata
+</ResponseField>
+
+<ResponseField name="isFavorite" type="boolean">
+  Whether asset is marked as favorite
+</ResponseField>
+
+#### Album
+
+<ResponseField name="id" type="string">
+  Album identifier
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Album name
+</ResponseField>
+
+<ResponseField name="assetCount" type="number">
+  Number of assets in album
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  Album type
+</ResponseField>
+
+## Examples
+
+### Load Recent Photos
+
+```typescript
+import * as MediaLibrary from 'expo-media-library';
+
+async function loadRecentPhotos() {
+  const { status } = await MediaLibrary.requestPermissionsAsync();
+  if (status !== 'granted') {
+    alert('Permission required');
+    return;
+  }
+
+  const { assets } = await MediaLibrary.getAssetsAsync({
+    first: 50,
+    mediaType: 'photo',
+    sortBy: 'creationTime',
+  });
+
+  console.log(`Found ${assets.length} photos`);
+  assets.forEach(asset => {
+    console.log(asset.filename, asset.uri);
+  });
+}
+```
+
+### Paginated Asset Loading
+
+```typescript
+import * as MediaLibrary from 'expo-media-library';
+
+async function loadAllPhotos() {
+  let allAssets: MediaLibrary.Asset[] = [];
+  let endCursor: string | undefined;
+
+  while (true) {
+    const { assets, hasNextPage, endCursor: cursor } = 
+      await MediaLibrary.getAssetsAsync({
+        first: 100,
+        after: endCursor,
+        mediaType: 'photo',
+      });
+
+    allAssets = [...allAssets, ...assets];
+    
+    if (!hasNextPage) break;
+    endCursor = cursor;
+  }
+
+  console.log(`Loaded ${allAssets.length} photos`);
+}
+```
+
+### Save Image to Library
+
+```typescript
+import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system';
+
+async function saveImage(imageUri: string) {
+  const { status } = await MediaLibrary.requestPermissionsAsync();
+  if (status !== 'granted') {
+    alert('Permission required');
+    return;
+  }
+
+  try {
+    const asset = await MediaLibrary.createAssetAsync(imageUri);
+    console.log('Image saved:', asset.id);
+    
+    // Optionally add to album
+    const album = await MediaLibrary.getAlbumAsync('MyApp Photos');
+    if (album) {
+      await MediaLibrary.addAssetsToAlbumAsync([asset], album);
+    } else {
+      await MediaLibrary.createAlbumAsync('MyApp Photos', asset);
+    }
+  } catch (error) {
+    console.error('Error saving image:', error);
+  }
+}
+```
+
+### Get Asset Details
+
+```typescript
+import * as MediaLibrary from 'expo-media-library';
+
+async function getPhotoDetails(asset: MediaLibrary.Asset) {
+  const info = await MediaLibrary.getAssetInfoAsync(asset);
+  
+  console.log('Local URI:', info.localUri);
+  console.log('File size:', info.exif?.FileSize);
+  
+  if (info.location) {
+    console.log('GPS:', info.location.latitude, info.location.longitude);
+  }
+  
+  if (info.exif) {
+    console.log('Camera:', info.exif.Make, info.exif.Model);
+    console.log('Date taken:', info.exif.DateTime);
+  }
+}
+```
+
+### Manage Albums
+
+```typescript
+import * as MediaLibrary from 'expo-media-library';
+
+async function createPhotoAlbum(albumName: string, photos: string[]) {
+  // Create first asset
+  const firstAsset = await MediaLibrary.createAssetAsync(photos[0]);
+  
+  // Create album with first asset
+  const album = await MediaLibrary.createAlbumAsync(albumName, firstAsset);
+  
+  // Add remaining photos
+  if (photos.length > 1) {
+    const remainingAssets = await Promise.all(
+      photos.slice(1).map(uri => MediaLibrary.createAssetAsync(uri))
+    );
+    await MediaLibrary.addAssetsToAlbumAsync(remainingAssets, album);
+  }
+  
+  console.log(`Created album "${albumName}" with ${photos.length} photos`);
+}
+```
+
+### Delete Assets
+
+```typescript
+import * as MediaLibrary from 'expo-media-library';
+
+async function deletePhotos(assets: MediaLibrary.Asset[]) {
+  const confirmed = confirm(`Delete ${assets.length} photos?`);
+  if (!confirmed) return;
+
+  try {
+    const success = await MediaLibrary.deleteAssetsAsync(assets);
+    if (success) {
+      console.log('Photos deleted successfully');
+    }
+  } catch (error) {
+    console.error('Error deleting photos:', error);
+  }
+}
+```
+
+### Complete Photo Gallery Example
+
+```tsx
+import * as MediaLibrary from 'expo-media-library';
+import { useState, useEffect } from 'react';
+import { View, FlatList, Image, StyleSheet, Button, Text } from 'react-native';
+
+export default function PhotoGallery() {
+  const [photos, setPhotos] = useState<MediaLibrary.Asset[]>([]);
+  const [hasNextPage, setHasNextPage] = useState(true);
+  const [endCursor, setEndCursor] = useState<string>();
+  const [permission, requestPermission] = MediaLibrary.usePermissions();
+
+  useEffect(() => {
+    if (permission?.granted) {
+      loadPhotos();
+    }
+  }, [permission]);
+
+  const loadPhotos = async () => {
+    const result = await MediaLibrary.getAssetsAsync({
+      first: 20,
+      after: endCursor,
+      mediaType: 'photo',
+      sortBy: 'creationTime',
+    });
+
+    setPhotos(prev => [...prev, ...result.assets]);
+    setHasNextPage(result.hasNextPage);
+    setEndCursor(result.endCursor);
+  };
+
+  if (!permission?.granted) {
+    return (
+      <View style={styles.container}>
+        <Text>Media library permission required</Text>
+        <Button title="Grant Permission" onPress={requestPermission} />
+      </View>
+    );
+  }
+
+  return (
+    <FlatList
+      data={photos}
+      numColumns={3}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => (
+        <Image source={{ uri: item.uri }} style={styles.photo} />
+      )}
+      onEndReached={() => {
+        if (hasNextPage) loadPhotos();
+      }}
+    />
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10 },
+  photo: { width: 120, height: 120, margin: 2 },
+});
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ❌       |
+
+## Permissions
+
+<Warning>
+Media library permissions are required to access photos and videos.
+</Warning>
+
+### iOS
+
+Add to `app.json`:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos.",
+          "savePhotosPermission": "Allow $(PRODUCT_NAME) to save photos."
+        }
+      ]
+    ]
+  }
+}
+```
+
+### Android
+
+Permissions automatically added:
+- `READ_EXTERNAL_STORAGE` / `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO` (for reading)
+- `WRITE_EXTERNAL_STORAGE` (for writing on Android < 10)
+- `ACCESS_MEDIA_LOCATION` (for location data)
+
+## Best Practices
+
+1. **Pagination**: Use `first` and `after` for efficient loading
+2. **Permission Check**: Always check permissions before operations
+3. **Asset Caching**: Cache asset URIs to avoid repeated queries
+4. **Delete Carefully**: Confirm before deleting user photos
+5. **Album Organization**: Group related photos in albums
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/media-library/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-media-library)

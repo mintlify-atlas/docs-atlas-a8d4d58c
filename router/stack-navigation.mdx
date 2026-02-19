@@ -1,0 +1,702 @@
+---
+title: Stack Navigation
+description: Create native stack navigation with headers, modals, and transitions
+---
+
+# Stack Navigation
+
+Stack navigation provides a card-based navigation pattern where screens are stacked on top of each other. It's the most common navigation pattern in mobile apps.
+
+## Basic Stack
+
+Create a stack layout:
+
+```tsx app/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function Layout() {
+  return <Stack />;
+}
+```
+
+All routes in the directory use stack navigation:
+
+```
+app/
+  _layout.tsx       # Stack layout
+  index.tsx         # Home screen
+  profile.tsx       # Profile screen  
+  settings.tsx      # Settings screen
+```
+
+From the source (`Stack.tsx:1-13`):
+
+```typescript
+import Stack from './StackClient';
+import { StackScreen, StackHeader } from './stack-utils';
+import { StackToolbar } from './stack-utils/toolbar/StackToolbar';
+
+Stack.Screen = StackScreen;
+Stack.Header = StackHeader;
+Stack.Toolbar = StackToolbar;
+
+export { Stack };
+```
+
+## Screen Configuration
+
+Configure screens in the layout:
+
+```tsx app/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function Layout() {
+  return (
+    <Stack
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: '#f4511e',
+        },
+        headerTintColor: '#fff',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      }}
+    >
+      <Stack.Screen
+        name="index"
+        options={{
+          title: 'Home',
+        }}
+      />
+      <Stack.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          headerBackTitle: 'Back',
+        }}
+      />
+      <Stack.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          headerShown: false,
+        }}
+      />
+    </Stack>
+  );
+}
+```
+
+## Dynamic Screen Options
+
+Set screen options from within the route:
+
+```tsx app/profile.tsx
+import { Stack } from 'expo-router';
+import { View, Text, Button } from 'react-native';
+
+export default function Profile() {
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          title: 'My Profile',
+          headerRight: () => (
+            <Button title="Edit" onPress={() => {}} />
+          ),
+          headerLargeTitle: true,
+        }}
+      />
+      <View>
+        <Text>Profile Content</Text>
+      </View>
+    </>
+  );
+}
+```
+
+## Header Configuration
+
+### Header Styles
+
+```tsx
+<Stack.Screen
+  name="profile"
+  options={{
+    headerStyle: {
+      backgroundColor: '#f4511e',
+    },
+    headerTintColor: '#fff',
+    headerTitleStyle: {
+      fontWeight: 'bold',
+      fontSize: 20,
+    },
+  }}
+/>
+```
+
+### Header Buttons
+
+```tsx app/edit-profile.tsx
+import { Stack, router } from 'expo-router';
+import { Button } from 'react-native';
+
+export default function EditProfile() {
+  const handleSave = () => {
+    // Save logic
+    router.back();
+  };
+  
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          title: 'Edit Profile',
+          headerLeft: () => (
+            <Button title="Cancel" onPress={() => router.back()} />
+          ),
+          headerRight: () => (
+            <Button title="Save" onPress={handleSave} />
+          ),
+        }}
+      />
+      <View>
+        {/* Form content */}
+      </View>
+    </>
+  );
+}
+```
+
+### Large Headers (iOS)
+
+```tsx
+<Stack.Screen
+  name="contacts"
+  options={{
+    headerLargeTitle: true,
+    headerLargeStyle: {
+      backgroundColor: '#fff',
+    },
+    headerLargeTitleStyle: {
+      fontSize: 34,
+      fontWeight: 'bold',
+    },
+  }}
+/>
+```
+
+### Transparent Headers
+
+```tsx
+<Stack.Screen
+  name="photo"
+  options={{
+    headerTransparent: true,
+    headerTitle: '',
+    headerTintColor: '#fff',
+  }}
+/>
+```
+
+## Presentation Styles
+
+### Modal
+
+Present screen as modal:
+
+```tsx app/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function Layout() {
+  return (
+    <Stack>
+      <Stack.Screen name="index" />
+      <Stack.Screen
+        name="modal"
+        options={{
+          presentation: 'modal',
+          title: 'Filter Options',
+        }}
+      />
+    </Stack>
+  );
+}
+```
+
+### Full Screen Modal
+
+```tsx
+<Stack.Screen
+  name="fullscreen-modal"
+  options={{
+    presentation: 'fullScreenModal',
+    headerShown: false,
+  }}
+/>
+```
+
+### Form Sheet (iOS)
+
+```tsx
+<Stack.Screen
+  name="sheet"
+  options={{
+    presentation: 'formSheet',
+  }}
+/>
+```
+
+### Transparent Modal
+
+```tsx
+<Stack.Screen
+  name="overlay"
+  options={{
+    presentation: 'transparentModal',
+    headerShown: false,
+  }}
+/>
+```
+
+## Animations
+
+### Custom Transitions
+
+```tsx
+<Stack.Screen
+  name="details"
+  options={{
+    animation: 'slide_from_right', // default
+    // or
+    animation: 'slide_from_bottom',
+    // or
+    animation: 'fade',
+    // or
+    animation: 'flip',
+  }}
+/>
+```
+
+### Gesture Configuration
+
+```tsx
+<Stack.Screen
+  name="details"
+  options={{
+    gestureEnabled: true,
+    gestureDirection: 'horizontal',
+    fullScreenGestureEnabled: true,
+  }}
+/>
+```
+
+### Disable Animations
+
+```tsx
+<Stack.Screen
+  name="instant"
+  options={{
+    animation: 'none',
+  }}
+/>
+```
+
+## Search Bar (iOS)
+
+Add native search bar:
+
+```tsx app/contacts.tsx
+import { Stack } from 'expo-router';
+import { useState } from 'react';
+
+export default function Contacts() {
+  const [search, setSearch] = useState('');
+  
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          headerSearchBarOptions: {
+            placeholder: 'Search contacts',
+            onChangeText: (event) => setSearch(event.nativeEvent.text),
+          },
+        }}
+      />
+      <ContactsList search={search} />
+    </>
+  );
+}
+```
+
+## Back Button
+
+### Custom Back Button
+
+```tsx
+<Stack.Screen
+  name="details"
+  options={{
+    headerBackTitle: 'Back',
+    headerBackTitleVisible: true,
+  }}
+/>
+```
+
+### Hide Back Button
+
+```tsx
+<Stack.Screen
+  name="login"
+  options={{
+    headerBackVisible: false,
+  }}
+/>
+```
+
+### Custom Back Button
+
+```tsx
+<Stack.Screen
+  name="custom"
+  options={{
+    headerLeft: () => (
+      <Button
+        title="< Go Back"
+        onPress={() => router.back()}
+      />
+    ),
+  }}
+/>
+```
+
+## Web-Specific Options
+
+### Modal Width (Web)
+
+```tsx
+<Stack.Screen
+  name="modal"
+  options={{
+    presentation: 'modal',
+    webModalStyle: {
+      width: '80%',
+      maxWidth: 600,
+      height: '90%',
+    },
+  }}
+/>
+```
+
+From the source (`StackClient.tsx:55-93`):
+
+```typescript
+export type ExtendedStackNavigationOptions = NativeStackNavigationOptions & {
+  webModalStyle?: {
+    /** Override the width of the modal (px or percentage) */
+    width?: number | string;
+    /** Override the height of the modal (px or percentage) */
+    height?: number | string;
+    /** Minimum height of the desktop modal */
+    minHeight?: number | string;
+    /** Minimum width of the desktop modal */
+    minWidth?: number | string;
+    /** Override the border */
+    border?: string;
+    /** Override the overlay background color */
+    overlayBackground?: string;
+    /** Override the modal shadow filter */
+    shadow?: string;
+  };
+};
+```
+
+## Status Bar
+
+### Configure Status Bar
+
+```tsx
+<Stack.Screen
+  name="screen"
+  options={{
+    statusBarStyle: 'light',
+    statusBarAnimation: 'fade',
+    statusBarHidden: false,
+  }}
+/>
+```
+
+## Nested Stacks
+
+Create nested stack navigation:
+
+```
+app/
+  _layout.tsx
+  (tabs)/
+    _layout.tsx       # Tabs
+    profile/
+      _layout.tsx     # Nested stack
+      index.tsx
+      edit.tsx
+      settings.tsx
+```
+
+```tsx app/(tabs)/profile/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function ProfileStack() {
+  return (
+    <Stack
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: '#f4511e',
+        },
+      }}
+    >
+      <Stack.Screen
+        name="index"
+        options={{ title: 'Profile' }}
+      />
+      <Stack.Screen
+        name="edit"
+        options={{
+          title: 'Edit Profile',
+          presentation: 'modal',
+        }}
+      />
+      <Stack.Screen
+        name="settings"
+        options={{ title: 'Settings' }}
+      />
+    </Stack>
+  );
+}
+```
+
+## Common Patterns
+
+### Modal with Close Button
+
+```tsx app/filter-modal.tsx
+import { Stack, router } from 'expo-router';
+import { Button } from 'react-native';
+
+export default function FilterModal() {
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          presentation: 'modal',
+          title: 'Filters',
+          headerLeft: () => (
+            <Button
+              title="Close"
+              onPress={() => router.back()}
+            />
+          ),
+          headerRight: () => (
+            <Button
+              title="Reset"
+              onPress={() => {}}
+            />
+          ),
+        }}
+      />
+      <FilterForm />
+    </>
+  );
+}
+```
+
+### Form with Save/Cancel
+
+```tsx app/edit-note.tsx
+import { Stack, router } from 'expo-router';
+import { useState } from 'react';
+import { View, TextInput, Alert } from 'react-native';
+
+export default function EditNote() {
+  const [text, setText] = useState('');
+  const [hasChanges, setHasChanges] = useState(false);
+  
+  const handleSave = () => {
+    saveNote(text);
+    router.back();
+  };
+  
+  const handleCancel = () => {
+    if (hasChanges) {
+      Alert.alert(
+        'Discard changes?',
+        'You have unsaved changes',
+        [
+          { text: 'Keep Editing', style: 'cancel' },
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: () => router.back(),
+          },
+        ]
+      );
+    } else {
+      router.back();
+    }
+  };
+  
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          title: 'Edit Note',
+          headerLeft: () => (
+            <Button title="Cancel" onPress={handleCancel} />
+          ),
+          headerRight: () => (
+            <Button title="Save" onPress={handleSave} />
+          ),
+        }}
+      />
+      <View>
+        <TextInput
+          value={text}
+          onChangeText={(text) => {
+            setText(text);
+            setHasChanges(true);
+          }}
+        />
+      </View>
+    </>
+  );
+}
+```
+
+### Image Viewer
+
+```tsx app/photo/[id].tsx
+import { Stack } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
+import { Image, View } from 'react-native';
+
+export default function PhotoViewer() {
+  const { id } = useLocalSearchParams();
+  
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          headerTransparent: true,
+          headerTitle: '',
+          headerTintColor: '#fff',
+          headerStyle: {
+            backgroundColor: 'transparent',
+          },
+        }}
+      />
+      <View style={{ flex: 1, backgroundColor: 'black' }}>
+        <Image
+          source={{ uri: `https://example.com/photos/${id}` }}
+          style={{ flex: 1 }}
+          resizeMode="contain"
+        />
+      </View>
+    </>
+  );
+}
+```
+
+### Deep Link Modal
+
+```tsx app/(tabs)/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function TabsLayout() {
+  return (
+    <>
+      <Tabs />
+      
+      {/* Modals accessible from any tab */}
+      <Stack.Screen
+        name="modal/share"
+        options={{
+          presentation: 'modal',
+          title: 'Share',
+        }}
+      />
+    </>
+  );
+}
+```
+
+## Best Practices
+
+### Set Titles
+
+Always provide descriptive titles:
+
+```tsx
+// Good: Descriptive title
+<Stack.Screen name="details" options={{ title: 'Product Details' }} />
+
+// Avoid: Generic or missing title
+<Stack.Screen name="details" />
+```
+
+### Use Consistent Headers
+
+Set default styles in `screenOptions`:
+
+```tsx
+<Stack
+  screenOptions={{
+    headerStyle: { backgroundColor: '#f4511e' },
+    headerTintColor: '#fff',
+  }}
+>
+  {/* Override per screen as needed */}
+</Stack>
+```
+
+### Handle Back Navigation
+
+Always check if can go back:
+
+```tsx
+if (router.canGoBack()) {
+  router.back();
+} else {
+  router.replace('/');
+}
+```
+
+### Platform-Specific Options
+
+```tsx
+import { Platform } from 'react-native';
+
+<Stack.Screen
+  name="screen"
+  options={{
+    headerLargeTitle: Platform.OS === 'ios',
+    animation: Platform.OS === 'ios' ? 'default' : 'slide_from_right',
+  }}
+/>
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Tab Navigation" icon="table-cells" href="/router/tab-navigation">
+    Create tab navigation
+  </Card>
+  <Card title="Drawer Navigation" icon="bars-staggered" href="/router/drawer-navigation">
+    Add drawer navigation
+  </Card>
+  <Card title="Layouts" icon="layer-group" href="/router/layouts">
+    Understand layouts
+  </Card>
+  <Card title="Navigation" icon="compass" href="/router/navigation">
+    Navigate between stacks
+  </Card>
+</CardGroup>

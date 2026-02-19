@@ -1,0 +1,415 @@
+---
+title: expo-splash-screen
+description: Control the native splash screen visibility until your app is ready
+---
+
+# expo-splash-screen
+
+**Version:** 55.0.6
+
+Provides a module to keep the native Splash Screen visible until you choose to hide it. Useful for loading fonts, assets, or data before showing your app.
+
+## Installation
+
+```bash
+npx expo install expo-splash-screen
+```
+
+## Usage
+
+```typescript
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
+
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
+
+function App() {
+  useEffect(() => {
+    async function prepare() {
+      try {
+        // Pre-load fonts, make API calls, etc.
+        await loadResourcesAsync();
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        // Tell the application to render
+        await SplashScreen.hideAsync();
+      }
+    }
+
+    prepare();
+  }, []);
+
+  return <YourApp />;
+}
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="SplashScreen.preventAutoHideAsync()" type="() => Promise<boolean>">
+  Prevents the splash screen from auto-hiding
+  
+  ```typescript
+  await SplashScreen.preventAutoHideAsync();
+  ```
+  
+  Call this **before** rendering your root component to prevent the splash screen from disappearing automatically.
+</ParamField>
+
+<ParamField path="SplashScreen.hideAsync()" type="() => Promise<boolean>">
+  Hides the splash screen
+  
+  ```typescript
+  await SplashScreen.hideAsync();
+  ```
+  
+  Call this after your app has finished loading resources and is ready to display.
+</ParamField>
+
+<ParamField path="SplashScreen.setOptions(options)" type="(options: SplashScreenOptions) => Promise<void>" platform="android">
+  **Android only**: Configure splash screen behavior
+  
+  ```typescript
+  await SplashScreen.setOptions({
+    duration: 1000,
+    fade: true
+  });
+  ```
+</ParamField>
+
+## Examples
+
+### Basic Usage with Asset Loading
+
+```tsx
+import * as SplashScreen from 'expo-splash-screen';
+import { Asset } from 'expo-asset';
+import { useEffect, useState } from 'react';
+
+SplashScreen.preventAutoHideAsync();
+
+function App() {
+  const [appIsReady, setAppIsReady] = useState(false);
+
+  useEffect(() => {
+    async function prepare() {
+      try {
+        // Load fonts
+        await Font.loadAsync({
+          'Inter-Bold': require('./assets/fonts/Inter-Bold.ttf'),
+        });
+        
+        // Load assets
+        await Asset.loadAsync([
+          require('./assets/images/logo.png'),
+        ]);
+        
+        // Artificial delay for demo
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        setAppIsReady(true);
+      }
+    }
+
+    prepare();
+  }, []);
+
+  useEffect(() => {
+    if (appIsReady) {
+      SplashScreen.hideAsync();
+    }
+  }, [appIsReady]);
+
+  if (!appIsReady) {
+    return null;
+  }
+
+  return <YourApp />;
+}
+```
+
+### With React Navigation
+
+```tsx
+import * as SplashScreen from 'expo-splash-screen';
+import { NavigationContainer } from '@react-navigation/native';
+import { useCallback, useEffect, useState } from 'react';
+import { View } from 'react-native';
+
+SplashScreen.preventAutoHideAsync();
+
+function App() {
+  const [appIsReady, setAppIsReady] = useState(false);
+
+  useEffect(() => {
+    async function prepare() {
+      try {
+        // Pre-load resources here
+        await loadResources();
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        setAppIsReady(true);
+      }
+    }
+
+    prepare();
+  }, []);
+
+  const onLayoutRootView = useCallback(async () => {
+    if (appIsReady) {
+      await SplashScreen.hideAsync();
+    }
+  }, [appIsReady]);
+
+  if (!appIsReady) {
+    return null;
+  }
+
+  return (
+    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+      <NavigationContainer>
+        {/* Your navigation */}
+      </NavigationContainer>
+    </View>
+  );
+}
+```
+
+### Animated Splash Screen Transition
+
+```tsx
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect, useState } from 'react';
+import { Animated, StyleSheet } from 'react-native';
+
+SplashScreen.preventAutoHideAsync();
+
+function App() {
+  const [appIsReady, setAppIsReady] = useState(false);
+  const [fadeAnim] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    async function prepare() {
+      try {
+        await loadResources();
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        setAppIsReady(true);
+      }
+    }
+
+    prepare();
+  }, []);
+
+  useEffect(() => {
+    if (appIsReady) {
+      // Hide splash and fade in app
+      SplashScreen.hideAsync().then(() => {
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      });
+    }
+  }, [appIsReady]);
+
+  if (!appIsReady) {
+    return null;
+  }
+
+  return (
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+      <YourApp />
+    </Animated.View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 }
+});
+```
+
+### Error Handling
+
+```tsx
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect, useState } from 'react';
+import { Text, View } from 'react-native';
+
+SplashScreen.preventAutoHideAsync();
+
+function App() {
+  const [appIsReady, setAppIsReady] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    async function prepare() {
+      try {
+        await loadCriticalResources();
+        setAppIsReady(true);
+      } catch (e) {
+        setError(e as Error);
+      } finally {
+        await SplashScreen.hideAsync();
+      }
+    }
+
+    prepare();
+  }, []);
+
+  if (error) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Error loading app: {error.message}</Text>
+      </View>
+    );
+  }
+
+  if (!appIsReady) {
+    return null;
+  }
+
+  return <YourApp />;
+}
+```
+
+### With Multiple Loading Steps
+
+```tsx
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect, useState } from 'react';
+
+SplashScreen.preventAutoHideAsync();
+
+function App() {
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    async function prepare() {
+      try {
+        // Step 1: Load fonts (33%)
+        await loadFonts();
+        setProgress(33);
+
+        // Step 2: Load assets (66%)
+        await loadAssets();
+        setProgress(66);
+
+        // Step 3: Initialize app (100%)
+        await initializeApp();
+        setProgress(100);
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        await SplashScreen.hideAsync();
+      }
+    }
+
+    prepare();
+  }, []);
+
+  if (progress < 100) {
+    return null;
+  }
+
+  return <YourApp />;
+}
+```
+
+## Configuration
+
+### Configure Splash Image
+
+**app.json:**
+```json
+{
+  "expo": {
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    }
+  }
+}
+```
+
+### Advanced Configuration
+
+```json
+{
+  "expo": {
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#1E1E1E",
+      "imageLight": "./assets/splash-light.png",
+      "imageDark": "./assets/splash-dark.png"
+    },
+    "android": {
+      "splash": {
+        "image": "./assets/splash-android.png",
+        "resizeMode": "native",
+        "backgroundColor": "#000000"
+      }
+    },
+    "ios": {
+      "splash": {
+        "image": "./assets/splash-ios.png",
+        "resizeMode": "cover",
+        "backgroundColor": "#FFFFFF",
+        "tabletImage": "./assets/splash-tablet.png"
+      }
+    }
+  }
+}
+```
+
+## TypeScript
+
+```typescript
+import * as SplashScreen from 'expo-splash-screen';
+
+// Prevent auto-hide
+const prevented: boolean = await SplashScreen.preventAutoHideAsync();
+
+// Hide splash
+const hidden: boolean = await SplashScreen.hideAsync();
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ❌       |
+
+<Note>
+On web, there is no native splash screen. Use a custom loading component instead.
+</Note>
+
+## Best Practices
+
+1. **Call preventAutoHideAsync Early**: Call it at the module level, before any component renders
+2. **Always Hide**: Always call `hideAsync()` in a `finally` block to ensure the splash screen is hidden
+3. **Handle Errors**: Catch and handle errors during loading to prevent stuck splash screen
+4. **Optimize Loading**: Only load critical resources during splash screen
+5. **Test on Device**: Splash screen behavior can differ between simulator and device
+
+<Warning>
+If you never call `SplashScreen.hideAsync()`, your app will remain stuck on the splash screen.
+</Warning>
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/splash-screen/)
+- [Splash Screen Guide](https://docs.expo.dev/guides/splash-screens/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-splash-screen)

@@ -1,0 +1,378 @@
+---
+title: Changelog
+description: How to read the Expo changelog and track version history.
+---
+
+Expo maintains a comprehensive changelog documenting all changes across the SDK and its packages.
+
+## Reading the Changelog
+
+The changelog follows these conventions:
+
+### Version Format
+
+Expo SDK versions follow semantic versioning:
+
+```
+MAJOR.MINOR.PATCH
+```
+
+- **Major** (54.0.0) - Breaking changes and major features
+- **Minor** (54.1.0) - New features, non-breaking
+- **Patch** (54.0.1) - Bug fixes and minor updates
+
+### Release Dates
+
+Each version includes its release date:
+
+```markdown
+## 54.0.0 — 2025-09-10
+```
+
+### Change Categories
+
+Changes are organized by category:
+
+#### 🛠 Breaking Changes
+
+Changes that require code modifications when upgrading:
+
+```markdown
+### 🛠 Breaking changes
+
+- **`expo-notifications`**
+  - Remove deprecated function exports
+  - [android] Make data-only notifications consistent with iOS
+```
+
+<Warning>
+  Always review breaking changes before upgrading.
+</Warning>
+
+#### 🎉 New Features
+
+New APIs, modules, and capabilities:
+
+```markdown
+### 🎉 New features
+
+- **`expo-sqlite`**
+  - Added `loadExtensionAsync` API
+  - Added pre-bundled sqlite-vec extension
+```
+
+#### 🐛 Bug Fixes
+
+Fixed issues and improvements:
+
+```markdown
+### 🐛 Bug fixes
+
+- **`expo-camera`**
+  - Fixed memory leak on Android
+  - Improved autofocus performance on iOS
+```
+
+#### 📚 3rd Party Library Updates
+
+Updates to underlying native dependencies:
+
+```markdown
+### 📚 3rd party library updates
+
+- **`expo-sqlite`**
+  - Updated SQLite to 3.50.3
+  - Updated libSQL SDK to 0.9.11
+```
+
+### Package-Specific Changes
+
+Changes are grouped by package name:
+
+```markdown
+- **`expo-camera`**
+  - [Android] Fixed barcode scanning on Android 14
+  - [iOS] Added new autofocus modes
+  - [Web] Improved camera selection
+```
+
+### Platform Indicators
+
+- `[iOS]` - iOS-specific change
+- `[Android]` - Android-specific change
+- `[Web]` - Web-specific change
+- No indicator means all platforms
+
+## Accessing the Changelog
+
+### Main Changelog
+
+The main changelog documents SDK-level changes:
+
+<Card title="Expo Changelog" icon="github" href="https://github.com/expo/expo/blob/main/CHANGELOG.md">
+  View the complete changelog on GitHub
+</Card>
+
+### Package Changelogs
+
+Individual packages have their own changelogs:
+
+```
+packages/expo-camera/CHANGELOG.md
+packages/expo-location/CHANGELOG.md
+packages/expo-notifications/CHANGELOG.md
+```
+
+View package changelogs in their directories on GitHub:
+
+```
+https://github.com/expo/expo/tree/main/packages/<package-name>/CHANGELOG.md
+```
+
+### Changelog Version Index
+
+The repository includes a version index at `changelogVersions.json`:
+
+```json
+{
+  "54.0.0": "2025-09-10",
+  "53.0.0": "2025-06-15",
+  "52.0.0": "2025-03-20"
+}
+```
+
+## Version History
+
+### SDK 54 (Current)
+
+**Released:** September 2025
+
+**Highlights:**
+- Modern filesystem API in expo-file-system
+- SQLite vector search support
+- Enhanced image picker performance
+- React Server Components improvements
+
+### SDK 53
+
+**Released:** June 2025
+
+**Highlights:**
+- New Expo Router features
+- Camera enhancements
+- Performance improvements
+
+### SDK 52
+
+**Released:** March 2025
+
+**Highlights:**
+- React Native 0.82
+- New modules architecture features
+- Improved development builds
+
+### Earlier Versions
+
+See the [complete version history](https://github.com/expo/expo/blob/main/CHANGELOG.md).
+
+## Breaking Changes by Version
+
+### Finding Breaking Changes
+
+1. Open the [changelog](https://github.com/expo/expo/blob/main/CHANGELOG.md)
+2. Find your target SDK version
+3. Look for the "🛠 Breaking changes" section
+4. Review changes for packages you use
+
+### Example: SDK 54 Breaking Changes
+
+**expo-notifications:**
+- Removed deprecated function exports
+- Changed Android data-only notification behavior
+
+**expo-file-system:**
+- New filesystem API is now default
+- Legacy API moved to `expo-file-system/legacy`
+
+**expo-image-picker:**
+- Web URIs now use blob URLs instead of base64
+- iOS `preferredAssetRepresentationMode` default changed
+
+## Upgrade Guides
+
+### Following the Changelog
+
+When upgrading:
+
+1. **Read breaking changes** for your target version
+2. **Check packages you use** for changes
+3. **Review migration guides** if provided
+4. **Test thoroughly** after upgrading
+
+### Example Upgrade Process
+
+Upgrading from SDK 53 to SDK 54:
+
+```bash
+# 1. Update Expo SDK
+npx expo install expo@latest
+
+# 2. Update all packages
+npx expo install --fix
+
+# 3. Review changelog
+# https://github.com/expo/expo/blob/main/CHANGELOG.md#5400
+
+# 4. Update code for breaking changes
+# (based on changelog)
+
+# 5. Test the app
+npx expo start
+```
+
+## GitHub Release Notes
+
+Expo also publishes release notes on GitHub:
+
+<Card title="Expo Releases" icon="github" href="https://github.com/expo/expo/releases">
+  View all releases with detailed notes
+</Card>
+
+### Release Note Structure
+
+- Overview and highlights
+- Installation instructions
+- Breaking changes summary
+- Known issues
+- Migration guide links
+
+## SDK Release Schedule
+
+Expo typically releases new SDK versions:
+
+- **Major versions:** 3-4 times per year
+- **Patch versions:** As needed for critical fixes
+- **Prerelease versions:** Available for testing
+
+### Support Policy
+
+- Latest SDK version: Fully supported
+- Previous SDK version: Bug fixes for 6 months
+- Older versions: Security fixes only
+
+## Prerelease Versions
+
+Test upcoming features with prerelease versions:
+
+```bash
+# Install prerelease
+npm install expo@next
+```
+
+<Warning>
+  Prerelease versions may be unstable. Use only for testing.
+</Warning>
+
+### Beta Changelog
+
+Beta and RC changes appear in the "Unpublished" section:
+
+```markdown
+## Unpublished
+
+### 🎉 New features
+
+- **`expo-router`**
+  - Added new navigation APIs (beta)
+```
+
+## Deprecation Notices
+
+The changelog highlights deprecated APIs:
+
+```markdown
+### ⚠️ Deprecations
+
+- **`expo-location`**
+  - Deprecated `getCurrentPositionAsync` options
+  - Use `getLastKnownPositionAsync` instead
+```
+
+### Deprecation Timeline
+
+1. **Deprecation announced** - Warning in changelog
+2. **Deprecation warnings** - Runtime/build warnings
+3. **Removal** - Typically in next major version
+
+## Contributing to Changelog
+
+When contributing to Expo:
+
+1. Add changes to package `CHANGELOG.md`
+2. Follow the [Updating Changelogs](https://github.com/expo/expo/blob/main/guides/contributing/Updating%20Changelogs.md) guide
+3. Use consistent formatting
+4. Include PR links and author credits
+
+### Changelog Entry Format
+
+```markdown
+- Description of change. ([#12345](https://github.com/expo/expo/pull/12345) by [@username](https://github.com/username))
+```
+
+## Version Compatibility
+
+### React Native Versions
+
+Each Expo SDK targets a specific React Native version:
+
+| Expo SDK | React Native |
+|----------|-------------|
+| 54.0.0   | 0.83.2      |
+| 53.0.0   | 0.82.0      |
+| 52.0.0   | 0.81.0      |
+
+### Node.js Versions
+
+Supported Node.js versions are listed in release notes:
+
+- Minimum: Node.js 18+
+- Recommended: Node.js 20+ (LTS)
+
+## Automated Change Detection
+
+### Using changelogVersions.json
+
+```js
+const versions = require('@expo/expo/changelogVersions.json');
+
+function getVersionReleaseDate(version) {
+  return versions[version];
+}
+
+console.log(getVersionReleaseDate('54.0.0')); // "2025-09-10"
+```
+
+### CI/CD Integration
+
+Automate changelog checks in CI:
+
+```yaml
+# .github/workflows/check-changelog.yml
+name: Check Changelog
+on: [pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Check for changelog update
+        run: |
+          git diff --name-only origin/main | grep -q "CHANGELOG.md" || \
+          echo "Warning: No changelog entry"
+```
+
+## Related Documentation
+
+- [Upgrading Expo SDK](https://docs.expo.dev/workflow/upgrading-expo-sdk-walkthrough/)
+- [Contributing Guidelines](/reference/community)
+- [GitHub Releases](https://github.com/expo/expo/releases)

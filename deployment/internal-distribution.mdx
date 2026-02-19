@@ -1,0 +1,727 @@
+---
+title: Internal Distribution
+description: Learn how to distribute your app internally to testers using EAS Build, TestFlight, and Google Play Internal Testing.
+---
+
+import { Steps } from '~/components/Steps';
+import { Step } from '~/components/Step';
+import { Warning } from '~/components/Warning';
+import { Tabs, Tab } from '~/components/Tabs';
+
+# Internal Distribution
+
+Internal distribution allows you to share your app with team members and testers before submitting to public app stores. This is essential for quality assurance, stakeholder reviews, and beta testing.
+
+## Distribution Methods Overview
+
+### EAS Build Internal Distribution
+
+**Best for:** Quick sharing with small teams
+
+- Direct download URLs for builds
+- No app store accounts needed for testers
+- Works on both iOS (ad hoc) and Android (APK)
+- Install via QR code or link
+- Up to 100 iOS devices per year (Apple limitation)
+
+### TestFlight (iOS)
+
+**Best for:** Large-scale iOS beta testing
+
+- Up to 10,000 external testers
+- Distributed through App Store infrastructure
+- Automatic updates for testers
+- Crash reports and feedback
+- Requires App Store Connect account
+
+### Google Play Internal Testing (Android)
+
+**Best for:** Android beta testing via Play Store
+
+- Up to 100 internal testers
+- Distributed through Play Store
+- Fast updates (available within minutes)
+- Automatic crash reporting
+- Requires Google Play Console
+
+## EAS Build Internal Distribution
+
+### Setting Up Internal Distribution
+
+<Steps>
+
+<Step>
+
+### Configure Build Profile
+
+Add internal distribution profile to **eas.json**:
+
+```json eas.json
+{
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  }
+}
+```
+
+Setting `"distribution": "internal"` automatically:
+- **Android**: Builds APK (directly installable) instead of AAB
+- **iOS**: Uses ad hoc or enterprise provisioning
+
+</Step>
+
+<Step>
+
+### Register iOS Devices (Ad Hoc Only)
+
+For iOS ad hoc distribution, register test devices:
+
+```bash
+# Register a new device
+eas device:create
+```
+
+This opens a webpage where testers can:
+1. Visit the registration URL
+2. Download configuration profile
+3. Install profile to share UDID
+
+Alternatively, manually add UDID:
+
+```bash
+eas device:create --apple-team-id YOUR_TEAM_ID
+# Enter device name and UDID when prompted
+```
+
+**Find device UDID:**
+- Connect device to Mac
+- Open **Finder** > Select device
+- Click on serial number to show UDID
+- Right-click UDID to copy
+
+</Step>
+
+<Step>
+
+### Create Internal Build
+
+<Tabs>
+<Tab label="Android">
+
+```bash
+eas build --platform android --profile preview
+```
+
+This creates an APK that can be installed directly.
+
+</Tab>
+<Tab label="iOS">
+
+```bash
+eas build --platform ios --profile preview
+```
+
+EAS automatically:
+- Creates ad hoc provisioning profile
+- Includes all registered device UDIDs
+- Signs the build for distribution
+
+</Tab>
+<Tab label="Both">
+
+```bash
+eas build --platform all --profile preview
+```
+
+Builds for both platforms simultaneously.
+
+</Tab>
+</Tabs>
+
+</Step>
+
+<Step>
+
+### Share Build with Testers
+
+After build completes, EAS provides:
+- **Build URL**: `https://expo.dev/accounts/[account]/projects/[project]/builds/[id]`
+- **QR Code**: For easy mobile access
+- **Direct download link**: For installing the app
+
+**To share:**
+
+1. Copy build URL from EAS CLI output
+2. Send to testers via email/Slack
+3. Testers scan QR code or visit URL on device
+4. Click **Install** button
+
+**iOS Installation:**
+- Tap **Install** on build page
+- Confirm installation in Settings
+- Trust enterprise certificate if needed
+
+**Android Installation:**
+- Download APK from build page
+- Allow installation from unknown sources
+- Install APK
+
+</Step>
+
+</Steps>
+
+### Managing Device Access
+
+**List registered devices:**
+
+```bash
+eas device:list
+```
+
+**Remove device:**
+
+```bash
+eas device:delete
+```
+
+This prompts you to select device to remove. Optionally disables it on Apple Developer Portal.
+
+<Warning>
+Disabled devices still count toward Apple's 100-device limit per year per app. Limit resets annually.
+</Warning>
+
+**Rename device:**
+
+```bash
+eas device:rename
+```
+
+Gives friendly names to devices for easier management.
+
+**Add device to existing build:**
+
+After registering new devices, rebuild to include them:
+
+```bash
+eas device:create
+eas build --platform ios --profile preview
+```
+
+### Access Control
+
+By default, internal builds are accessible to anyone with the URL.
+
+**Require authentication:**
+
+1. Go to [Project Settings](https://expo.dev/accounts/[account]/projects/[project]/settings)
+2. Find **Unauthenticated access to internal builds**
+3. Toggle OFF
+
+Now testers must:
+- Have Expo account
+- Be added as collaborators to project
+- Sign in to download builds
+
+**Add collaborators:**
+
+1. Go to project settings
+2. Navigate to **Collaborators**
+3. Add by Expo username or email
+4. Assign role (Admin, Developer, View Only)
+
+## TestFlight Distribution (iOS)
+
+TestFlight is Apple's beta testing platform built into App Store Connect.
+
+### Setting Up TestFlight
+
+<Steps>
+
+<Step>
+
+### Build for TestFlight
+
+TestFlight requires App Store builds (not ad hoc):
+
+```json eas.json
+{
+  "build": {
+    "preview": {
+      "distribution": "store",
+      "channel": "preview",
+      "ios": {
+        "buildConfiguration": "Release"
+      }
+    }
+  }
+}
+```
+
+Build and submit:
+
+```bash
+eas build --platform ios --profile preview --auto-submit
+```
+
+Or submit separately:
+
+```bash
+eas build --platform ios --profile preview
+eas submit --platform ios
+```
+
+</Step>
+
+<Step>
+
+### Wait for Processing
+
+After submission:
+1. Build appears in App Store Connect
+2. Status: **Processing** (10-15 minutes)
+3. Status changes to **Ready to Submit** or **Ready to Test**
+4. Build available in TestFlight
+
+</Step>
+
+<Step>
+
+### Add Internal Testers
+
+**Internal testers** (up to 100):
+- Must be added to App Store Connect
+- Can test immediately without review
+- Receive automatic updates
+
+**To add internal testers:**
+
+1. Go to [App Store Connect](https://appstoreconnect.apple.com/)
+2. Select your app > **TestFlight**
+3. Under **Internal Testing**, click **+** next to **Internal Testers**
+4. Create group or add individual testers
+5. Select build to test
+6. Testers receive email invitation
+
+</Step>
+
+<Step>
+
+### Add External Testers (Optional)
+
+**External testers** (up to 10,000):
+- Anyone with Apple ID
+- Requires Beta App Review (1-2 days)
+- Great for public beta testing
+
+**To add external testers:**
+
+1. Go to **TestFlight** > **External Testing**
+2. Click **+** to create new group
+3. Add build and release notes
+4. Enable **Automatic Distribution** for future builds
+5. Add testers by email
+6. Submit for Beta App Review
+7. After approval, testers receive invitations
+
+</Step>
+
+<Step>
+
+### Testers Install App
+
+Testers need TestFlight app:
+
+1. Install **TestFlight** from App Store
+2. Open invitation email on iOS device
+3. Tap **View in TestFlight**
+4. Tap **Install** or **Update**
+5. App installs like any App Store app
+
+**TestFlight features for testers:**
+- View release notes
+- Send feedback via screenshots
+- Check for updates
+- Stop testing anytime
+
+</Step>
+
+</Steps>
+
+### TestFlight Best Practices
+
+**Release notes:**
+Include clear notes for each build:
+
+```json eas.json
+{
+  "submit": {
+    "preview": {
+      "ios": {
+        "ascAppId": "1234567890",
+        "appleId": "your@email.com"
+      }
+    }
+  }
+}
+```
+
+Add notes in App Store Connect or via EAS:
+
+```bash
+eas submit --platform ios --latest
+# EAS prompts for release notes
+```
+
+**Version management:**
+- Increment build number for each TestFlight upload
+- Keep version number consistent (`1.0.0`) during testing
+- Only increment version for App Store release
+
+**Testing windows:**
+- TestFlight builds expire after 90 days
+- Upload new builds regularly for ongoing testing
+- Testers automatically get updates if enabled
+
+## Google Play Internal Testing (Android)
+
+### Setting Up Internal Testing
+
+<Steps>
+
+<Step>
+
+### Create Internal Testing Track
+
+1. Go to [Google Play Console](https://play.google.com/console/)
+2. Select your app
+3. Navigate to **Testing** > **Internal testing**
+4. Click **Create new release**
+
+</Step>
+
+<Step>
+
+### Build and Submit
+
+Configure submission in **eas.json**:
+
+```json eas.json
+{
+  "build": {
+    "preview": {
+      "distribution": "store",
+      "channel": "preview",
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  },
+  "submit": {
+    "preview": {
+      "android": {
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "internal",
+        "releaseStatus": "completed"
+      }
+    }
+  }
+}
+```
+
+Submit build:
+
+```bash
+# Build and submit
+eas build --platform android --profile preview --auto-submit
+
+# Or submit separately
+eas submit --platform android --profile preview
+```
+
+</Step>
+
+<Step>
+
+### Add Internal Testers
+
+**Create tester list:**
+
+1. Go to **Testing** > **Internal testing**
+2. Click **Testers** tab
+3. Click **Create email list**
+4. Enter list name
+5. Add tester email addresses (comma-separated)
+6. Save list
+
+**Assign list to release:**
+
+1. Go back to **Internal testing**
+2. Under release, click **Manage testers**
+3. Select your email list
+4. Save
+
+</Step>
+
+<Step>
+
+### Share Testing Link
+
+Google Play provides unique opt-in URL:
+
+1. Copy URL from **Internal testing** page
+2. Share link with testers
+3. Testers open link on Android device
+4. Tap **Become a tester**
+5. Download app from Play Store
+
+**Link format:**
+```
+https://play.google.com/apps/internaltest/[encoded-id]
+```
+
+</Step>
+
+</Steps>
+
+### Internal Testing Features
+
+**Fast deployments:**
+- Updates available within minutes
+- No review process for internal track
+- Unlimited releases
+
+**Automatic updates:**
+- Testers get updates via Play Store
+- Standard Play Store update flow
+- Can disable auto-update per app
+
+**Testing limits:**
+- Up to 100 testers on internal track
+- For more testers, use **Closed Testing** (Alpha/Beta)
+
+**Crash reporting:**
+- Automatic crash collection
+- View in Play Console > Quality > Crashes
+- Pre-launch reports available
+
+## Advanced Internal Distribution
+
+### Multiple Testing Tracks
+
+Manage different testing stages:
+
+```json eas.json
+{
+  "build": {
+    "development": {
+      "distribution": "internal",
+      "channel": "development",
+      "android": { "buildType": "apk" }
+    },
+    "staging": {
+      "distribution": "store",
+      "channel": "staging"
+    },
+    "production": {
+      "distribution": "store",
+      "channel": "production"
+    }
+  },
+  "submit": {
+    "staging": {
+      "android": {
+        "track": "internal"
+      },
+      "ios": {
+        "ascAppId": "123456789"
+      }
+    },
+    "production": {
+      "android": {
+        "track": "production"
+      },
+      "ios": {
+        "ascAppId": "123456789"
+      }
+    }
+  }
+}
+```
+
+**Workflow:**
+1. **Development**: EAS internal distribution for quick team testing
+2. **Staging**: TestFlight/Internal Testing for wider QA
+3. **Production**: Full store release
+
+### Automated Internal Releases
+
+Use EAS Workflows to automate internal builds:
+
+```yaml .eas/workflows/preview.yml
+name: Preview Build
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build_preview:
+    name: Build Preview
+    type: build
+    params:
+      platform: all
+      profile: preview
+```
+
+### Using Expo Orbit
+
+[Expo Orbit](https://expo.dev/orbit) is a macOS/Windows menubar app for managing builds:
+
+**Features:**
+- View all EAS builds
+- One-click install to simulator/emulator
+- Download builds locally
+- Launch apps quickly
+- Perfect for team testing
+
+**Install Orbit:**
+
+```bash
+# macOS
+brew install expo-orbit
+
+# Or download from
+https://expo.dev/orbit
+```
+
+### Enterprise Distribution (iOS)
+
+For large organizations with Apple Developer Enterprise Program:
+
+```json eas.json
+{
+  "build": {
+    "enterprise": {
+      "distribution": "internal",
+      "ios": {
+        "enterpriseProvisioning": "universal"
+      }
+    }
+  }
+}
+```
+
+**Benefits:**
+- Unlimited device installations
+- No device UDID management
+- Suitable for internal corporate apps
+- Cannot be distributed on App Store
+
+**Requirements:**
+- Apple Developer Enterprise Program membership ($299/year)
+- DUNS number
+- Legal entity with 100+ employees
+
+## Troubleshooting
+
+### iOS: "Unable to Download App"
+
+**Issue:** Testers can't install ad hoc build
+
+**Solutions:**
+
+1. **Device not registered:**
+   ```bash
+   eas device:list
+   # Verify device UDID is registered
+   ```
+
+2. **Rebuild after adding device:**
+   ```bash
+   eas build --platform ios --profile preview
+   ```
+
+3. **Provisioning profile expired:**
+   - Regenerate credentials
+   - Clear cache and rebuild
+
+### Android: "App not installed"
+
+**Issue:** APK won't install on Android
+
+**Solutions:**
+
+1. **Enable unknown sources:**
+   - Settings > Security > Unknown sources
+   - Or per-app permission on Android 8+
+
+2. **Package conflict:**
+   - Uninstall existing version
+   - Install new APK
+
+3. **Architecture mismatch:**
+   - Ensure APK built for correct architecture
+   - Use universal APK for compatibility
+
+### TestFlight: "Build is missing compliance"
+
+**Issue:** Export compliance warning
+
+**Solution:** Add to **app.json**:
+
+```json
+{
+  "expo": {
+    "ios": {
+      "config": {
+        "usesNonExemptEncryption": false
+      }
+    }
+  }
+}
+```
+
+### Play Console: "Tester can't find app"
+
+**Issue:** Tester visited opt-in link but can't download
+
+**Solutions:**
+
+1. **Check tester is on email list**
+2. **Ensure release is active:**
+   - Status should be "Available"
+   - Not "Draft" or "Halted"
+3. **Wait for propagation:**
+   - Can take 5-10 minutes
+   - Ask tester to refresh Play Store
+
+### Build URL not working
+
+**Issue:** Testers get 404 on build URL
+
+**Solutions:**
+
+1. **Check URL is complete:**
+   - Should include full UUID
+   - Format: `https://expo.dev/accounts/.../builds/[uuid]`
+
+2. **Verify build completed:**
+   ```bash
+   eas build:list
+   ```
+
+3. **Check access controls:**
+   - If authentication required, tester needs Expo account
+   - Add as project collaborator
+
+## Next Steps
+
+- [Over-the-Air Updates](/deployment/over-the-air-updates) - Push updates to testers instantly
+- [Build Configuration](/deployment/build-configuration) - Optimize build profiles
+- [App Stores](/deployment/app-stores) - Graduate from testing to production

@@ -1,0 +1,394 @@
+---
+title: expo-status-bar
+description: Control the appearance of the system status bar for iOS and Android
+---
+
+# expo-status-bar
+
+**Version:** 55.0.3
+
+Provides the same interface as React Native's StatusBar API, but with better defaults for Expo environments and automatic edge-to-edge support.
+
+## Installation
+
+```bash
+npx expo install expo-status-bar
+```
+
+## Usage
+
+```tsx
+import { StatusBar } from 'expo-status-bar';
+
+function App() {
+  return (
+    <>
+      <StatusBar style="auto" />
+      {/* Your app content */}
+    </>
+  );
+}
+```
+
+## API Reference
+
+### StatusBar Component
+
+<ParamField path="style" type="'auto' | 'inverted' | 'light' | 'dark'" default="auto">
+  Sets the color scheme of the status bar
+  
+  - `auto`: Automatically picks based on app color scheme
+  - `inverted`: Opposite of the app color scheme
+  - `light`: White text/icons (for dark backgrounds)
+  - `dark`: Dark text/icons (for light backgrounds)
+  
+  ```tsx
+  <StatusBar style="light" />
+  ```
+</ParamField>
+
+<ParamField path="backgroundColor" type="string" platform="android">
+  **Android only**: Background color of the status bar
+  
+  ```tsx
+  <StatusBar backgroundColor="#000000" />
+  ```
+</ParamField>
+
+<ParamField path="translucent" type="boolean" platform="android">
+  **Android only**: Makes status bar translucent
+  
+  ```tsx
+  <StatusBar translucent />
+  ```
+</ParamField>
+
+<ParamField path="hidden" type="boolean">
+  Hides the status bar
+  
+  ```tsx
+  <StatusBar hidden />
+  ```
+</ParamField>
+
+<ParamField path="networkActivityIndicatorVisible" type="boolean" platform="ios">
+  **iOS only**: Shows network activity indicator
+  
+  ```tsx
+  <StatusBar networkActivityIndicatorVisible />
+  ```
+</ParamField>
+
+<ParamField path="animated" type="boolean">
+  Animates status bar changes
+  
+  ```tsx
+  <StatusBar animated />
+  ```
+</ParamField>
+
+### Imperative API
+
+<ParamField path="setStatusBarStyle(style, animated)" type="(style: StatusBarStyle, animated?: boolean) => void">
+  Sets the status bar style imperatively
+  
+  ```typescript
+  import { setStatusBarStyle } from 'expo-status-bar';
+  
+  setStatusBarStyle('light', true);
+  ```
+</ParamField>
+
+<ParamField path="setStatusBarBackgroundColor(color, animated)" type="(color: string, animated?: boolean) => void" platform="android">
+  **Android only**: Sets status bar background color
+  
+  ```typescript
+  import { setStatusBarBackgroundColor } from 'expo-status-bar';
+  
+  setStatusBarBackgroundColor('#FF0000', true);
+  ```
+</ParamField>
+
+<ParamField path="setStatusBarHidden(hidden, animation)" type="(hidden: boolean, animation?: 'none' | 'fade' | 'slide') => void">
+  Shows or hides the status bar
+  
+  ```typescript
+  import { setStatusBarHidden } from 'expo-status-bar';
+  
+  setStatusBarHidden(true, 'slide');
+  ```
+</ParamField>
+
+<ParamField path="setStatusBarTranslucent(translucent)" type="(translucent: boolean) => void" platform="android">
+  **Android only**: Sets status bar translucency
+  
+  ```typescript
+  import { setStatusBarTranslucent } from 'expo-status-bar';
+  
+  setStatusBarTranslucent(true);
+  ```
+</ParamField>
+
+<ParamField path="setStatusBarNetworkActivityIndicatorVisible(visible)" type="(visible: boolean) => void" platform="ios">
+  **iOS only**: Shows/hides network activity indicator
+  
+  ```typescript
+  import { setStatusBarNetworkActivityIndicatorVisible } from 'expo-status-bar';
+  
+  setStatusBarNetworkActivityIndicatorVisible(true);
+  ```
+</ParamField>
+
+## Examples
+
+### Basic Usage
+
+```tsx
+import { StatusBar } from 'expo-status-bar';
+import { View, Text } from 'react-native';
+
+function App() {
+  return (
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
+      <StatusBar style="light" />
+      <Text style={{ color: '#fff' }}>Dark background, light status bar</Text>
+    </View>
+  );
+}
+```
+
+### Auto Style Based on Theme
+
+```tsx
+import { StatusBar } from 'expo-status-bar';
+import { useColorScheme } from 'react-native';
+
+function App() {
+  return (
+    <>
+      <StatusBar style="auto" />
+      {/* Status bar automatically adjusts to light/dark mode */}
+    </>
+  );
+}
+```
+
+### Screen-Specific Status Bar
+
+```tsx
+import { StatusBar } from 'expo-status-bar';
+import { View } from 'react-native';
+
+function HomeScreen() {
+  return (
+    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <StatusBar style="dark" />
+    </View>
+  );
+}
+
+function ProfileScreen() {
+  return (
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
+      <StatusBar style="light" />
+    </View>
+  );
+}
+```
+
+### Android Translucent Status Bar
+
+```tsx
+import { StatusBar } from 'expo-status-bar';
+import { View, ImageBackground } from 'react-native';
+
+function App() {
+  return (
+    <ImageBackground source={require('./bg.jpg')} style={{ flex: 1 }}>
+      <StatusBar 
+        style="light" 
+        translucent 
+        backgroundColor="transparent" 
+      />
+    </ImageBackground>
+  );
+}
+```
+
+### Hide Status Bar
+
+```tsx
+import { StatusBar } from 'expo-status-bar';
+import { Video } from 'expo-av';
+
+function VideoPlayer() {
+  return (
+    <>
+      <StatusBar hidden />
+      <Video
+        source={require('./video.mp4')}
+        style={{ flex: 1 }}
+        resizeMode="cover"
+      />
+    </>
+  );
+}
+```
+
+### Network Activity Indicator (iOS)
+
+```tsx
+import { StatusBar } from 'expo-status-bar';
+import { useEffect, useState } from 'react';
+
+function App() {
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      try {
+        await fetch('https://api.example.com/data');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  return (
+    <>
+      <StatusBar 
+        style="auto" 
+        networkActivityIndicatorVisible={loading} 
+      />
+    </>
+  );
+}
+```
+
+### Imperative Control
+
+```typescript
+import { 
+  setStatusBarStyle, 
+  setStatusBarHidden,
+  setStatusBarBackgroundColor 
+} from 'expo-status-bar';
+import { Platform } from 'react-native';
+
+function toggleStatusBar() {
+  setStatusBarHidden(true, 'slide');
+  
+  setTimeout(() => {
+    setStatusBarHidden(false, 'slide');
+  }, 2000);
+}
+
+function setDarkMode() {
+  setStatusBarStyle('light', true);
+  
+  if (Platform.OS === 'android') {
+    setStatusBarBackgroundColor('#000000', true);
+  }
+}
+```
+
+### With React Navigation
+
+```tsx
+import { StatusBar } from 'expo-status-bar';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+function LightScreen() {
+  return (
+    <>
+      <StatusBar style="dark" backgroundColor="#ffffff" />
+      {/* Light screen content */}
+    </>
+  );
+}
+
+function DarkScreen() {
+  return (
+    <>
+      <StatusBar style="light" backgroundColor="#000000" />
+      {/* Dark screen content */}
+    </>
+  );
+}
+
+const Stack = createNativeStackNavigator();
+
+function App() {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator>
+        <Stack.Screen name="Light" component={LightScreen} />
+        <Stack.Screen name="Dark" component={DarkScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+```
+
+### Conditional Styling
+
+```tsx
+import { StatusBar } from 'expo-status-bar';
+import { useColorScheme } from 'react-native';
+
+function App() {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
+  return (
+    <>
+      <StatusBar 
+        style={isDark ? 'light' : 'dark'}
+        backgroundColor={isDark ? '#000' : '#fff'}
+      />
+    </>
+  );
+}
+```
+
+## TypeScript
+
+```typescript
+import { StatusBar } from 'expo-status-bar';
+import type { StatusBarStyle } from 'expo-status-bar';
+
+const style: StatusBarStyle = 'light';
+
+<StatusBar style={style} backgroundColor="#000" />;
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ❌       |
+
+## Differences from React Native StatusBar
+
+1. **Better Defaults**: `style="auto"` automatically adapts to color scheme
+2. **Edge-to-Edge Support**: Works correctly with Android edge-to-edge mode
+3. **Simplified API**: Easier to use in Expo projects
+4. **TypeScript**: Better type definitions
+
+## Best Practices
+
+1. **Use "auto" Style**: Let the component automatically adapt to theme
+2. **One Per Screen**: Place one `<StatusBar />` per screen/route
+3. **Match Background**: Status bar style should match screen background
+4. **Test Both Themes**: Test your app in both light and dark modes
+5. **Consider Safe Area**: Use with `react-native-safe-area-context` for proper spacing
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/status-bar/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-status-bar)

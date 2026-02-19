@@ -1,0 +1,605 @@
+---
+title: Creating Native Modules
+description: Create custom native modules with Expo Modules API in Swift and Kotlin.
+---
+
+Expo Modules API provides a modern, type-safe way to write native modules in Swift (iOS) and Kotlin (Android) with minimal boilerplate.
+
+## Overview
+
+Expo modules offer several advantages:
+
+- **Type safety**: Automatic type conversions between JS and native
+- **Modern syntax**: Swift and Kotlin instead of Objective-C and Java
+- **Auto-generated bindings**: No manual bridge code
+- **Shared module API**: Similar API across iOS and Android
+- **Built-in features**: Events, views, lifecycle methods
+
+## Creating a Module
+
+### Project Structure
+
+```
+modules/
+└── my-module/
+    ├── android/
+    │   └── src/main/java/expo/modules/mymodule/
+    │       ├── MyModule.kt
+    │       └── MyModulePackage.kt
+    ├── ios/
+    │   └── MyModule.swift
+    ├── src/
+    │   └── index.ts
+    ├── expo-module.config.json
+    └── package.json
+```
+
+### Initialize Module
+
+```bash
+# Create module from template
+npx create-expo-module my-module
+
+# Or manually
+cd modules
+mkdir my-module
+cd my-module
+npm init
+```
+
+### Configuration
+
+```json title="expo-module.config.json"
+{
+  "platforms": ["ios", "android"],
+  "ios": {
+    "modules": ["MyModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.mymodule.MyModule"]
+  }
+}
+```
+
+```json title="package.json"
+{
+  "name": "my-module",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "expo": {
+    "platforms": ["ios", "android"]
+  }
+}
+```
+
+## iOS Module (Swift)
+
+### Basic Module
+
+```swift title="ios/MyModule.swift"
+import ExpoModulesCore
+
+public class MyModule: Module {
+  public func definition() -> ModuleDefinition {
+    // Module name
+    Name("MyModule")
+
+    // Synchronous function
+    Function("hello") { (name: String) -> String in
+      return "Hello, \(name)!"
+    }
+
+    // Async function
+    AsyncFunction("fetchData") { (url: String) -> [String: Any] in
+      let data = try await URLSession.shared.data(from: URL(string: url)!).0
+      let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+      return json
+    }
+
+    // Function with callback
+    Function("compute") { (value: Int, callback: @escaping (Int) -> Void) in
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+        callback(value * 2)
+      }
+    }
+  }
+}
+```
+
+### Constants
+
+```swift
+public func definition() -> ModuleDefinition {
+  Name("MyModule")
+
+  // Export constants
+  Constants([
+    "API_URL": "https://api.example.com",
+    "VERSION": "1.0.0",
+    "MAX_RETRIES": 3
+  ])
+
+  // Dynamic constants
+  Constants {
+    return [
+      "deviceModel": UIDevice.current.model,
+      "systemVersion": UIDevice.current.systemVersion
+    ]
+  }
+}
+```
+
+### Events
+
+```swift
+public class MyModule: Module {
+  public func definition() -> ModuleDefinition {
+    Name("MyModule")
+
+    // Define events
+    Events("onDataReceived", "onError")
+
+    // Function that sends events
+    Function("startMonitoring") {
+      startMonitor { data in
+        // Send event to JavaScript
+        self.sendEvent("onDataReceived", [
+          "value": data,
+          "timestamp": Date().timeIntervalSince1970
+        ])
+      }
+    }
+  }
+
+  private func startMonitor(callback: @escaping (String) -> Void) {
+    // Monitor implementation
+  }
+}
+```
+
+### View Manager
+
+```swift title="ios/MyCustomView.swift"
+import ExpoModulesCore
+import UIKit
+
+public class MyCustomView: ExpoView {
+  let label = UILabel()
+
+  required init(appContext: AppContext? = nil) {
+    super.init(appContext: appContext)
+    addSubview(label)
+    label.textAlignment = .center
+  }
+
+  public override func layoutSubviews() {
+    super.layoutSubviews()
+    label.frame = bounds
+  }
+}
+
+public class MyModule: Module {
+  public func definition() -> ModuleDefinition {
+    Name("MyModule")
+
+    // Define view
+    View(MyCustomView.self) {
+      // Props
+      Prop("text") { (view: MyCustomView, text: String) in
+        view.label.text = text
+      }
+
+      Prop("color") { (view: MyCustomView, color: UIColor) in
+        view.label.textColor = color
+      }
+
+      // Events
+      Events("onPress")
+
+      // Methods
+      Function("setText") { (view: MyCustomView, text: String) in
+        view.label.text = text
+      }
+    }
+  }
+}
+```
+
+### Lifecycle Methods
+
+```swift
+public class MyModule: Module {
+  public func definition() -> ModuleDefinition {
+    Name("MyModule")
+
+    // Called when module is created
+    OnCreate {
+      print("Module created")
+    }
+
+    // Called when app enters foreground
+    OnAppEntersForeground {
+      print("App entered foreground")
+    }
+
+    // Called when app enters background
+    OnAppEntersBackground {
+      print("App entered background")
+    }
+
+    // Called when module is destroyed
+    OnDestroy {
+      print("Module destroyed")
+    }
+  }
+}
+```
+
+## Android Module (Kotlin)
+
+### Basic Module
+
+```kotlin title="android/src/main/java/expo/modules/mymodule/MyModule.kt"
+package expo.modules.mymodule
+
+import expo.modules.kotlin.modules.Module
+import expo.modules.kotlin.modules.ModuleDefinition
+
+class MyModule : Module() {
+  override fun definition() = ModuleDefinition {
+    // Module name
+    Name("MyModule")
+
+    // Synchronous function
+    Function("hello") { name: String ->
+      "Hello, $name!"
+    }
+
+    // Async function
+    AsyncFunction("fetchData") { url: String ->
+      val response = URL(url).readText()
+      JSONObject(response)
+    }
+
+    // Function with promise
+    AsyncFunction("compute") { value: Int ->
+      // Long running operation
+      withContext(Dispatchers.IO) {
+        delay(1000)
+        value * 2
+      }
+    }
+  }
+}
+```
+
+### Constants
+
+```kotlin
+override fun definition() = ModuleDefinition {
+  Name("MyModule")
+
+  // Export constants
+  Constants(
+    "API_URL" to "https://api.example.com",
+    "VERSION" to "1.0.0",
+    "MAX_RETRIES" to 3
+  )
+
+  // Dynamic constants
+  Constants {
+    mapOf(
+      "deviceModel" to Build.MODEL,
+      "androidVersion" to Build.VERSION.SDK_INT
+    )
+  }
+}
+```
+
+### Events
+
+```kotlin
+class MyModule : Module() {
+  override fun definition() = ModuleDefinition {
+    Name("MyModule")
+
+    // Define events
+    Events("onDataReceived", "onError")
+
+    // Function that sends events
+    Function("startMonitoring") {
+      startMonitor { data ->
+        // Send event to JavaScript
+        sendEvent("onDataReceived", mapOf(
+          "value" to data,
+          "timestamp" to System.currentTimeMillis()
+        ))
+      }
+    }
+  }
+
+  private fun startMonitor(callback: (String) -> Unit) {
+    // Monitor implementation
+  }
+}
+```
+
+### View Manager
+
+```kotlin title="android/src/main/java/expo/modules/mymodule/MyCustomView.kt"
+package expo.modules.mymodule
+
+import android.content.Context
+import android.widget.TextView
+import expo.modules.kotlin.views.ExpoView
+
+class MyCustomView(context: Context) : ExpoView(context) {
+  private val textView = TextView(context).also {
+    it.gravity = android.view.Gravity.CENTER
+    addView(it)
+  }
+
+  fun setText(text: String) {
+    textView.text = text
+  }
+
+  fun setColor(color: Int) {
+    textView.setTextColor(color)
+  }
+}
+```
+
+```kotlin title="android/src/main/java/expo/modules/mymodule/MyModule.kt"
+override fun definition() = ModuleDefinition {
+  Name("MyModule")
+
+  // Define view
+  View(MyCustomView::class) {
+    // Props
+    Prop("text") { view: MyCustomView, text: String ->
+      view.setText(text)
+    }
+
+    Prop("color") { view: MyCustomView, color: Int ->
+      view.setColor(color)
+    }
+
+    // Events
+    Events("onPress")
+
+    // Methods
+    Function("setText") { view: MyCustomView, text: String ->
+      view.setText(text)
+    }
+  }
+}
+```
+
+### Lifecycle Methods
+
+```kotlin
+override fun definition() = ModuleDefinition {
+  Name("MyModule")
+
+  // Called when module is created
+  OnCreate {
+    Log.d("MyModule", "Module created")
+  }
+
+  // Called when activity is resumed
+  OnActivityEntersForeground {
+    Log.d("MyModule", "Activity entered foreground")
+  }
+
+  // Called when activity is paused
+  OnActivityEntersBackground {
+    Log.d("MyModule", "Activity entered background")
+  }
+
+  // Called when module is destroyed
+  OnDestroy {
+    Log.d("MyModule", "Module destroyed")
+  }
+}
+```
+
+## JavaScript Interface
+
+### TypeScript Definitions
+
+```typescript title="src/index.ts"
+import { requireNativeModule, EventEmitter } from 'expo-modules-core';
+
+const MyModule = requireNativeModule('MyModule');
+
+export interface MyModuleEvents {
+  onDataReceived: (event: { value: string; timestamp: number }) => void;
+  onError: (event: { message: string }) => void;
+}
+
+const emitter = new EventEmitter(MyModule);
+
+export function hello(name: string): string {
+  return MyModule.hello(name);
+}
+
+export async function fetchData(url: string): Promise<any> {
+  return await MyModule.fetchData(url);
+}
+
+export function startMonitoring(): void {
+  MyModule.startMonitoring();
+}
+
+export function addDataListener(
+  listener: MyModuleEvents['onDataReceived']
+): { remove: () => void } {
+  return emitter.addListener('onDataReceived', listener);
+}
+
+// Constants
+export const API_URL: string = MyModule.API_URL;
+export const VERSION: string = MyModule.VERSION;
+```
+
+### React Component
+
+```typescript title="src/MyCustomView.tsx"
+import { requireNativeViewManager } from 'expo-modules-core';
+import React from 'react';
+import { ViewProps } from 'react-native';
+
+const NativeView = requireNativeViewManager('MyModule');
+
+export interface MyCustomViewProps extends ViewProps {
+  text?: string;
+  color?: string;
+  onPress?: () => void;
+}
+
+export function MyCustomView(props: MyCustomViewProps) {
+  return <NativeView {...props} />;
+}
+```
+
+## Type Conversions
+
+Expo Modules API automatically converts types:
+
+<table>
+  <thead>
+    <tr>
+      <th>JavaScript</th>
+      <th>Swift</th>
+      <th>Kotlin</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>string</td>
+      <td>String</td>
+      <td>String</td>
+    </tr>
+    <tr>
+      <td>number</td>
+      <td>Int, Double</td>
+      <td>Int, Double</td>
+    </tr>
+    <tr>
+      <td>boolean</td>
+      <td>Bool</td>
+      <td>Boolean</td>
+    </tr>
+    <tr>
+      <td>Array</td>
+      <td>[Any]</td>
+      <td>List&lt;Any&gt;</td>
+    </tr>
+    <tr>
+      <td>Object</td>
+      <td>[String: Any]</td>
+      <td>Map&lt;String, Any&gt;</td>
+    </tr>
+    <tr>
+      <td>null</td>
+      <td>nil</td>
+      <td>null</td>
+    </tr>
+  </tbody>
+</table>
+
+## Testing Native Modules
+
+### Swift Tests
+
+```swift title="ios/Tests/MyModuleTests.swift"
+import XCTest
+@testable import MyModule
+
+class MyModuleTests: XCTestCase {
+  func testHello() {
+    let module = MyModule()
+    let result = module.hello(name: "World")
+    XCTAssertEqual(result, "Hello, World!")
+  }
+}
+```
+
+### Kotlin Tests
+
+```kotlin title="android/src/test/java/expo/modules/mymodule/MyModuleTest.kt"
+package expo.modules.mymodule
+
+import org.junit.Test
+import org.junit.Assert.*
+
+class MyModuleTest {
+  @Test
+  fun testHello() {
+    val module = MyModule()
+    val result = module.hello("World")
+    assertEquals("Hello, World!", result)
+  }
+}
+```
+
+## Best Practices
+
+### 1. Error Handling
+
+```swift
+AsyncFunction("riskyOperation") { () -> String in
+  throw MyModuleException("Something went wrong")
+}
+```
+
+```kotlin
+AsyncFunction("riskyOperation") {
+  throw ModuleException("Something went wrong")
+}
+```
+
+### 2. Thread Safety
+
+```swift
+Function("doWork") {
+  DispatchQueue.main.async {
+    // UI work on main thread
+  }
+}
+```
+
+```kotlin
+AsyncFunction("doWork") {
+  withContext(Dispatchers.Main) {
+    // UI work on main thread
+  }
+}
+```
+
+### 3. Memory Management
+
+```swift
+OnDestroy {
+  // Clean up resources
+  timer?.invalidate()
+  observer?.removeObserver(self)
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Prebuild" icon="folder" href="/development/prebuild">
+    Generate native projects
+  </Card>
+  <Card title="Build Properties" icon="gear" href="/development/build-properties">
+    Configure native builds
+  </Card>
+  <Card title="Debugging" icon="bug" href="/development/debugging">
+    Debug native code
+  </Card>
+  <Card title="Creating Builds" icon="hammer" href="/development/creating-builds">
+    Build with native modules
+  </Card>
+</CardGroup>

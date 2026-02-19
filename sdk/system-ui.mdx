@@ -1,0 +1,159 @@
+---
+title: expo-system-ui
+description: Control system UI appearance including background colors and user interface style
+---
+
+# expo-system-ui
+
+**Version:** 55.0.6
+
+Interact with system UI elements like the background color of the root view.
+
+## Installation
+
+```bash
+npx expo install expo-system-ui
+```
+
+## Usage
+
+```typescript
+import * as SystemUI from 'expo-system-ui';
+
+// Set root view background color
+await SystemUI.setBackgroundColorAsync('#000000');
+
+// Get current background color
+const color = await SystemUI.getBackgroundColorAsync();
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="SystemUI.setBackgroundColorAsync(color)" type="(color: string) => Promise<void>">
+  Sets the root view background color
+  
+  ```typescript
+  await SystemUI.setBackgroundColorAsync('#FF0000');
+  await SystemUI.setBackgroundColorAsync('rgba(255, 0, 0, 0.5)');
+  ```
+  
+  <Note>
+  This affects the background color visible during screen transitions or when content doesn't fill the screen.
+  </Note>
+</ParamField>
+
+<ParamField path="SystemUI.getBackgroundColorAsync()" type="() => Promise<string | null>">
+  Gets the current root view background color
+  
+  ```typescript
+  const color = await SystemUI.getBackgroundColorAsync();
+  console.log('Background color:', color);
+  ```
+</ParamField>
+
+## Examples
+
+### Dark Mode Background
+
+```tsx
+import * as SystemUI from 'expo-system-ui';
+import { useEffect } from 'react';
+import { useColorScheme } from 'react-native';
+
+function App() {
+  const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    const setSystemColors = async () => {
+      if (colorScheme === 'dark') {
+        await SystemUI.setBackgroundColorAsync('#000000');
+      } else {
+        await SystemUI.setBackgroundColorAsync('#FFFFFF');
+      }
+    };
+
+    setSystemColors();
+  }, [colorScheme]);
+
+  return <YourApp />;
+}
+```
+
+### Custom Themed Background
+
+```tsx
+import * as SystemUI from 'expo-system-ui';
+import { useEffect } from 'react';
+
+function ThemedApp({ theme }) {
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync(theme.backgroundColor);
+  }, [theme]);
+
+  return <YourApp />;
+}
+```
+
+### Match Navigation Background
+
+```tsx
+import * as SystemUI from 'expo-system-ui';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { useColorScheme } from 'react-native';
+import { useEffect } from 'react';
+
+function App() {
+  const colorScheme = useColorScheme();
+  const theme = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
+
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync(theme.colors.background);
+  }, [theme]);
+
+  return (
+    <NavigationContainer theme={theme}>
+      {/* Your navigation */}
+    </NavigationContainer>
+  );
+}
+```
+
+## Platform Support
+
+| Platform | Supported | Notes |
+|----------|-----------|-------|
+| iOS      | ✅       | Root view background |
+| Android  | ✅       | Root view background |
+| Web      | ✅       | Document body background |
+
+## Configuration
+
+You can also set the initial background color in `app.json`:
+
+```json
+{
+  "expo": {
+    "backgroundColor": "#FFFFFF",
+    "ios": {
+      "backgroundColor": "#FFFFFF"
+    },
+    "android": {
+      "backgroundColor": "#FFFFFF"
+    }
+  }
+}
+```
+
+## Best Practices
+
+1. **Match App Theme**: Keep system UI colors consistent with your app theme
+2. **Handle Dark Mode**: Update system UI when color scheme changes
+3. **Initial Color**: Set via `app.json` to avoid flash on launch
+4. **Smooth Transitions**: Update system UI before screen transitions
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/system-ui)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-system-ui)

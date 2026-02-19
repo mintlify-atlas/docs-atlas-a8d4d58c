@@ -1,0 +1,110 @@
+---
+title: expo-contacts
+description: Access the phone's system contacts database
+---
+
+# expo-contacts
+
+**Version:** 55.0.6
+
+Provides access to the phone's system contacts. Read, create, update, and delete contacts.
+
+## Installation
+
+```bash
+npx expo install expo-contacts
+```
+
+## Usage
+
+```typescript
+import * as Contacts from 'expo-contacts';
+
+// Request permissions
+const { status } = await Contacts.requestPermissionsAsync();
+if (status === 'granted') {
+  // Get contacts
+  const { data } = await Contacts.getContactsAsync({
+    fields: [Contacts.Fields.PhoneNumbers],
+  });
+
+  if (data.length > 0) {
+    console.log('First contact:', data[0]);
+  }
+}
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="requestPermissionsAsync()" type="() => Promise<PermissionResponse>">
+  Requests contacts permissions
+</ParamField>
+
+<ParamField path="getContactsAsync(contactQuery)" type="(contactQuery?: ContactQuery) => Promise<ContactResponse>">
+  Fetches contacts
+  
+  ```typescript
+  const { data, hasNextPage, hasPreviousPage } = await Contacts.getContactsAsync({
+    pageSize: 20,
+    fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
+  });
+  ```
+</ParamField>
+
+<ParamField path="getContactByIdAsync(id, fields)" type="(id: string, fields?: Field[]) => Promise<Contact | undefined>">
+  Gets contact by ID
+</ParamField>
+
+<ParamField path="addContactAsync(contact, containerId)" type="(contact: Contact, containerId?: string) => Promise<string>">
+  Adds new contact
+  
+  ```typescript
+  const id = await Contacts.addContactAsync({
+    [Contacts.Fields.FirstName]: 'John',
+    [Contacts.Fields.LastName]: 'Doe',
+    [Contacts.Fields.PhoneNumbers]: [{
+      number: '555-1234',
+      label: 'mobile',
+    }],
+  });
+  ```
+</ParamField>
+
+<ParamField path="updateContactAsync(contact)" type="(contact: Contact) => Promise<string>">
+  Updates existing contact
+</ParamField>
+
+<ParamField path="removeContactAsync(contactId)" type="(contactId: string) => Promise<void>">
+  Removes contact
+</ParamField>
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ❌       |
+
+## Permissions
+
+**iOS:** Add to `app.json`:
+```json
+{
+  "plugins": [
+    [
+      "expo-contacts",
+      {
+        "contactsPermission": "Allow app to access your contacts."
+      }
+    ]
+  ]
+}
+```
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/contacts/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-contacts)

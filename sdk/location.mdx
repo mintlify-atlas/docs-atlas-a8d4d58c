@@ -1,0 +1,212 @@
+---
+title: expo-location
+description: Access device location and geolocation information
+---
+
+# expo-location
+
+**Version:** 55.0.7
+
+Allows reading geolocation information from the device. Your app can poll for the current location or subscribe to location update events.
+
+## Installation
+
+```bash
+npx expo install expo-location
+```
+
+## Usage
+
+```typescript
+import * as Location from 'expo-location';
+
+// Request permissions
+const { status } = await Location.requestForegroundPermissionsAsync();
+if (status !== 'granted') {
+  return;
+}
+
+// Get current location
+const location = await Location.getCurrentPositionAsync({});
+console.log(location.coords.latitude, location.coords.longitude);
+
+// Watch location
+const subscription = await Location.watchPositionAsync(
+  {
+    accuracy: Location.Accuracy.High,
+    distanceInterval: 10,
+  },
+  (location) => {
+    console.log('Location update:', location.coords);
+  }
+);
+```
+
+## API Reference
+
+### Permissions
+
+<ParamField path="requestForegroundPermissionsAsync()" type="() => Promise<LocationPermissionResponse>">
+  Requests foreground location permissions
+</ParamField>
+
+<ParamField path="requestBackgroundPermissionsAsync()" type="() => Promise<LocationPermissionResponse>">
+  Requests background location permissions
+</ParamField>
+
+### Get Location
+
+<ParamField path="getCurrentPositionAsync(options)" type="(options?: LocationOptions) => Promise<LocationObject>">
+  Gets current position
+  
+  ```typescript
+  const location = await Location.getCurrentPositionAsync({
+    accuracy: Location.Accuracy.Balanced,
+  });
+  ```
+</ParamField>
+
+<ParamField path="getLastKnownPositionAsync(options)" type="(options?: LastKnownPositionOptions) => Promise<LocationObject | null>">
+  Gets last known position
+</ParamField>
+
+<ParamField path="watchPositionAsync(options, callback)" type="(options: LocationOptions, callback: LocationCallback) => Promise<LocationSubscription>">
+  Watches position changes
+  
+  ```typescript
+  const sub = await Location.watchPositionAsync(
+    { accuracy: Location.Accuracy.High },
+    (loc) => console.log(loc)
+  );
+  
+  // Later: sub.remove();
+  ```
+</ParamField>
+
+### Geocoding
+
+<ParamField path="geocodeAsync(address)" type="(address: string) => Promise<LocationGeocodedAddress[]>">
+  Converts address to coordinates
+  
+  ```typescript
+  const results = await Location.geocodeAsync('1 Infinite Loop, Cupertino');
+  console.log(results[0].latitude, results[0].longitude);
+  ```
+</ParamField>
+
+<ParamField path="reverseGeocodeAsync(location)" type="(location: LocationGeocodedLocation) => Promise<LocationGeocodedAddress[]>">
+  Converts coordinates to address
+  
+  ```typescript
+  const addresses = await Location.reverseGeocodeAsync({
+    latitude: 37.33,
+    longitude: -122.03,
+  });
+  console.log(addresses[0].city, addresses[0].street);
+  ```
+</ParamField>
+
+## Examples
+
+### Get Current Location
+
+```typescript
+import * as Location from 'expo-location';
+
+async function getCurrentLocation() {
+  const { status } = await Location.requestForegroundPermissionsAsync();
+  
+  if (status !== 'granted') {
+    alert('Permission denied');
+    return;
+  }
+
+  const location = await Location.getCurrentPositionAsync({
+    accuracy: Location.Accuracy.High,
+  });
+
+  console.log('Current location:', {
+    latitude: location.coords.latitude,
+    longitude: location.coords.longitude,
+    accuracy: location.coords.accuracy,
+  });
+}
+```
+
+### Track User Location
+
+```tsx
+import * as Location from 'expo-location';
+import { useState, useEffect } from 'react';
+import { View, Text } from 'react-native';
+
+export default function LocationTracker() {
+  const [location, setLocation] = useState<Location.LocationObject | null>(null);
+
+  useEffect(() => {
+    let subscription: Location.LocationSubscription;
+
+    async function startTracking() {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+
+      subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.Balanced,
+          distanceInterval: 10,
+        },
+        (newLocation) => {
+          setLocation(newLocation);
+        }
+      );
+    }
+
+    startTracking();
+
+    return () => {
+      subscription?.remove();
+    };
+  }, []);
+
+  if (!location) {
+    return <Text>Getting location...</Text>;
+  }
+
+  return (
+    <View>
+      <Text>Latitude: {location.coords.latitude}</Text>
+      <Text>Longitude: {location.coords.longitude}</Text>
+      <Text>Accuracy: {location.coords.accuracy}m</Text>
+    </View>
+  );
+}
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ✅       |
+
+## Permissions
+
+**iOS:** Add to `app.json`:
+```json
+{
+  "ios": {
+    "infoPlist": {
+      "NSLocationWhenInUseUsageDescription": "Allow app to use location",
+      "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow app to use location"
+    }
+  }
+}
+```
+
+**Android:** Permissions automatically added.
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/location/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-location)

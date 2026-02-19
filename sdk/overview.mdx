@@ -1,0 +1,178 @@
+---
+title: Expo SDK Overview
+description: A comprehensive collection of native modules for React Native and Expo applications
+---
+
+# Expo SDK Overview
+
+The Expo SDK is a collection of 100+ native modules that provide access to device and system functionality for React Native and Expo applications. Each module is designed to work seamlessly across iOS, Android, and web platforms.
+
+## What is the Expo SDK?
+
+The Expo SDK provides:
+
+- **Native API Access**: Direct access to device features like camera, sensors, file system, and more
+- **Cross-Platform**: Write once, run on iOS, Android, and web
+- **TypeScript Support**: Full type definitions for all APIs
+- **Modular Architecture**: Install only the modules you need
+- **Auto-Configuration**: Most modules auto-configure with `npx expo prebuild`
+
+## Module Categories
+
+### Core Modules
+Foundational modules for app architecture and configuration:
+- `expo-modules-core` - Module API architecture
+- `expo-constants` - System and app constants
+- `expo-asset` - Asset management
+- `expo-file-system` - File system access
+- `expo-font` - Custom font loading
+
+### UI Components
+Pre-built UI components with native performance:
+- `expo-camera` - Camera access and capture
+- `expo-image` - High-performance image component
+- `expo-video` - Video playback
+- `expo-blur` - Native blur effects
+- `expo-symbols` - SF Symbols for iOS
+
+### Device APIs
+Access to device hardware and system information:
+- `expo-device` - Device information
+- `expo-battery` - Battery status
+- `expo-sensors` - Accelerometer, gyroscope, etc.
+- `expo-haptics` - Haptic feedback
+- `expo-brightness` - Screen brightness control
+
+### Data & Storage
+- `expo-secure-store` - Encrypted storage
+- `expo-sqlite` - SQLite database
+- `expo-file-system` - File operations
+
+### Media
+- `expo-camera` - Photo and video capture
+- `expo-image-picker` - Select from gallery
+- `expo-media-library` - Access photo library
+- `expo-audio` - Audio playback and recording
+
+### Communication
+- `expo-notifications` - Push notifications
+- `expo-sharing` - System share sheet
+- `expo-sms` - Send SMS messages
+- `expo-mail-composer` - Compose emails
+
+## Installation
+
+### Install Individual Modules
+
+```bash
+npx expo install expo-camera expo-image expo-file-system
+```
+
+### Auto-Configuration
+
+Most modules automatically configure native projects:
+
+```bash
+npx expo prebuild
+```
+
+This generates `ios/` and `android/` directories with all required native configuration.
+
+## Basic Usage
+
+```typescript
+import * as Device from 'expo-device';
+import { Image } from 'expo-image';
+import * as FileSystem from 'expo-file-system';
+
+function App() {
+  // Get device info
+  const deviceName = Device.deviceName;
+  
+  // Use high-performance image
+  return (
+    <Image 
+      source={{ uri: 'https://example.com/image.jpg' }}
+      style={{ width: 200, height: 200 }}
+    />
+  );
+}
+```
+
+## Version Compatibility
+
+### SDK Versioning
+
+Each Expo SDK version is tied to specific React Native versions:
+
+| Expo SDK | React Native | Release Date |
+|----------|--------------|-------------|
+| SDK 55   | 0.83.x      | Feb 2024    |
+| SDK 54   | 0.82.x      | Jan 2024    |
+| SDK 53   | 0.81.x      | Dec 2023    |
+
+### Module Versions
+
+When you install modules with `npx expo install`, the correct versions are automatically selected based on your Expo SDK version.
+
+```bash
+# Automatically installs compatible versions
+npx expo install expo-camera expo-image
+```
+
+## Platform Support
+
+Most modules support iOS, Android, and web:
+
+- **iOS**: Full native implementation
+- **Android**: Full native implementation  
+- **Web**: JavaScript implementation or polyfill
+
+<Note>
+Check individual module documentation for specific platform support details.
+</Note>
+
+## TypeScript Support
+
+All modules include full TypeScript definitions:
+
+```typescript
+import * as FileSystem from 'expo-file-system';
+
+// Fully typed
+const info: FileSystem.FileInfo = await FileSystem.getInfoAsync(
+  FileSystem.documentDirectory + 'test.txt'
+);
+```
+
+## Bare React Native
+
+Expo modules work in bare React Native projects:
+
+```bash
+npx install-expo-modules@latest
+npx expo install expo-camera
+```
+
+## Module Architecture
+
+Expo modules are built on `expo-modules-core`, which provides:
+
+- **Swift API**: Write iOS modules in Swift
+- **Kotlin API**: Write Android modules in Kotlin
+- **JavaScript API**: Consistent JavaScript interface
+- **Auto-Linking**: Automatic native module discovery
+
+See [expo-modules-core](/sdk/modules-core) for architecture details.
+
+## Resources
+
+- [API Reference](https://docs.expo.dev/versions/latest/)
+- [GitHub Repository](https://github.com/expo/expo)
+- [Expo Documentation](https://docs.expo.dev/)
+
+## Next Steps
+
+- Explore [Core Modules](/sdk/modules-core)
+- Browse [UI Components](/sdk/camera)
+- Learn about [Device APIs](/sdk/device)

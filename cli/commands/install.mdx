@@ -1,0 +1,402 @@
+---
+title: expo install
+description: Install packages with versions compatible with your Expo SDK.
+---
+
+The `expo install` command installs npm packages with versions that are compatible with your Expo SDK version. It ensures that all installed packages work together correctly.
+
+## Usage
+
+```bash
+npx expo install <packages...> [options]
+```
+
+The command is also aliased as `expo add`:
+
+```bash
+npx expo add <packages...> [options]
+```
+
+## Arguments
+
+<ParamField path="packages" type="string[]">
+  One or more package names to install. Separate multiple packages with spaces.
+</ParamField>
+
+## Options
+
+<ParamField path="--check" type="boolean">
+  Check which installed packages need to be updated. Shows packages with incompatible versions.
+</ParamField>
+
+<ParamField path="--fix" type="boolean">
+  Automatically update any invalid package versions to compatible versions.
+</ParamField>
+
+<ParamField path="--dev" type="boolean">
+  Save the dependencies as devDependencies instead of dependencies.
+</ParamField>
+
+<ParamField path="--npm" type="boolean">
+  Use npm to install dependencies. Default when `package-lock.json` exists.
+</ParamField>
+
+<ParamField path="--yarn" type="boolean">
+  Use Yarn to install dependencies. Default when `yarn.lock` exists.
+</ParamField>
+
+<ParamField path="--pnpm" type="boolean">
+  Use pnpm to install dependencies. Default when `pnpm-lock.yaml` exists.
+</ParamField>
+
+<ParamField path="--bun" type="boolean">
+  Use bun to install dependencies. Default when `bun.lock` or `bun.lockb` exists.
+</ParamField>
+
+<ParamField path="--json" type="boolean">
+  Output dependency information in JSON format. Use with `--check` flag.
+</ParamField>
+
+## Why Use expo install?
+
+### Version Compatibility
+
+Expo SDK versions require specific versions of certain packages. Using `expo install` ensures you get compatible versions automatically.
+
+For example, if you're on Expo SDK 51:
+- `react-native` must be version `0.74.x`
+- `react` must be version `18.2.0`
+- `react-dom` must be version `18.2.0`
+
+Running `expo install react-native` installs the correct version for your SDK.
+
+### How It Differs from npm/yarn/pnpm
+
+| Feature | npm/yarn/pnpm | expo install |
+|---------|---------------|--------------|
+| Version resolution | Latest or specified | SDK-compatible |
+| Compatibility check | ✗ | ✓ |
+| Expo packages | Manual version lookup | Automatic |
+| Native modules | May be incompatible | Guaranteed compatible |
+
+## Examples
+
+### Install Single Package
+
+Install a package with compatible version:
+
+```bash
+npx expo install react-native-maps
+```
+
+### Install Multiple Packages
+
+Install several packages at once:
+
+```bash
+npx expo install expo-camera expo-location expo-permissions
+```
+
+### Install as Dev Dependencies
+
+Install packages as devDependencies:
+
+```bash
+npx expo install --dev @types/react typescript
+```
+
+### Check for Updates
+
+Check which packages need updating:
+
+```bash
+npx expo install --check
+```
+
+Output example:
+```
+Checking installed packages...
+
+Found outdated dependencies:
+  react-native: installed 0.73.0, expected 0.74.0
+  expo: installed 50.0.0, expected 51.0.0
+
+Run 'npx expo install --fix' to update them.
+```
+
+### Fix Incompatible Versions
+
+Automatically update incompatible packages:
+
+```bash
+npx expo install --fix
+```
+
+This updates all packages to their SDK-compatible versions.
+
+### JSON Output
+
+Get machine-readable output:
+
+```bash
+npx expo install --check --json
+```
+
+Useful for CI/CD scripts and automation.
+
+### Specify Package Manager
+
+Use a specific package manager:
+
+<CodeGroup>
+
+```bash npm
+npx expo install --npm react-native-gesture-handler
+```
+
+```bash yarn
+npx expo install --yarn react-native-gesture-handler
+```
+
+```bash pnpm
+npx expo install --pnpm react-native-gesture-handler
+```
+
+```bash bun
+npx expo install --bun react-native-gesture-handler
+```
+
+</CodeGroup>
+
+### Pass Additional Arguments
+
+Pass arguments to the underlying package manager:
+
+```bash
+npx expo install react -- --verbose
+```
+
+This runs:
+```bash
+yarn add react --verbose
+```
+
+Or with npm:
+```bash
+npm install react --verbose
+```
+
+## Common Use Cases
+
+### After Upgrading Expo SDK
+
+After upgrading to a new SDK version, fix all dependencies:
+
+```bash
+npx expo install --fix
+```
+
+### Adding New Features
+
+When adding packages with native code:
+
+```bash
+npx expo install expo-image-picker
+```
+
+This ensures the version works with your current SDK.
+
+### Setting Up New Project
+
+Install common dependencies:
+
+```bash
+npx expo install react-native-gesture-handler react-native-reanimated react-native-screens
+```
+
+### Development Dependencies
+
+Add TypeScript and types:
+
+```bash
+npx expo install --dev typescript @types/react @types/react-native
+```
+
+## Package Manager Detection
+
+Expo CLI automatically detects your package manager based on lock files:
+
+| Lock File | Package Manager |
+|-----------|----------------|
+| `package-lock.json` | npm |
+| `yarn.lock` | yarn |
+| `pnpm-lock.yaml` | pnpm |
+| `bun.lockb` or `bun.lock` | bun |
+
+You can override this with the package manager flags.
+
+## Version Resolution
+
+### How Versions Are Determined
+
+1. **Check SDK Version** - Reads `expo` package version
+2. **Query API** - Fetches compatible versions from Expo API
+3. **Resolve Version** - Determines the correct version for each package
+4. **Install** - Runs package manager with resolved versions
+
+### Expo Packages
+
+For packages in the `expo-*` namespace:
+- Version matches your Expo SDK (e.g., SDK 51 → expo-camera 15.0.x)
+- Always compatible with your SDK
+
+### Third-Party Packages
+
+For packages like `react-native-*`:
+- Versions are tested and verified by Expo
+- May differ from the latest npm version
+- Guaranteed to work with your SDK
+
+### Latest Versions
+
+For packages without SDK requirements:
+- Installs the latest version from npm
+- Same behavior as `npm install`
+
+## Checking Compatibility
+
+### Before Installation
+
+Check if a package is compatible:
+
+```bash
+npx expo install --check <package-name>
+```
+
+### After Installation
+
+Verify all packages are compatible:
+
+```bash
+npx expo install --check
+```
+
+### In CI/CD
+
+Add a check step to your pipeline:
+
+```bash
+npx expo install --check --json
+```
+
+Exit code will be non-zero if packages are incompatible.
+
+## Troubleshooting
+
+### Peer Dependency Warnings
+
+Expo install resolves peer dependencies automatically. If you see warnings:
+
+```bash
+npx expo install --fix
+```
+
+### Version Conflicts
+
+If manual version is specified in package.json:
+
+```json
+{
+  "dependencies": {
+    "react-native": "^0.73.0"
+  }
+}
+```
+
+`expo install --fix` will update to the compatible version.
+
+### Package Not Found
+
+If a package isn't in the Expo compatibility list:
+- It will install the latest version from npm
+- May require manual version management
+- Check package documentation for React Native compatibility
+
+### Network Issues
+
+If the API request fails:
+- Falls back to latest versions
+- Use `--npm` with specific version: `npm install package@version`
+- Check internet connection
+
+## Best Practices
+
+### Always Use expo install for Expo Packages
+
+```bash
+# Good
+npx expo install expo-camera
+
+# Avoid
+npm install expo-camera
+```
+
+### Use for React Native Core Packages
+
+```bash
+# Good
+npx expo install react-native
+
+# Avoid
+npm install react-native
+```
+
+### Check Before Upgrading SDK
+
+```bash
+# After updating expo version
+npx expo install --check
+npx expo install --fix
+```
+
+### In Version Control
+
+Commit lock files to ensure consistency:
+- `package-lock.json` (npm)
+- `yarn.lock` (yarn)
+- `pnpm-lock.yaml` (pnpm)
+- `bun.lockb` (bun)
+
+## CI/CD Integration
+
+### GitHub Actions Example
+
+```yaml
+- name: Install dependencies
+  run: npm install
+
+- name: Check package compatibility
+  run: npx expo install --check
+
+- name: Fix incompatible packages
+  run: npx expo install --fix
+```
+
+### Pre-commit Hook
+
+Add to `.husky/pre-commit`:
+
+```bash
+#!/bin/sh
+npx expo install --check || {
+  echo "Package versions are incompatible with Expo SDK"
+  echo "Run: npx expo install --fix"
+  exit 1
+}
+```
+
+## Additional Resources
+
+- Compatible versions are maintained in the [Expo SDK reference](https://docs.expo.dev/versions/latest/)
+- Version API endpoint: `https://exp.host/--/api/v2/versions`
+- Report compatibility issues on [GitHub](https://github.com/expo/expo/issues)

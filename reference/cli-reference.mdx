@@ -1,0 +1,674 @@
+---
+title: Expo CLI Reference
+description: Complete command reference for the Expo CLI with all commands, options, and examples.
+---
+
+The Expo CLI is a command-line tool for developing, building, and deploying Expo and React Native apps. It's included when you install the `expo` package.
+
+## Installation
+
+The CLI is automatically installed with the `expo` package:
+
+```bash
+npm install expo
+```
+
+## Usage
+
+Run Expo CLI commands using `npx`:
+
+```bash
+npx expo <command> [options]
+```
+
+## Global Options
+
+These options are available for all commands:
+
+<ParamField path="--version" type="flag">
+  Output the version number
+</ParamField>
+
+<ParamField path="--help" type="flag">
+  Display help for command
+</ParamField>
+
+<ParamField path="--non-interactive" type="flag">
+  Disable interactive prompts
+</ParamField>
+
+## Commands
+
+### expo start
+
+Start a development server for your project.
+
+```bash
+npx expo start [options]
+```
+
+<Accordion title="Options">
+
+<ParamField path="--clear, -c" type="flag">
+  Clear the Metro bundler cache
+</ParamField>
+
+<ParamField path="--dev" type="flag" default="true">
+  Enable development mode
+</ParamField>
+
+<ParamField path="--no-dev" type="flag">
+  Disable development mode (production mode)
+</ParamField>
+
+<ParamField path="--minify" type="flag">
+  Minify JavaScript
+</ParamField>
+
+<ParamField path="--https" type="flag">
+  Start server with HTTPS
+</ParamField>
+
+<ParamField path="--port, -p" type="number" default="8081">
+  Port to run Metro bundler on
+</ParamField>
+
+<ParamField path="--host" type="string">
+  Hostname for the dev server
+</ParamField>
+
+<ParamField path="--tunnel" type="flag">
+  Start a tunnel for the dev server
+</ParamField>
+
+<ParamField path="--lan" type="flag">
+  Use LAN connection
+</ParamField>
+
+<ParamField path="--localhost" type="flag">
+  Use localhost connection
+</ParamField>
+
+<ParamField path="--offline" type="flag">
+  Skip network requests
+</ParamField>
+
+<ParamField path="--dev-client" type="flag">
+  Start for a development build (non-Expo Go)
+</ParamField>
+
+<ParamField path="--go" type="flag">
+  Start for Expo Go
+</ParamField>
+
+<ParamField path="--scheme" type="string">
+  Custom URL scheme to use when launching the app
+</ParamField>
+
+<ParamField path="--android" type="flag">
+  Open on connected Android device/emulator
+</ParamField>
+
+<ParamField path="--ios" type="flag">
+  Open on connected iOS simulator
+</ParamField>
+
+<ParamField path="--web" type="flag">
+  Open in web browser
+</ParamField>
+
+<ParamField path="--private-key-path" type="string">
+  Path to private key for code signing
+</ParamField>
+
+</Accordion>
+
+**Examples:**
+
+```bash
+# Start development server
+npx expo start
+
+# Start with cache cleared
+npx expo start --clear
+
+# Start and open on iOS
+npx expo start --ios
+
+# Start for development build
+npx expo start --dev-client
+
+# Start with tunnel
+npx expo start --tunnel
+```
+
+### expo run:ios
+
+Build and run the iOS app locally.
+
+```bash
+npx expo run:ios [options]
+```
+
+<Accordion title="Options">
+
+<ParamField path="--device" type="string">
+  Device name or UDID to build for
+</ParamField>
+
+<ParamField path="--scheme" type="string">
+  Xcode scheme to build
+</ParamField>
+
+<ParamField path="--configuration" type="string" default="Debug">
+  Xcode configuration (Debug or Release)
+</ParamField>
+
+<ParamField path="--port, -p" type="number" default="8081">
+  Port to run Metro bundler on
+</ParamField>
+
+<ParamField path="--no-bundler" type="flag">
+  Skip starting the Metro bundler
+</ParamField>
+
+</Accordion>
+
+**Examples:**
+
+```bash
+# Run on default simulator
+npx expo run:ios
+
+# Run on specific device
+npx expo run:ios --device "iPhone 15 Pro"
+
+# Run release build
+npx expo run:ios --configuration Release
+```
+
+### expo run:android
+
+Build and run the Android app locally.
+
+```bash
+npx expo run:android [options]
+```
+
+<Accordion title="Options">
+
+<ParamField path="--device" type="string">
+  Device name or ID to build for
+</ParamField>
+
+<ParamField path="--variant" type="string" default="debug">
+  Build variant to use (debug or release)
+</ParamField>
+
+<ParamField path="--port, -p" type="number" default="8081">
+  Port to run Metro bundler on
+</ParamField>
+
+<ParamField path="--no-bundler" type="flag">
+  Skip starting the Metro bundler
+</ParamField>
+
+</Accordion>
+
+**Examples:**
+
+```bash
+# Run on default device/emulator
+npx expo run:android
+
+# Run release variant
+npx expo run:android --variant release
+
+# Run on specific device
+npx expo run:android --device emulator-5554
+```
+
+### expo prebuild
+
+Generate native iOS and Android directories for your project.
+
+```bash
+npx expo prebuild [options]
+```
+
+<Accordion title="Options">
+
+<ParamField path="--clean" type="flag">
+  Delete native directories before generating
+</ParamField>
+
+<ParamField path="--npm" type="flag">
+  Use npm to install dependencies
+</ParamField>
+
+<ParamField path="--yarn" type="flag">
+  Use Yarn to install dependencies
+</ParamField>
+
+<ParamField path="--no-install" type="flag">
+  Skip installing npm packages
+</ParamField>
+
+<ParamField path="--template" type="string">
+  Template to use for native directories
+</ParamField>
+
+<ParamField path="--platform" type="string">
+  Platforms to generate (ios, android, or all)
+</ParamField>
+
+</Accordion>
+
+**Examples:**
+
+```bash
+# Generate native projects
+npx expo prebuild
+
+# Clean and regenerate
+npx expo prebuild --clean
+
+# Generate only iOS
+npx expo prebuild --platform ios
+```
+
+<Note>
+  Running `prebuild` will create `ios/` and `android/` directories. These should be added to `.gitignore` if using continuous native generation.
+</Note>
+
+### expo install
+
+Install a package and ensure compatible versions with your Expo SDK.
+
+```bash
+npx expo install <packages...> [options]
+```
+
+<Accordion title="Options">
+
+<ParamField path="--check" type="flag">
+  Check which packages need to be updated
+</ParamField>
+
+<ParamField path="--fix" type="flag">
+  Automatically update packages to compatible versions
+</ParamField>
+
+<ParamField path="--npm" type="flag">
+  Use npm
+</ParamField>
+
+<ParamField path="--yarn" type="flag">
+  Use Yarn
+</ParamField>
+
+<ParamField path="--pnpm" type="flag">
+  Use pnpm
+</ParamField>
+
+<ParamField path="--bun" type="flag">
+  Use Bun
+</ParamField>
+
+</Accordion>
+
+**Examples:**
+
+```bash
+# Install packages
+npx expo install expo-camera expo-location
+
+# Check for incompatible versions
+npx expo install --check
+
+# Fix incompatible versions
+npx expo install --fix
+```
+
+### expo export
+
+Export the app for deployment.
+
+```bash
+npx expo export [options]
+```
+
+<Accordion title="Options">
+
+<ParamField path="--platform" type="string" default="all">
+  Platforms to export (ios, android, web, or all)
+</ParamField>
+
+<ParamField path="--output-dir" type="string" default="dist">
+  Output directory for exported files
+</ParamField>
+
+<ParamField path="--clear" type="flag">
+  Clear Metro bundler cache
+</ParamField>
+
+<ParamField path="--dev" type="flag">
+  Export in development mode
+</ParamField>
+
+<ParamField path="--minify" type="flag">
+  Minify JavaScript
+</ParamField>
+
+</Accordion>
+
+**Examples:**
+
+```bash
+# Export all platforms
+npx expo export
+
+# Export only web
+npx expo export --platform web
+
+# Export to custom directory
+npx expo export --output-dir build
+```
+
+### expo build
+
+Deprecated. Use EAS Build instead.
+
+```bash
+eas build
+```
+
+See [EAS Build documentation](https://docs.expo.dev/build/introduction/).
+
+### expo config
+
+Show the project config.
+
+```bash
+npx expo config [options]
+```
+
+<Accordion title="Options">
+
+<ParamField path="--type" type="string">
+  Type of config to show (public, prebuild, or introspect)
+</ParamField>
+
+<ParamField path="--full" type="flag">
+  Show full config including internal values
+</ParamField>
+
+</Accordion>
+
+**Examples:**
+
+```bash
+# Show config
+npx expo config
+
+# Show public config
+npx expo config --type public
+
+# Show full config
+npx expo config --full
+```
+
+### expo customize
+
+Generate template files for customization.
+
+```bash
+npx expo customize [files...]
+```
+
+**Examples:**
+
+```bash
+# Show available files
+npx expo customize
+
+# Generate tsconfig.json
+npx expo customize tsconfig.json
+
+# Generate metro.config.js
+npx expo customize metro.config.js
+```
+
+### expo doctor
+
+Check the project for potential issues.
+
+```bash
+npx expo doctor [options]
+```
+
+<Accordion title="Options">
+
+<ParamField path="--fix-dependencies" type="flag">
+  Fix dependency version issues
+</ParamField>
+
+</Accordion>
+
+**Examples:**
+
+```bash
+# Check for issues
+npx expo doctor
+
+# Fix dependency issues
+npx expo doctor --fix-dependencies
+```
+
+### expo lint
+
+Run ESLint on the project.
+
+```bash
+npx expo lint [options] [path]
+```
+
+<Accordion title="Options">
+
+<ParamField path="--fix" type="flag">
+  Automatically fix problems
+</ParamField>
+
+</Accordion>
+
+**Examples:**
+
+```bash
+# Lint project
+npx expo lint
+
+# Lint and fix
+npx expo lint --fix
+```
+
+### expo login
+
+Login to your Expo account.
+
+```bash
+npx expo login [options]
+```
+
+<Accordion title="Options">
+
+<ParamField path="--username" type="string">
+  Username
+</ParamField>
+
+<ParamField path="--password" type="string">
+  Password
+</ParamField>
+
+<ParamField path="--sso" type="flag">
+  Login with SSO
+</ParamField>
+
+</Accordion>
+
+### expo logout
+
+Logout from your Expo account.
+
+```bash
+npx expo logout
+```
+
+### expo whoami
+
+Show the currently authenticated account.
+
+```bash
+npx expo whoami
+```
+
+### expo register
+
+Create a new Expo account.
+
+```bash
+npx expo register
+```
+
+## Autolinking
+
+### expo-modules-autolinking
+
+Search for Expo modules installed in the project.
+
+```bash
+npx expo-modules-autolinking [command]
+```
+
+**Commands:**
+
+- `search` - Search for Expo modules
+- `resolve` - Resolve module configuration
+- `verify` - Verify autolinking setup
+
+## Environment Variables
+
+### EXPO_DEBUG
+
+Enable debug logging:
+
+```bash
+EXPO_DEBUG=1 npx expo start
+```
+
+### EXPO_NO_TELEMETRY
+
+Disable anonymous usage telemetry:
+
+```bash
+EXPO_NO_TELEMETRY=1 npx expo start
+```
+
+### EXPO_USE_METRO_WORKSPACE_ROOT
+
+Use the workspace root as the Metro project root:
+
+```bash
+EXPO_USE_METRO_WORKSPACE_ROOT=1 npx expo start
+```
+
+## Package Manager Detection
+
+The CLI automatically detects your package manager:
+
+- Checks for lockfiles (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `bun.lockb`)
+- Falls back to npm if no lockfile is found
+- Can be overridden with `--npm`, `--yarn`, `--pnpm`, or `--bun` flags
+
+## Interactive Prompts
+
+The CLI includes interactive prompts for better developer experience:
+
+- **Device selection**: Choose which device to run on
+- **Package installation**: Confirm installing missing packages
+- **Config generation**: Confirm creating config files
+- **Platform selection**: Choose which platforms to target
+
+Disable prompts with `--non-interactive` for CI/CD environments.
+
+## Keyboard Shortcuts
+
+When the dev server is running, use these shortcuts:
+
+- `a` - Open on Android
+- `i` - Open on iOS
+- `w` - Open in web browser
+- `r` - Reload app
+- `m` - Toggle menu
+- `j` - Open debugger
+- `c` - Clear Metro cache
+- `d` - Show dev menu
+- `?` - Show all commands
+
+## Troubleshooting
+
+### Clear Cache
+
+If you encounter bundling issues:
+
+```bash
+npx expo start --clear
+```
+
+### Reset Project
+
+For persistent issues:
+
+```bash
+# Delete native directories
+rm -rf ios android
+
+# Clear cache
+rm -rf node_modules
+npx expo start --clear
+
+# Reinstall dependencies
+npm install
+
+# Regenerate native projects
+npx expo prebuild
+```
+
+### View Logs
+
+Enable debug logging:
+
+```bash
+EXPO_DEBUG=1 npx expo start
+```
+
+## Related Commands
+
+### EAS CLI
+
+For building and deploying with EAS:
+
+```bash
+npm install -g eas-cli
+eas build
+eas submit
+eas update
+```
+
+See [EAS CLI documentation](https://docs.expo.dev/eas/).
+
+## Related Documentation
+
+- [App Configuration](/reference/config-schema)
+- [Metro Configuration](/reference/metro-config)
+- [Development Builds](https://docs.expo.dev/develop/development-builds/introduction/)
+- [EAS Build](https://docs.expo.dev/build/introduction/)

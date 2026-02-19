@@ -1,0 +1,530 @@
+---
+title: Environment Variables
+description: Learn how to use environment variables in your Expo app.
+---
+
+Environment variables allow you to customize your app's behavior based on the environment (development, staging, production) without changing code.
+
+## Types of Environment Variables
+
+Expo supports two types of environment variables:
+
+1. **Build-time variables** - Available during app configuration and bundling
+2. **Runtime variables** - Available in your app code at runtime
+
+## EXPO_PUBLIC Variables
+
+Variables prefixed with `EXPO_PUBLIC_` are embedded in your JavaScript bundle and available at runtime.
+
+### Setting EXPO_PUBLIC Variables
+
+Create a `.env` file in your project root:
+
+```bash .env
+EXPO_PUBLIC_API_URL=https://api.example.com
+EXPO_PUBLIC_API_KEY=abc123
+EXPO_PUBLIC_ENVIRONMENT=development
+```
+
+### Accessing at Runtime
+
+Access these variables directly in your code:
+
+```javascript
+// Available everywhere in your app
+const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+const apiKey = process.env.EXPO_PUBLIC_API_KEY;
+
+console.log('API URL:', apiUrl);
+// Output: API URL: https://api.example.com
+```
+
+Example in a React component:
+
+```javascript
+import { useEffect } from 'react';
+
+export default function App() {
+  useEffect(() => {
+    const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+    
+    fetch(`${apiUrl}/data`)
+      .then(res => res.json())
+      .then(data => console.log(data));
+  }, []);
+  
+  return <Text>App</Text>;
+}
+```
+
+### Important Notes
+
+- Variables must be prefixed with `EXPO_PUBLIC_`
+- They are embedded in your JavaScript bundle
+- They are visible in your published code
+- Never use them for secrets or sensitive data
+- Changes require restarting the dev server
+
+## Build-Time Variables
+
+Variables without the `EXPO_PUBLIC_` prefix are only available during configuration and bundling.
+
+### In App Configuration
+
+Use in `app.config.js`:
+
+```javascript app.config.js
+export default {
+  name: process.env.APP_NAME || 'My App',
+  slug: 'my-app',
+  version: process.env.APP_VERSION || '1.0.0',
+  extra: {
+    // This makes it available at runtime via Constants
+    apiUrl: process.env.API_URL,
+    buildTime: new Date().toISOString()
+  },
+  ios: {
+    bundleIdentifier: process.env.IOS_BUNDLE_ID || 'com.example.app'
+  },
+  android: {
+    package: process.env.ANDROID_PACKAGE || 'com.example.app'
+  }
+};
+```
+
+### Accessing Build-Time Variables
+
+Through `expo-constants`:
+
+```javascript
+import Constants from 'expo-constants';
+
+const apiUrl = Constants.expoConfig.extra.apiUrl;
+const buildTime = Constants.expoConfig.extra.buildTime;
+
+console.log('Built at:', buildTime);
+```
+
+## .env Files
+
+Expo CLI automatically loads environment variables from `.env` files.
+
+### File Priority
+
+Expo loads `.env` files in this order (later files override earlier):
+
+1. `.env` - Default for all environments
+2. `.env.local` - Local overrides (git ignored)
+3. `.env.${ENV}` - Environment-specific (e.g., `.env.production`)
+4. `.env.${ENV}.local` - Local environment overrides
+
+### Example Setup
+
+Create multiple `.env` files:
+
+```bash .env
+# Default values
+EXPO_PUBLIC_API_URL=https://api.example.com
+EXPO_PUBLIC_ANALYTICS_ENABLED=false
+```
+
+```bash .env.development
+# Development overrides
+EXPO_PUBLIC_API_URL=http://localhost:3000
+EXPO_PUBLIC_ANALYTICS_ENABLED=false
+```
+
+```bash .env.production
+# Production values
+EXPO_PUBLIC_API_URL=https://api.production.com
+EXPO_PUBLIC_ANALYTICS_ENABLED=true
+```
+
+```bash .env.local
+# Local overrides (not committed to git)
+EXPO_PUBLIC_API_URL=http://192.168.1.100:3000
+EXPO_PUBLIC_DEBUG_MODE=true
+```
+
+### Specifying Environment
+
+Set the `ENV` variable to load specific files:
+
+```bash
+# Load .env.production
+ENV=production npx expo start
+
+# Load .env.staging
+ENV=staging npx expo export
+```
+
+### .gitignore
+
+Don't commit sensitive files:
+
+```gitignore .gitignore
+# Environment files with secrets
+.env.local
+.env.*.local
+
+# Keep template
+!.env.example
+```
+
+Create a template:
+
+```bash .env.example
+EXPO_PUBLIC_API_URL=
+EXPO_PUBLIC_API_KEY=
+```
+
+## Setting Variables
+
+### Command Line
+
+Set variables inline:
+
+```bash
+EXPO_PUBLIC_API_URL=https://api.example.com npx expo start
+```
+
+Multiple variables:
+
+```bash
+EXPO_PUBLIC_API_URL=https://api.example.com \
+EXPO_PUBLIC_DEBUG=true \
+npx expo start
+```
+
+### Shell Configuration
+
+Add to your shell profile (`.bashrc`, `.zshrc`):
+
+```bash
+export EXPO_PUBLIC_API_URL=https://api.example.com
+export EXPO_PUBLIC_DEBUG=true
+```
+
+### Cross-Platform Scripts
+
+Use `cross-env` for Windows compatibility:
+
+Install:
+
+```bash
+npm install --save-dev cross-env
+```
+
+Use in `package.json`:
+
+```json
+{
+  "scripts": {
+    "start": "cross-env EXPO_PUBLIC_API_URL=https://api.example.com expo start",
+    "start:prod": "cross-env ENV=production expo start"
+  }
+}
+```
+
+## CI/CD Environments
+
+### GitHub Actions
+
+Set environment variables in workflows:
+
+```yaml .github/workflows/build.yml
+name: Build
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        
+      - name: Install dependencies
+        run: npm install
+        
+      - name: Build app
+        env:
+          EXPO_PUBLIC_API_URL: ${{ secrets.API_URL }}
+          EXPO_PUBLIC_API_KEY: ${{ secrets.API_KEY }}
+        run: npx expo export
+```
+
+Store secrets in GitHub repository settings.
+
+### GitLab CI
+
+```yaml .gitlab-ci.yml
+build:
+  script:
+    - npm install
+    - export EXPO_PUBLIC_API_URL=$API_URL
+    - npx expo export
+  variables:
+    EXPO_PUBLIC_ENVIRONMENT: "production"
+```
+
+### EAS Build
+
+Use `eas.json`:
+
+```json eas.json
+{
+  "build": {
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.production.com",
+        "EXPO_PUBLIC_ENVIRONMENT": "production"
+      }
+    },
+    "staging": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.staging.com",
+        "EXPO_PUBLIC_ENVIRONMENT": "staging"
+      }
+    }
+  }
+}
+```
+
+Or use EAS Secrets:
+
+```bash
+eas secret:create --name EXPO_PUBLIC_API_KEY --value abc123
+```
+
+## Expo CLI Environment Variables
+
+Expo CLI itself uses environment variables for configuration:
+
+### Common CLI Variables
+
+<ParamField path="EXPO_DEBUG" type="boolean">
+  Enable debug logging: `EXPO_DEBUG=1`
+</ParamField>
+
+<ParamField path="EXPO_OFFLINE" type="boolean">
+  Skip network requests: `EXPO_OFFLINE=1`
+</ParamField>
+
+<ParamField path="CI" type="boolean">
+  Run in non-interactive CI mode: `CI=1`
+</ParamField>
+
+<ParamField path="EXPO_NO_TELEMETRY" type="boolean">
+  Disable analytics: `EXPO_NO_TELEMETRY=1`
+</ParamField>
+
+<ParamField path="EXPO_NO_CACHE" type="boolean">
+  Disable API caches: `EXPO_NO_CACHE=1`
+</ParamField>
+
+<ParamField path="PORT" type="number">
+  Metro bundler port: `PORT=8082`
+</ParamField>
+
+### Metro Configuration
+
+<ParamField path="EXPO_NO_METRO_LAZY" type="boolean">
+  Disable lazy bundling: `EXPO_NO_METRO_LAZY=1`
+</ParamField>
+
+<ParamField path="EXPO_OVERRIDE_METRO_CONFIG" type="string">
+  Path to custom Metro config: `EXPO_OVERRIDE_METRO_CONFIG=./metro.custom.js`
+</ParamField>
+
+### Development Features
+
+<ParamField path="EXPO_EDITOR" type="string">
+  Default editor to open: `EXPO_EDITOR=code`
+</ParamField>
+
+<ParamField path="EXPO_ATLAS" type="boolean">
+  Enable bundle analysis: `EXPO_ATLAS=1`
+</ParamField>
+
+<ParamField path="LOG_EVENTS" type="string">
+  Log debug events: `LOG_EVENTS=1` or `LOG_EVENTS=events.log`
+</ParamField>
+
+## Security Best Practices
+
+### Never Commit Secrets
+
+Don't put sensitive data in:
+- Version control
+- EXPO_PUBLIC variables
+- Client-side code
+
+### Use Backend APIs
+
+Store secrets on your backend:
+
+```javascript
+// Bad - API key in client
+const API_KEY = process.env.EXPO_PUBLIC_API_KEY;
+fetch(`https://api.example.com/data?key=${API_KEY}`);
+
+// Good - API key on backend
+fetch('https://api.example.com/data', {
+  headers: {
+    'Authorization': `Bearer ${userToken}`
+  }
+});
+```
+
+### Validate on Server
+
+Never trust client-provided values:
+
+```javascript
+// Client
+const environment = process.env.EXPO_PUBLIC_ENVIRONMENT;
+
+// Server should verify independently
+// Don't rely on client-provided environment
+```
+
+### Rotate Secrets
+
+Regularly rotate API keys and tokens:
+
+1. Generate new secrets
+2. Update environment variables
+3. Rebuild and deploy app
+4. Revoke old secrets
+
+## Common Patterns
+
+### Feature Flags
+
+Control features with environment variables:
+
+```javascript
+const FEATURES = {
+  newUI: process.env.EXPO_PUBLIC_FEATURE_NEW_UI === 'true',
+  betaMode: process.env.EXPO_PUBLIC_FEATURE_BETA === 'true'
+};
+
+function App() {
+  return (
+    <>
+      {FEATURES.newUI ? <NewUI /> : <OldUI />}
+      {FEATURES.betaMode && <BetaFeatures />}
+    </>
+  );
+}
+```
+
+### Environment Detection
+
+Detect current environment:
+
+```javascript
+const ENV = process.env.EXPO_PUBLIC_ENVIRONMENT || 'development';
+
+const config = {
+  development: {
+    apiUrl: 'http://localhost:3000',
+    debug: true
+  },
+  staging: {
+    apiUrl: 'https://api.staging.com',
+    debug: true
+  },
+  production: {
+    apiUrl: 'https://api.production.com',
+    debug: false
+  }
+}[ENV];
+
+export default config;
+```
+
+### API Configuration
+
+Configure APIs per environment:
+
+```javascript
+const API_CONFIG = {
+  baseURL: process.env.EXPO_PUBLIC_API_URL,
+  timeout: parseInt(process.env.EXPO_PUBLIC_API_TIMEOUT || '5000'),
+  headers: {
+    'X-App-Version': process.env.EXPO_PUBLIC_APP_VERSION
+  }
+};
+
+const api = axios.create(API_CONFIG);
+```
+
+## Troubleshooting
+
+### Variables Not Available
+
+If variables aren't working:
+
+1. **Check prefix**: Must start with `EXPO_PUBLIC_`
+2. **Restart dev server**: Changes require restart
+3. **Check .env file**: Must be in project root
+4. **Verify file name**: Exact match (`.env`, not `env.txt`)
+
+### Variables Undefined at Runtime
+
+```javascript
+// May be undefined if not set
+const value = process.env.EXPO_PUBLIC_API_URL;
+
+// Provide default
+const value = process.env.EXPO_PUBLIC_API_URL || 'https://api.example.com';
+```
+
+### Build-Time vs Runtime
+
+Build-time variables won't update without rebuilding:
+
+```bash
+# Change in .env takes effect after restart
+npx expo start --clear
+```
+
+### CI/CD Not Working
+
+Ensure environment variables are set in CI:
+
+```yaml
+# Set in CI environment
+env:
+  EXPO_PUBLIC_API_URL: ${{ secrets.API_URL }}
+```
+
+## TypeScript Support
+
+Add type definitions:
+
+```typescript env.d.ts
+declare global {
+  namespace NodeJS {
+    interface ProcessEnv {
+      EXPO_PUBLIC_API_URL: string;
+      EXPO_PUBLIC_API_KEY: string;
+      EXPO_PUBLIC_ENVIRONMENT: 'development' | 'staging' | 'production';
+    }
+  }
+}
+
+export {};
+```
+
+Use with type safety:
+
+```typescript
+const apiUrl: string = process.env.EXPO_PUBLIC_API_URL;
+const env: 'development' | 'staging' | 'production' = 
+  process.env.EXPO_PUBLIC_ENVIRONMENT;
+```

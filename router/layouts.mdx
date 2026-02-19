@@ -1,0 +1,685 @@
+---
+title: Layouts
+description: Learn how to create shared layouts with _layout files and nest navigators
+---
+
+# Layouts
+
+Layouts allow you to share UI and navigation structure across multiple routes. They're defined using `_layout` files and wrap all routes in their directory.
+
+## What Are Layouts?
+
+A layout is a component that wraps child routes. It can:
+- Provide shared navigation structure (Stack, Tabs, Drawer)
+- Share UI elements like headers or footers
+- Manage state across child routes
+- Control screen transitions
+
+## Creating a Layout
+
+Create a `_layout.tsx` file in any directory:
+
+```tsx app/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function RootLayout() {
+  return <Stack />;
+}
+```
+
+This layout applies to all routes in the `app` directory.
+
+## Layout Types
+
+### Stack Layout
+
+Provides native stack navigation with headers:
+
+```tsx app/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function Layout() {
+  return (
+    <Stack
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: '#f4511e',
+        },
+        headerTintColor: '#fff',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+      }}
+    />
+  );
+}
+```
+
+### Tabs Layout
+
+Provides bottom tab navigation:
+
+```tsx app/(tabs)/_layout.tsx
+import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+
+export default function TabLayout() {
+  return (
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: '#f4511e',
+        headerShown: false,
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person" size={size} color={color} />
+          ),
+        }}
+      />
+    </Tabs>
+  );
+}
+```
+
+### Drawer Layout
+
+Provides side drawer navigation:
+
+```tsx app/_layout.tsx
+import { Drawer } from 'expo-router/drawer';
+
+export default function DrawerLayout() {
+  return (
+    <Drawer
+      screenOptions={{
+        drawerStyle: {
+          backgroundColor: '#c6cbef',
+          width: 240,
+        },
+      }}
+    >
+      <Drawer.Screen
+        name="index"
+        options={{
+          drawerLabel: 'Home',
+          title: 'Home',
+        }}
+      />
+      <Drawer.Screen
+        name="settings"
+        options={{
+          drawerLabel: 'Settings',
+          title: 'Settings',
+        }}
+      />
+    </Drawer>
+  );
+}
+```
+
+## Nested Layouts
+
+Layouts can be nested to create complex navigation structures:
+
+```
+app/
+  _layout.tsx           # Root stack
+  index.tsx
+  (tabs)/
+    _layout.tsx         # Tab navigator
+    index.tsx           # Home tab
+    profile/
+      _layout.tsx       # Profile stack
+      index.tsx
+      settings.tsx
+```
+
+### Root Layout
+
+```tsx app/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function RootLayout() {
+  return (
+    <Stack>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+    </Stack>
+  );
+}
+```
+
+### Tab Layout
+
+```tsx app/(tabs)/_layout.tsx
+import { Tabs } from 'expo-router';
+
+export default function TabLayout() {
+  return (
+    <Tabs screenOptions={{ headerShown: false }}>
+      <Tabs.Screen name="index" options={{ title: 'Home' }} />
+      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+    </Tabs>
+  );
+}
+```
+
+### Nested Stack Layout
+
+```tsx app/(tabs)/profile/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function ProfileLayout() {
+  return (
+    <Stack>
+      <Stack.Screen name="index" options={{ title: 'Profile' }} />
+      <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+    </Stack>
+  );
+}
+```
+
+## Slot Component
+
+Use `<Slot />` to render child routes without a navigator:
+
+```tsx app/_layout.tsx
+import { Slot } from 'expo-router';
+import { View } from 'react-native';
+
+export default function Layout() {
+  return (
+    <View style={{ flex: 1 }}>
+      <Header />
+      <Slot />
+      <Footer />
+    </View>
+  );
+}
+```
+
+From the source (`Navigator.tsx:92-127`):
+
+```typescript
+/**
+ * Renders the currently selected content.
+ */
+export function Slot(props: SlotProps) {
+  const context = useNavigatorContext();
+  const { state, descriptors } = context;
+  const current = state.routes[state.index];
+  const descriptor = descriptors[current.key];
+  return descriptor.render();
+}
+```
+
+## Screen Configuration
+
+Configure individual screens within layouts:
+
+```tsx app/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function Layout() {
+  return (
+    <Stack>
+      <Stack.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          headerShown: true,
+        }}
+      />
+      <Stack.Screen
+        name="details"
+        options={{
+          title: 'Details',
+          headerBackTitle: 'Back',
+          presentation: 'modal',
+        }}
+      />
+      <Stack.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          headerLargeTitle: true,
+        }}
+      />
+    </Stack>
+  );
+}
+```
+
+## Dynamic Screen Options
+
+Set screen options from within the route:
+
+```tsx app/profile.tsx
+import { Stack } from 'expo-router';
+import { View, Text } from 'react-native';
+
+export default function Profile() {
+  return (
+    <>
+      <Stack.Screen
+        options={{
+          title: 'My Profile',
+          headerRight: () => (
+            <Button title="Edit" onPress={() => {}} />
+          ),
+        }}
+      />
+      <View>
+        <Text>Profile Content</Text>
+      </View>
+    </>
+  );
+}
+```
+
+## Shared State
+
+Share state across routes using React Context:
+
+```tsx app/_layout.tsx
+import { Stack } from 'expo-router';
+import { createContext, useContext, useState } from 'react';
+
+type ThemeContextType = {
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
+};
+
+export const ThemeContext = createContext<ThemeContextType>(null!);
+
+export function useTheme() {
+  return useContext(ThemeContext);
+}
+
+export default function RootLayout() {
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+  };
+  
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      <Stack
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: theme === 'light' ? '#fff' : '#000',
+          },
+          headerTintColor: theme === 'light' ? '#000' : '#fff',
+        }}
+      />
+    </ThemeContext.Provider>
+  );
+}
+```
+
+Use in child routes:
+
+```tsx app/settings.tsx
+import { useTheme } from './_layout';
+import { Button } from 'react-native';
+
+export default function Settings() {
+  const { theme, toggleTheme } = useTheme();
+  
+  return (
+    <Button
+      title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+      onPress={toggleTheme}
+    />
+  );
+}
+```
+
+## Layout Groups
+
+Use route groups to apply different layouts without affecting URLs:
+
+```
+app/
+  (auth)/
+    _layout.tsx         # Auth layout (no tabs)
+    login.tsx           → /login
+    register.tsx        → /register
+  (tabs)/
+    _layout.tsx         # Main app layout (with tabs)
+    index.tsx           → /
+    profile.tsx         → /profile
+```
+
+```tsx app/(auth)/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function AuthLayout() {
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="login" />
+      <Stack.Screen name="register" />
+    </Stack>
+  );
+}
+```
+
+## Initial Route Name
+
+Set the initial route for a layout:
+
+```tsx app/(tabs)/_layout.tsx
+import { Tabs } from 'expo-router';
+
+export const unstable_settings = {
+  initialRouteName: 'home',
+};
+
+export default function TabLayout() {
+  return (
+    <Tabs>
+      <Tabs.Screen name="home" />
+      <Tabs.Screen name="profile" />
+      <Tabs.Screen name="settings" />
+    </Tabs>
+  );
+}
+```
+
+From test file (`navigation.test.ios.tsx:21-56`):
+
+```typescript
+renderRouter({
+  '(one,two)/_layout': {
+    unstable_settings: {
+      initialRouteName: 'apple',
+      two: {
+        initialRouteName: 'orange',
+      },
+    },
+    default: () => <Tabs />,
+  },
+  '(one,two)/apple': () => <Text testID="apple">Apple</Text>,
+  '(two)/banana': () => <Text testID="banana">Banana</Text>,
+  '(one,two)/orange': () => <Text testID="orange">Orange</Text>,
+});
+```
+
+## Custom Navigator
+
+Create a custom navigator with `Navigator` component:
+
+```tsx app/(custom)/_layout.tsx
+import { Navigator, Slot } from 'expo-router';
+import { View, StyleSheet } from 'react-native';
+
+export default function CustomLayout() {
+  return (
+    <View style={styles.container}>
+      <Sidebar />
+      <View style={styles.content}>
+        <Navigator>
+          <Slot />
+        </Navigator>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  content: {
+    flex: 1,
+  },
+});
+```
+
+From the source (`Navigator.tsx:37-90`):
+
+```typescript
+/**
+ * An unstyled custom navigator. Good for basic web layouts.
+ */
+export function Navigator({
+  initialRouteName,
+  screenOptions,
+  children,
+  router,
+  routerOptions,
+}: NavigatorProps) {
+  const contextKey = useContextKey();
+  const navigation = useNavigationBuilder(router, {
+    id: contextKey,
+    children: sortedScreens || [<Screen key="default" />],
+    screenOptions,
+    initialRouteName,
+  });
+  return (
+    <NavigatorContext.Provider value={{ ...navigation, contextKey, router }}>
+      {nonScreenChildren}
+    </NavigatorContext.Provider>
+  );
+}
+```
+
+## Layout with Context
+
+Create reusable layout components:
+
+```tsx components/AppLayout.tsx
+import { Stack } from 'expo-router';
+import { useAuth } from '../hooks/useAuth';
+import { useEffect } from 'react';
+import { router } from 'expo-router';
+
+export function AppLayout() {
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/login');
+    }
+  }, [isAuthenticated, isLoading]);
+  
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+  
+  return <Stack />;
+}
+```
+
+Use in layout file:
+
+```tsx app/(app)/_layout.tsx
+import { AppLayout } from '../../components/AppLayout';
+
+export default AppLayout;
+```
+
+## Best Practices
+
+### Keep Layouts Simple
+
+```tsx
+// Good: Simple, focused layout
+export default function Layout() {
+  return <Stack />;
+}
+
+// Avoid: Too much logic in layout
+export default function Layout() {
+  const [state, setState] = useState();
+  useEffect(() => { /* complex logic */ }, []);
+  // ... lots of code
+  return <Stack />;
+}
+```
+
+### Use Route Groups
+
+Organize routes with different layouts:
+
+```
+app/
+  (auth)/
+    _layout.tsx       # Simple layout
+  (app)/
+    _layout.tsx       # Complex layout with tabs
+  (modals)/
+    _layout.tsx       # Modal stack
+```
+
+### Configure Screen Options
+
+Set defaults in layout, override in screens:
+
+```tsx
+// Layout: Set defaults
+<Stack screenOptions={{ headerShown: true }} />
+
+// Screen: Override when needed
+<Stack.Screen options={{ headerShown: false }} />
+```
+
+### Share Data Efficiently
+
+Use Context for shared state, props for screen-specific data:
+
+```tsx
+// Good: Context for app-wide state
+<ThemeContext.Provider>
+  <Stack />
+</ThemeContext.Provider>
+
+// Good: Props for screen-specific data
+<Stack.Screen
+  name="details"
+  options={{ title: specificTitle }}
+/>
+```
+
+## Common Patterns
+
+### Auth Flow with Layouts
+
+```
+app/
+  _layout.tsx
+  (auth)/
+    _layout.tsx
+    login.tsx
+    register.tsx
+  (app)/
+    _layout.tsx
+    (tabs)/
+      _layout.tsx
+      index.tsx
+      profile.tsx
+```
+
+```tsx app/_layout.tsx
+import { Stack } from 'expo-router';
+import { AuthProvider } from '../context/auth';
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(app)" />
+      </Stack>
+    </AuthProvider>
+  );
+}
+```
+
+### Modal Stack
+
+```tsx app/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function Layout() {
+  return (
+    <Stack>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="modal"
+        options={{
+          presentation: 'modal',
+          headerTitle: 'Filter',
+        }}
+      />
+      <Stack.Screen
+        name="fullscreen-modal"
+        options={{
+          presentation: 'fullScreenModal',
+        }}
+      />
+    </Stack>
+  );
+}
+```
+
+### Tabs with Nested Stacks
+
+```
+app/
+  (tabs)/
+    _layout.tsx
+    home/
+      _layout.tsx
+      index.tsx
+      details.tsx
+    profile/
+      _layout.tsx
+      index.tsx
+      settings.tsx
+```
+
+```tsx app/(tabs)/home/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function HomeStack() {
+  return (
+    <Stack>
+      <Stack.Screen name="index" options={{ title: 'Home' }} />
+      <Stack.Screen name="details" options={{ title: 'Details' }} />
+    </Stack>
+  );
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Route Groups" icon="folder" href="/router/groups">
+    Organize routes without affecting URLs
+  </Card>
+  <Card title="Stack Navigation" icon="layer-group" href="/router/stack-navigation">
+    Configure stack navigators
+  </Card>
+  <Card title="Tab Navigation" icon="bars" href="/router/tab-navigation">
+    Create tab navigators
+  </Card>
+  <Card title="Drawer Navigation" icon="bars-staggered" href="/router/drawer-navigation">
+    Add drawer navigation
+  </Card>
+</CardGroup>

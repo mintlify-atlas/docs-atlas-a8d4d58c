@@ -1,0 +1,699 @@
+---
+title: Build Properties
+description: Configure native build settings using the expo-build-properties plugin.
+---
+
+import { Terminal } from '~/ui/components/Snippet';
+
+The `expo-build-properties` plugin lets you configure native build settings for iOS and Android without writing custom config plugins. It's the recommended way to set SDK versions, optimization flags, and other build properties.
+
+## Installation
+
+<Terminal cmd={[
+  '$ npx expo install expo-build-properties',
+]} />
+
+## Basic usage
+
+Add the plugin to your `app.json` or `app.config.js`:
+
+```json app.json
+{
+  "expo": {
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24,
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34
+          },
+          "ios": {
+            "deploymentTarget": "15.0"
+          }
+        }
+      ]
+    ]
+  }
+}
+```
+
+## Android properties
+
+### SDK versions
+
+Configure Android SDK versions:
+
+```json
+{
+  "android": {
+    "minSdkVersion": 24,
+    "compileSdkVersion": 34,
+    "targetSdkVersion": 34,
+    "buildToolsVersion": "34.0.0"
+  }
+}
+```
+
+From the source:
+
+```ts pluginConfig.ts
+const EXPO_SDK_MINIMAL_SUPPORTED_VERSIONS = {
+  android: {
+    minSdkVersion: 21,
+    compileSdkVersion: 31,
+    targetSdkVersion: 31,
+    kotlinVersion: '1.6.10',
+  },
+  ios: {
+    deploymentTarget: '15.1',
+  },
+};
+```
+
+### Kotlin version
+
+Set the Kotlin version:
+
+```json
+{
+  "android": {
+    "kotlinVersion": "1.9.0"
+  }
+}
+```
+
+### Optimization settings
+
+Enable code minification and resource shrinking:
+
+```json
+{
+  "android": {
+    "enableMinifyInReleaseBuilds": true,
+    "enableShrinkResourcesInReleaseBuilds": true,
+    "enablePngCrunchInReleaseBuilds": true
+  }
+}
+```
+
+**enableMinifyInReleaseBuilds** - Enable R8 in release builds to obfuscate Java code and reduce app size.
+
+**enableShrinkResourcesInReleaseBuilds** - Enable `shrinkResources` to remove unused resources. Must be used with `enableMinifyInReleaseBuilds`.
+
+**enablePngCrunchInReleaseBuilds** (default: `true`) - Optimize PNG files. Disable if you do your own PNG optimization.
+
+### ProGuard rules
+
+Add custom ProGuard rules:
+
+```json
+{
+  "android": {
+    "extraProguardRules": "-keep class com.myapp.** { *; }\n-dontwarn okhttp3.**"
+  }
+}
+```
+
+### Packaging options
+
+Configure native library packaging:
+
+```json
+{
+  "android": {
+    "packagingOptions": {
+      "pickFirst": ["**/libc++_shared.so"],
+      "exclude": ["META-INF/DEPENDENCIES"],
+      "merge": ["META-INF/LICENSE"],
+      "doNotStrip": ["**/libcrashlytics.so"]
+    }
+  }
+}
+```
+
+From the types:
+
+```ts pluginConfig.ts
+export interface PluginConfigTypeAndroidPackagingOptions {
+  pickFirst?: string[];   // Only pack first occurrence
+  exclude?: string[];     // Exclude from APK
+  merge?: string[];       // Concatenate all occurrences
+  doNotStrip?: string[];  // Keep debug symbols
+}
+```
+
+### Network configuration
+
+Allow cleartext HTTP traffic:
+
+```json
+{
+  "android": {
+    "usesCleartextTraffic": true
+  }
+}
+```
+
+For Android 8 and below, the default is `true`. For Android 9+, the default is `false`.
+
+### Maven repositories
+
+Add custom Maven repositories:
+
+```json
+{
+  "android": {
+    "extraMavenRepos": [
+      "https://example.com/maven",
+      {
+        "url": "https://private.example.com/maven",
+        "credentials": {
+          "username": "user",
+          "password": "System.getenv('MAVEN_PASSWORD')"
+        },
+        "authentication": "basic"
+      }
+    ]
+  }
+}
+```
+
+Supported authentication types:
+- `basic` - HTTP Basic authentication
+- `digest` - HTTP Digest authentication
+- `header` - Custom HTTP headers
+
+Credential types:
+
+```ts pluginConfig.ts
+export interface AndroidMavenRepositoryPasswordCredentials {
+  username: string;
+  password: string;
+}
+
+export interface AndroidMavenRepositoryHttpHeaderCredentials {
+  name: string;
+  value: string;
+}
+
+export interface AndroidMavenRepositoryAWSCredentials {
+  accessKey: string;
+  secretKey: string;
+  sessionToken?: string;
+}
+```
+
+### Build architectures
+
+Specify which ABIs to build:
+
+```json
+{
+  "android": {
+    "buildArchs": ["arm64-v8a", "x86_64"]
+  }
+}
+```
+
+Default: `["armeabi-v7a", "arm64-v8a", "x86", "x86_64"]`
+
+Building fewer architectures reduces app size but limits device compatibility.
+
+### Manifest queries
+
+Specify apps your app intends to interact with (Android 11+):
+
+```json
+{
+  "android": {
+    "manifestQueries": {
+      "package": ["com.example.app"],
+      "intent": [
+        {
+          "action": "android.intent.action.VIEW",
+          "data": {
+            "scheme": "https",
+            "host": "example.com"
+          }
+        }
+      ],
+      "provider": ["com.example.provider"]
+    }
+  }
+}
+```
+
+### Legacy packaging
+
+Use legacy native library packaging:
+
+```json
+{
+  "android": {
+    "useLegacyPackaging": true
+  }
+}
+```
+
+### Day/Night theme
+
+Enable dark mode support:
+
+```json
+{
+  "android": {
+    "useDayNightTheme": true
+  }
+}
+```
+
+### Network Inspector
+
+Control Network Inspector:
+
+```json
+{
+  "android": {
+    "networkInspector": true
+  }
+}
+```
+
+Default: `true`
+
+### Bundle compression
+
+Enable JavaScript bundle compression:
+
+```json
+{
+  "android": {
+    "enableBundleCompression": true
+  }
+}
+```
+
+Results in smaller APK but may have slower startup.
+
+### Exclusive Maven mirror
+
+Use a single Maven repository for all dependencies:
+
+```json
+{
+  "android": {
+    "exclusiveMavenMirror": "https://maven.aliyun.com/repository/public"
+  }
+}
+```
+
+Useful for organizations with internal Maven mirrors.
+
+## iOS properties
+
+### Deployment target
+
+Set minimum iOS version:
+
+```json
+{
+  "ios": {
+    "deploymentTarget": "15.0"
+  }
+}
+```
+
+This affects:
+- CocoaPods projects
+- Xcode project build settings
+- All native targets
+
+### Use frameworks
+
+Configure CocoaPods to use frameworks:
+
+```json
+{
+  "ios": {
+    "useFrameworks": "static"
+  }
+}
+```
+
+Options:
+- `"static"` - Use static frameworks
+- `"dynamic"` - Use dynamic frameworks
+- `undefined` - Use default (static libraries)
+
+This adds `use_frameworks! :linkage => :static` to Podfile.
+
+### Force static linking
+
+Force specific pods to link statically:
+
+```json
+{
+  "ios": {
+    "useFrameworks": "dynamic",
+    "forceStaticLinking": [
+      "React-Core",
+      "React-RCTText"
+    ]
+  }
+}
+```
+
+Useful when dynamic frameworks cause modular header issues.
+
+### Extra CocoaPods
+
+Add additional CocoaPods:
+
+```json
+{
+  "ios": {
+    "extraPods": [
+      {
+        "name": "Firebase/Analytics",
+        "version": "~> 10.0.0"
+      },
+      {
+        "name": "MyPod",
+        "git": "https://github.com/example/MyPod.git",
+        "tag": "1.0.0"
+      }
+    ]
+  }
+}
+```
+
+Full pod configuration:
+
+```ts pluginConfig.ts
+export interface ExtraIosPodDependency {
+  name: string;
+  version?: string;           // e.g., "~> 1.0.0"
+  configurations?: string[];  // e.g., ["Debug", "Release"]
+  modular_headers?: boolean;
+  source?: string;           // Custom CocoaPods spec repo
+  path?: string;             // Local filesystem path
+  podspec?: string;          // Custom podspec URL
+  testspecs?: string[];      // Test specs to include
+  git?: string;              // Git repository URL
+  branch?: string;           // Git branch
+  tag?: string;              // Git tag
+  commit?: string;           // Git commit hash
+}
+```
+
+### Ccache
+
+Enable C++ compiler cache:
+
+```json
+{
+  "ios": {
+    "ccacheEnabled": true
+  }
+}
+```
+
+Speeds up C++ compilation by caching results.
+
+### Privacy manifest aggregation
+
+Aggregate Privacy Manifests from CocoaPods:
+
+```json
+{
+  "ios": {
+    "privacyManifestAggregationEnabled": true
+  }
+}
+```
+
+Merges all `PrivacyInfo.xcprivacy` files from pods into a single manifest.
+
+### Network Inspector
+
+Control Network Inspector:
+
+```json
+{
+  "ios": {
+    "networkInspector": true
+  }
+}
+```
+
+Default: `true`
+
+## Shared properties
+
+These properties can be set at the top level or per-platform. Platform-specific values take precedence.
+
+### Build React Native from source
+
+```json
+{
+  "buildReactNativeFromSource": true,
+  "ios": {
+    "buildReactNativeFromSource": false  // Override for iOS
+  }
+}
+```
+
+From the source:
+
+```ts pluginConfig.ts
+export function resolveConfigValue<K extends keyof SharedBuildConfigFields>(
+  config: PluginConfigType,
+  platform: 'android' | 'ios',
+  key: K
+): SharedBuildConfigFields[K] {
+  return config[platform]?.[key] ?? config[key];
+}
+```
+
+### React Native release level
+
+```json
+{
+  "reactNativeReleaseLevel": "stable"
+}
+```
+
+Options:
+- `"stable"` (default)
+- `"canary"`
+- `"experimental"`
+
+### Use Hermes V1
+
+Enable experimental Hermes V1 engine:
+
+```json
+{
+  "useHermesV1": true,
+  "buildReactNativeFromSource": true  // Required
+}
+```
+
+From the validation:
+
+```ts pluginConfig.ts
+if (androidUseHermesV1 === true && androidBuildFromSource !== true) {
+  throw new Error(
+    '`useHermesV1` requires `buildReactNativeFromSource` to be `true` for Android.'
+  );
+}
+```
+
+## Complete configuration example
+
+```json app.json
+{
+  "expo": {
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24,
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "kotlinVersion": "1.9.0",
+            "buildToolsVersion": "34.0.0",
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "-keep class com.myapp.** { *; }",
+            "packagingOptions": {
+              "pickFirst": ["**/libc++_shared.so"]
+            },
+            "usesCleartextTraffic": false,
+            "networkInspector": true,
+            "extraMavenRepos": [
+              "https://jitpack.io"
+            ]
+          },
+          "ios": {
+            "deploymentTarget": "15.0",
+            "useFrameworks": "static",
+            "ccacheEnabled": true,
+            "privacyManifestAggregationEnabled": true,
+            "networkInspector": true,
+            "extraPods": [
+              {
+                "name": "Firebase/Analytics",
+                "version": "~> 10.0.0"
+              }
+            ]
+          },
+          "buildReactNativeFromSource": false,
+          "reactNativeReleaseLevel": "stable"
+        }
+      ]
+    ]
+  }
+}
+```
+
+## Validation
+
+The plugin validates your configuration:
+
+```ts pluginConfig.ts
+export function validateConfig(config: unknown, projectRoot?: string): PluginConfigType {
+  validate(schema, config);
+  maybeThrowInvalidVersions(config);
+  
+  if (
+    config.android?.enableShrinkResourcesInReleaseBuilds === true &&
+    config.android?.enableMinifyInReleaseBuilds !== true
+  ) {
+    throw new Error(
+      '`android.enableShrinkResourcesInReleaseBuilds` requires ' +
+      '`android.enableMinifyInReleaseBuilds` to be enabled.'
+    );
+  }
+  
+  // Additional validations...
+  
+  return config;
+}
+```
+
+## Using in custom plugins
+
+Import types from expo-build-properties:
+
+```ts
+import type { PluginConfigType } from 'expo-build-properties/build/pluginConfig';
+import { ConfigPlugin } from '@expo/config-plugins';
+
+const withCustomBuildSettings: ConfigPlugin = (config) => {
+  // Your build configuration logic
+  return config;
+};
+```
+
+## Debugging
+
+Enable debug output:
+
+<Terminal cmd={[
+  '$ EXPO_DEBUG=1 npx expo prebuild',
+]} />
+
+## Best practices
+
+### 1. Use minimal SDK versions
+
+Don't set SDK versions higher than necessary:
+
+```json
+// Good: Supports most devices
+{
+  "android": {
+    "minSdkVersion": 24
+  }
+}
+
+// Avoid: Excludes many devices
+{
+  "android": {
+    "minSdkVersion": 33
+  }
+}
+```
+
+### 2. Enable optimizations for release
+
+```json
+{
+  "android": {
+    "enableMinifyInReleaseBuilds": true,
+    "enableShrinkResourcesInReleaseBuilds": true
+  }
+}
+```
+
+### 3. Use environment variables for credentials
+
+```json
+{
+  "android": {
+    "extraMavenRepos": [
+      {
+        "url": "https://private.example.com/maven",
+        "credentials": {
+          "username": "System.getenv('MAVEN_USERNAME')",
+          "password": "System.getenv('MAVEN_PASSWORD')"
+        }
+      }
+    ]
+  }
+}
+```
+
+### 4. Test build property changes
+
+Always test after changing build properties:
+
+<Terminal cmd={[
+  '$ npx expo prebuild --clean',
+  '$ npx expo run:ios',
+  '$ npx expo run:android',
+]} />
+
+### 5. Document custom settings
+
+Add comments in app.config.js:
+
+```js app.config.js
+module.exports = {
+  expo: {
+    plugins: [
+      [
+        'expo-build-properties',
+        {
+          android: {
+            // Using minSdk 24 for better device coverage
+            minSdkVersion: 24,
+            // Optimizations enabled for smaller APK
+            enableMinifyInReleaseBuilds: true,
+          },
+        },
+      ],
+    ],
+  },
+};
+```
+
+## Next steps
+
+- [Modifying native projects](/config-plugins/modifying-native-projects) - More native customization
+- [iOS Entitlements](/config-plugins/ios-entitlements) - iOS capabilities
+- [Android Permissions](/config-plugins/android-permissions) - Android permissions

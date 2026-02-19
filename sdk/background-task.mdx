@@ -1,0 +1,58 @@
+---
+title: expo-background-task
+description: Run tasks in the background on Android and iOS
+---
+
+# expo-background-task
+
+**Version:** 55.0.6
+
+Expo Android and iOS module for Background Task APIs. Execute JavaScript code in the background even when the app is not active.
+
+## Installation
+
+```bash
+npx expo install expo-background-task expo-task-manager
+```
+
+## Usage
+
+```typescript
+import * as BackgroundTask from 'expo-background-task';
+import * as TaskManager from 'expo-task-manager';
+
+const TASK_NAME = 'background-task';
+
+TaskManager.defineTask(TASK_NAME, async () => {
+  // Background work here
+  console.log('Background task executed');
+  return BackgroundTask.BackgroundTaskResult.Success;
+});
+
+await BackgroundTask.registerTaskAsync(TASK_NAME);
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="registerTaskAsync(taskName, options)" type="(taskName: string, options?: BackgroundTaskOptions) => Promise<void>">
+  Registers background task
+</ParamField>
+
+<ParamField path="unregisterTaskAsync(taskName)" type="(taskName: string) => Promise<void>">
+  Unregisters background task
+</ParamField>
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ❌       |
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/background-task/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-background-task)

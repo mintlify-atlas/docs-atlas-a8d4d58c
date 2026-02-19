@@ -1,0 +1,500 @@
+---
+title: Metro Configuration Reference
+description: Complete reference for configuring Metro bundler in Expo projects.
+---
+
+Metro is the JavaScript bundler for React Native. Expo provides enhanced Metro configuration with additional features and optimizations.
+
+## Getting Started
+
+Create a `metro.config.js` file in your project root:
+
+```js
+// Learn more: https://docs.expo.dev/guides/customizing-metro
+const { getDefaultConfig } = require('expo/metro-config');
+
+/** @type {import('expo/metro-config').MetroConfig} */
+const config = getDefaultConfig(__dirname);
+
+module.exports = config;
+```
+
+## Default Configuration
+
+Expo's default Metro config includes:
+
+- Asset extensions for images, fonts, and other files
+- Source extensions for `.js`, `.jsx`, `.ts`, `.tsx`, `.json`
+- Transformer configuration for React Native and web
+- Resolver configuration for React Native platform resolution
+- Support for `package.json` exports field
+- CSS and styled-components support for web
+- Environment variable support
+
+## Configuration Options
+
+### Resolver Options
+
+Control how Metro resolves modules.
+
+#### assetExts
+
+<ParamField path="resolver.assetExts" type="string[]">
+  File extensions to treat as assets.
+</ParamField>
+
+```js
+const config = getDefaultConfig(__dirname);
+
+config.resolver.assetExts.push('db', 'mp3', 'ttf', 'obj', 'png', 'jpg');
+
+module.exports = config;
+```
+
+#### sourceExts
+
+<ParamField path="resolver.sourceExts" type="string[]">
+  File extensions to treat as source code.
+</ParamField>
+
+```js
+const config = getDefaultConfig(__dirname);
+
+config.resolver.sourceExts.push('mjs', 'cjs');
+
+module.exports = config;
+```
+
+<Warning>
+  When adding to `sourceExts`, ensure the extension isn't already in `assetExts`.
+</Warning>
+
+#### platforms
+
+<ParamField path="resolver.platforms" type="string[]">
+  Supported platform extensions.
+</ParamField>
+
+```js
+config.resolver.platforms = ['ios', 'android', 'web', 'native'];
+```
+
+#### nodeModulesPaths
+
+<ParamField path="resolver.nodeModulesPaths" type="string[]">
+  Additional directories to search for modules.
+</ParamField>
+
+```js
+const path = require('path');
+
+config.resolver.nodeModulesPaths = [
+  path.resolve(__dirname, 'node_modules'),
+  path.resolve(__dirname, '../node_modules'),
+];
+```
+
+#### resolveRequest
+
+<ParamField path="resolver.resolveRequest" type="function">
+  Custom resolution function.
+</ParamField>
+
+```js
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  // Custom resolution logic
+  if (moduleName === 'my-custom-module') {
+    return {
+      filePath: path.resolve(__dirname, 'custom-module.js'),
+      type: 'sourceFile',
+    };
+  }
+  
+  // Fall back to default resolution
+  return context.resolveRequest(context, moduleName, platform);
+};
+```
+
+#### unstable_enablePackageExports
+
+<ParamField path="resolver.unstable_enablePackageExports" type="boolean" default="true">
+  Enable support for `package.json` exports field.
+</ParamField>
+
+```js
+config.resolver.unstable_enablePackageExports = true;
+```
+
+#### unstable_conditionNames
+
+<ParamField path="resolver.unstable_conditionNames" type="string[]">
+  Condition names for package exports resolution.
+</ParamField>
+
+```js
+config.resolver.unstable_conditionNames = ['require', 'import', 'react-native'];
+```
+
+### Transformer Options
+
+Control how Metro transforms code.
+
+#### babelTransformerPath
+
+<ParamField path="transformer.babelTransformerPath" type="string">
+  Path to the Babel transformer.
+</ParamField>
+
+```js
+config.transformer.babelTransformerPath = require.resolve(
+  './custom-babel-transformer.js'
+);
+```
+
+#### minifierPath
+
+<ParamField path="transformer.minifierPath" type="string">
+  Path to the minifier. Defaults to Metro's minifier.
+</ParamField>
+
+```js
+config.transformer.minifierPath = require.resolve('metro-minify-terser');
+```
+
+#### minifierConfig
+
+<ParamField path="transformer.minifierConfig" type="object">
+  Configuration for the minifier.
+</ParamField>
+
+```js
+config.transformer.minifierConfig = {
+  compress: {
+    drop_console: true,
+  },
+};
+```
+
+#### getTransformOptions
+
+<ParamField path="transformer.getTransformOptions" type="function">
+  Function returning transform options per bundle.
+</ParamField>
+
+```js
+config.transformer.getTransformOptions = async () => ({
+  transform: {
+    experimentalImportSupport: false,
+    inlineRequires: true,
+  },
+});
+```
+
+#### assetPlugins
+
+<ParamField path="transformer.assetPlugins" type="string[]">
+  Asset plugins to use during transformation.
+</ParamField>
+
+```js
+config.transformer.assetPlugins = [
+  require.resolve('./my-asset-plugin.js'),
+];
+```
+
+### Server Options
+
+Configure the Metro development server.
+
+#### port
+
+<ParamField path="server.port" type="number" default="8081">
+  Port to run Metro on.
+</ParamField>
+
+```js
+config.server.port = 8082;
+```
+
+#### enhanceMiddleware
+
+<ParamField path="server.enhanceMiddleware" type="function">
+  Add custom middleware to the Metro server.
+</ParamField>
+
+```js
+config.server.enhanceMiddleware = (middleware, server) => {
+  return (req, res, next) => {
+    // Custom middleware logic
+    if (req.url === '/custom-endpoint') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ custom: true }));
+      return;
+    }
+    
+    return middleware(req, res, next);
+  };
+};
+```
+
+### Watcher Options
+
+Configure file watching behavior.
+
+#### watchFolders
+
+<ParamField path="watchFolders" type="string[]">
+  Additional folders for Metro to watch.
+</ParamField>
+
+```js
+const path = require('path');
+
+config.watchFolders = [
+  path.resolve(__dirname, '../shared-package'),
+];
+```
+
+<Note>
+  Useful for monorepos where packages are outside the project directory.
+</Note>
+
+#### hasteMapModulePath
+
+<ParamField path="hasteMapModulePath" type="string">
+  Path to custom Haste map implementation.
+</ParamField>
+
+## Expo-Specific Features
+
+### Environment Variables
+
+Expo automatically supports environment variables:
+
+```js
+// Access in your app
+const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+```
+
+<Note>
+  Only variables prefixed with `EXPO_PUBLIC_` are available in your app.
+</Note>
+
+### CSS Support (Web)
+
+Expo's Metro config includes CSS support for web:
+
+```tsx
+import './styles.css';
+```
+
+### Asset Handling
+
+Import assets directly:
+
+```tsx
+import logo from './assets/logo.png';
+
+<Image source={logo} />
+```
+
+### Platform-Specific Extensions
+
+Metro resolves platform-specific files automatically:
+
+- `Button.ios.tsx` - iOS only
+- `Button.android.tsx` - Android only  
+- `Button.web.tsx` - Web only
+- `Button.native.tsx` - iOS and Android
+- `Button.tsx` - All platforms (fallback)
+
+## Common Customizations
+
+### Adding SVG Support
+
+```bash
+npx expo install react-native-svg
+```
+
+```js
+const { getDefaultConfig } = require('expo/metro-config');
+const { withNativeWind } = require('nativewind/metro');
+
+const config = getDefaultConfig(__dirname);
+
+config.transformer.babelTransformerPath = require.resolve(
+  'react-native-svg-transformer'
+);
+
+config.resolver.assetExts = config.resolver.assetExts.filter(
+  (ext) => ext !== 'svg'
+);
+
+config.resolver.sourceExts.push('svg');
+
+module.exports = config;
+```
+
+### Monorepo Configuration
+
+```js
+const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
+
+const projectRoot = __dirname;
+const workspaceRoot = path.resolve(projectRoot, '../..');
+
+const config = getDefaultConfig(projectRoot);
+
+// Watch all files in the monorepo
+config.watchFolders = [workspaceRoot];
+
+// Let Metro know where to resolve packages
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, 'node_modules'),
+  path.resolve(workspaceRoot, 'node_modules'),
+];
+
+module.exports = config;
+```
+
+### Web-Specific Configuration
+
+```js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+// Add web-specific extensions
+config.resolver.sourceExts.push('web.js', 'web.jsx', 'web.ts', 'web.tsx');
+
+module.exports = config;
+```
+
+### Custom Babel Configuration
+
+Metro uses `babel.config.js` for transformation:
+
+```js
+module.exports = function (api) {
+  api.cache(true);
+  return {
+    presets: ['babel-preset-expo'],
+    plugins: [
+      // Your custom plugins
+      'react-native-reanimated/plugin',
+    ],
+  };
+};
+```
+
+See [Babel Preset Reference](/reference/babel-preset) for more.
+
+## Extending the Babel Transformer
+
+Create a custom transformer:
+
+```js
+// custom-babel-transformer.js
+const expoTransformer = require('@expo/metro-config/babel-transformer');
+
+module.exports.transform = function (src, filename, options) {
+  // Custom transformation
+  if (filename.endsWith('.custom.js')) {
+    // Do custom transformation
+  }
+  
+  // Use Expo's transformer
+  return expoTransformer.transform(src, filename, options);
+};
+```
+
+Then reference it:
+
+```js
+const config = getDefaultConfig(__dirname);
+
+config.transformer.babelTransformerPath = require.resolve(
+  './custom-babel-transformer.js'
+);
+
+module.exports = config;
+```
+
+## Performance Optimization
+
+### Cache Configuration
+
+```js
+config.cacheStores = [
+  new FileStore({
+    root: path.join(__dirname, '.cache/metro'),
+  }),
+];
+```
+
+### Worker Configuration
+
+```js
+config.maxWorkers = 4; // Limit concurrent workers
+```
+
+### Transform Caching
+
+```js
+config.transformer.enableBabelRCLookup = false; // Skip .babelrc lookups
+config.transformer.enableBabelRuntime = true; // Use Babel runtime
+```
+
+## Troubleshooting
+
+### Clear Metro Cache
+
+```bash
+npx expo start --clear
+```
+
+### Reset Metro
+
+```bash
+rm -rf node_modules/.cache/metro
+npx expo start --clear
+```
+
+### Debug Metro Configuration
+
+Log the full configuration:
+
+```js
+const config = getDefaultConfig(__dirname);
+
+console.log(JSON.stringify(config, null, 2));
+
+module.exports = config;
+```
+
+## TypeScript Support
+
+Metro automatically supports TypeScript with no configuration:
+
+```tsx
+// Works out of the box
+import { Component } from './Component';
+```
+
+Configure TypeScript in `tsconfig.json`, not Metro.
+
+## Source Maps
+
+Metro generates source maps automatically in development. For production:
+
+```js
+config.serializer.sourceMapUrl = 'http://localhost:8081/index.map';
+```
+
+## Related Documentation
+
+- [Babel Preset Reference](/reference/babel-preset)
+- [CLI Reference](/reference/cli-reference)
+- [Metro Bundler Docs](https://facebook.github.io/metro/)
+- [Customizing Metro](https://docs.expo.dev/guides/customizing-metro/)

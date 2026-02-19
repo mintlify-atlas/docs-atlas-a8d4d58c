@@ -1,0 +1,151 @@
+---
+title: expo-network
+description: Get information about device's network connection
+---
+
+# expo-network
+
+**Version:** 55.0.6
+
+Provides useful information about the device's network such as its IP address, MAC address, and airplane mode status.
+
+## Installation
+
+```bash
+npx expo install expo-network
+```
+
+## Usage
+
+```typescript
+import * as Network from 'expo-network';
+
+// Get IP address
+const ip = await Network.getIpAddressAsync();
+console.log('IP:', ip);
+
+// Get network state
+const state = await Network.getNetworkStateAsync();
+console.log('Connected:', state.isConnected);
+console.log('Type:', state.type);
+
+// Check airplane mode
+const airplaneMode = await Network.isAirplaneModeEnabledAsync();
+console.log('Airplane mode:', airplaneMode);
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="getIpAddressAsync()" type="() => Promise<string>">
+  Gets device IP address
+  
+  ```typescript
+  const ip = await Network.getIpAddressAsync();
+  // Returns: "192.168.1.100"
+  ```
+</ParamField>
+
+<ParamField path="getNetworkStateAsync()" type="() => Promise<NetworkState>">
+  Gets network connection state
+  
+  ```typescript
+  const state = await Network.getNetworkStateAsync();
+  console.log(state.isConnected); // true/false
+  console.log(state.isInternetReachable); // true/false
+  console.log(state.type); // NetworkStateType enum
+  ```
+</ParamField>
+
+<ParamField path="isAirplaneModeEnabledAsync()" type="() => Promise<boolean>">
+  Checks if airplane mode is enabled
+  
+  ```typescript
+  const enabled = await Network.isAirplaneModeEnabledAsync();
+  ```
+</ParamField>
+
+### Types
+
+#### NetworkState
+
+<ResponseField name="type" type="NetworkStateType">
+  Network type: `NONE`, `UNKNOWN`, `CELLULAR`, `WIFI`, `BLUETOOTH`, `ETHERNET`, `WIMAX`, `VPN`, `OTHER`
+</ResponseField>
+
+<ResponseField name="isConnected" type="boolean">
+  Whether device is connected to network
+</ResponseField>
+
+<ResponseField name="isInternetReachable" type="boolean">
+  Whether internet is reachable
+</ResponseField>
+
+## Examples
+
+### Check Connection
+
+```typescript
+import * as Network from 'expo-network';
+
+async function checkConnection() {
+  const state = await Network.getNetworkStateAsync();
+  
+  if (!state.isConnected) {
+    alert('No network connection');
+    return false;
+  }
+  
+  if (!state.isInternetReachable) {
+    alert('No internet access');
+    return false;
+  }
+  
+  console.log('Connected via:', state.type);
+  return true;
+}
+```
+
+### Monitor Network
+
+```tsx
+import * as Network from 'expo-network';
+import { useState, useEffect } from 'react';
+import { View, Text } from 'react-native';
+
+export default function NetworkStatus() {
+  const [status, setStatus] = useState<Network.NetworkState | null>(null);
+
+  useEffect(() => {
+    checkNetwork();
+    const interval = setInterval(checkNetwork, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  async function checkNetwork() {
+    const state = await Network.getNetworkStateAsync();
+    setStatus(state);
+  }
+
+  return (
+    <View>
+      <Text>Connected: {status?.isConnected ? 'Yes' : 'No'}</Text>
+      <Text>Type: {status?.type}</Text>
+    </View>
+  );
+}
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ⚠️ Limited |
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/network/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-network)

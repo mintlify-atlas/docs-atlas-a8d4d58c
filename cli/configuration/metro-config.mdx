@@ -1,0 +1,571 @@
+---
+title: Metro Configuration
+description: Customize the Metro bundler for your Expo project.
+---
+
+Metro is the JavaScript bundler used by Expo and React Native. You can customize Metro's behavior using a `metro.config.js` file in your project root.
+
+## Default Configuration
+
+Expo provides a default Metro configuration optimized for Expo projects. Create a basic `metro.config.js`:
+
+```javascript metro.config.js
+// Learn more https://docs.expo.io/guides/customizing-metro
+const { getDefaultConfig } = require('expo/metro-config');
+
+/** @type {import('expo/metro-config').MetroConfig} */
+const config = getDefaultConfig(__dirname);
+
+module.exports = config;
+```
+
+This gives you:
+- Web support with React Native Web
+- Asset handling for images, fonts, etc.
+- TypeScript support
+- CSS support (experimental)
+- Multi-platform resolution
+- Symlink support for monorepos
+
+## Configuration Structure
+
+Metro configuration has several key sections:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+// Resolver configuration
+config.resolver = {
+  sourceExts: [...],
+  assetExts: [...],
+  ...
+};
+
+// Transformer configuration
+config.transformer = {
+  babelTransformerPath: ...,
+  ...
+};
+
+// Server configuration
+config.server = {
+  port: 8081,
+  ...
+};
+
+// Watcher configuration
+config.watcher = {
+  watchman: true,
+  ...
+};
+
+module.exports = config;
+```
+
+## Common Customizations
+
+### Adding File Extensions
+
+Support additional file extensions:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+// Add .mjs files
+config.resolver.sourceExts.push('mjs');
+
+module.exports = config;
+```
+
+### Custom Asset Types
+
+Register custom asset types:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+// Treat .db files as assets
+config.resolver.assetExts.push('db');
+
+module.exports = config;
+```
+
+### Alias Module Paths
+
+Create import aliases:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
+
+const config = getDefaultConfig(__dirname);
+
+config.resolver.alias = {
+  '@components': path.resolve(__dirname, 'src/components'),
+  '@utils': path.resolve(__dirname, 'src/utils'),
+  '@screens': path.resolve(__dirname, 'src/screens')
+};
+
+module.exports = config;
+```
+
+Use in your code:
+
+```javascript
+// Instead of:
+import Button from '../../../components/Button';
+
+// Use:
+import Button from '@components/Button';
+```
+
+### Block List (Ignore Files)
+
+Exclude files from bundling:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+// Ignore test files and stories
+config.resolver.blockList = [
+  /.*\/__tests__\/.*/,
+  /.*\.test\.tsx?$/,
+  /.*\.stories\.tsx?$/
+];
+
+module.exports = config;
+```
+
+### Extra Node Modules
+
+Add additional node_modules locations:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
+
+const config = getDefaultConfig(__dirname);
+
+config.resolver.extraNodeModules = {
+  'shared': path.resolve(__dirname, '../shared')
+};
+
+module.exports = config;
+```
+
+## Monorepo Configuration
+
+For monorepo setups with multiple packages:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
+
+const projectRoot = __dirname;
+const workspaceRoot = path.resolve(projectRoot, '../..');
+
+const config = getDefaultConfig(projectRoot);
+
+// Watch all files in the monorepo
+config.watchFolders = [workspaceRoot];
+
+// Let Metro know where to resolve modules
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, 'node_modules'),
+  path.resolve(workspaceRoot, 'node_modules')
+];
+
+module.exports = config;
+```
+
+## Custom Transformers
+
+### Babel Transformer
+
+Use a custom Babel transformer:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+config.transformer.babelTransformerPath = require.resolve(
+  './custom-transformer.js'
+);
+
+module.exports = config;
+```
+
+### SVG Transformer
+
+Support SVG as React components:
+
+First, install the transformer:
+
+```bash
+npx expo install react-native-svg-transformer
+```
+
+Then configure Metro:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+config.transformer.babelTransformerPath = require.resolve(
+  'react-native-svg-transformer'
+);
+
+// Remove svg from assetExts
+config.resolver.assetExts = config.resolver.assetExts.filter(
+  ext => ext !== 'svg'
+);
+
+// Add svg to sourceExts
+config.resolver.sourceExts.push('svg');
+
+module.exports = config;
+```
+
+Use SVGs in your code:
+
+```javascript
+import Logo from './logo.svg';
+
+function App() {
+  return <Logo width={120} height={40} />;
+}
+```
+
+## Platform-Specific Extensions
+
+Metro automatically resolves platform-specific files:
+
+```
+Button.js          # Shared implementation
+Button.ios.js      # iOS-specific
+Button.android.js  # Android-specific
+Button.web.js      # Web-specific
+```
+
+Customize the order:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+config.resolver.platforms = ['ios', 'android', 'web'];
+config.resolver.sourceExts = ['tsx', 'ts', 'jsx', 'js', 'json'];
+
+module.exports = config;
+```
+
+## Custom Resolvers
+
+Implement custom module resolution:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  // Custom resolution logic
+  if (moduleName.startsWith('@internal/')) {
+    return {
+      filePath: `/path/to/internal/${moduleName.slice(10)}.js`,
+      type: 'sourceFile'
+    };
+  }
+  
+  // Fall back to default resolver
+  return context.resolveRequest(context, moduleName, platform);
+};
+
+module.exports = config;
+```
+
+## Web-Specific Configuration
+
+Customize web bundling:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+// Web-specific resolver fields
+config.resolver.resolverMainFields = [
+  'browser',
+  'module',
+  'main'
+];
+
+module.exports = config;
+```
+
+## Performance Optimization
+
+### Parallel Workers
+
+Control the number of workers:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+config.maxWorkers = 4; // Limit to 4 workers
+
+module.exports = config;
+```
+
+### Cache Configuration
+
+Customize caching:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+config.cacheStores = [
+  // Custom cache store
+];
+
+module.exports = config;
+```
+
+### Reset Cache
+
+Clear Metro cache:
+
+```bash
+npx expo start --clear
+```
+
+Or manually:
+
+```bash
+rm -rf .expo
+rm -rf node_modules/.cache
+```
+
+## TypeScript Support
+
+Metro supports TypeScript out of the box with Expo's default config. Configure additional options:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+// Prioritize .tsx over .ts
+config.resolver.sourceExts = ['tsx', 'ts', 'jsx', 'js', 'json'];
+
+module.exports = config;
+```
+
+## Environment-Specific Configuration
+
+Different configs for different environments:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+if (process.env.NODE_ENV === 'production') {
+  config.transformer.minifierPath = 'metro-minify-terser';
+  config.transformer.minifierConfig = {
+    compress: {
+      drop_console: true
+    }
+  };
+}
+
+module.exports = config;
+```
+
+## Debugging Metro
+
+### Enable Logging
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+config.reporter = {
+  update: (event) => {
+    console.log('Metro event:', event);
+  }
+};
+
+module.exports = config;
+```
+
+### Verbose Output
+
+Run with verbose logging:
+
+```bash
+EXPO_DEBUG=1 npx expo start
+```
+
+## Common Issues
+
+### Module Not Found
+
+If Metro can't find modules:
+
+1. **Check sourceExts:**
+   ```javascript
+   config.resolver.sourceExts.push('mjs');
+   ```
+
+2. **Check watchFolders:**
+   ```javascript
+   config.watchFolders = [path.resolve(__dirname, '../shared')];
+   ```
+
+3. **Clear cache:**
+   ```bash
+   npx expo start --clear
+   ```
+
+### Symlink Issues
+
+For symlinked packages:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+config.resolver.unstable_enableSymlinks = true;
+
+module.exports = config;
+```
+
+### Slow Bundling
+
+Optimize performance:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+// Reduce workers if memory is limited
+config.maxWorkers = 2;
+
+// Exclude unnecessary directories
+config.resolver.blockList = [
+  /node_modules\/.*\/__(tests|mocks)__\/.*/
+];
+
+module.exports = config;
+```
+
+## Best Practices
+
+### Keep It Simple
+
+Start with the default config and only customize when needed:
+
+```javascript
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+// Only add what you need
+config.resolver.alias = {
+  '@components': './src/components'
+};
+
+module.exports = config;
+```
+
+### Document Customizations
+
+Add comments explaining why you made changes:
+
+```javascript
+// Custom alias for cleaner imports
+config.resolver.alias = {
+  '@components': './src/components'
+};
+
+// Support .mjs files from some npm packages
+config.resolver.sourceExts.push('mjs');
+```
+
+### Test After Changes
+
+Always test your app after modifying Metro config:
+
+```bash
+# Clear cache and restart
+npx expo start --clear
+```
+
+### Version Control
+
+Commit your metro.config.js:
+
+```bash
+git add metro.config.js
+git commit -m "Configure Metro for monorepo"
+```
+
+## Advanced Features
+
+### Custom Serializer
+
+Modify the bundle output:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+config.serializer.customSerializer = (entryPoint, preModules, graph, options) => {
+  // Custom serialization logic
+  return customBundle;
+};
+
+module.exports = config;
+```
+
+### Plugin System
+
+Use Metro plugins:
+
+```javascript metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+config.transformer.plugins = [
+  // Custom Metro plugins
+];
+
+module.exports = config;
+```
+
+## Resources
+
+- [Metro Documentation](https://facebook.github.io/metro/)
+- [Expo Metro Config Package](https://www.npmjs.com/package/@expo/metro-config)
+- [Metro Configuration Reference](https://facebook.github.io/metro/docs/configuration)

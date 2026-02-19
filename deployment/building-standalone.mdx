@@ -1,0 +1,467 @@
+---
+title: Building Standalone Apps
+description: Learn how to create production-ready standalone builds for iOS and Android using EAS Build and local builds.
+---
+
+import { Steps } from '~/components/Steps';
+import { Step } from '~/components/Step';
+import { Warning } from '~/components/Warning';
+import { Tabs, Tab } from '~/components/Tabs';
+
+# Building Standalone Apps
+
+Standalone apps are self-contained native applications that can be distributed through app stores or other channels. This guide covers both cloud-based builds with EAS Build and local compilation.
+
+## Understanding Build Types
+
+Expo supports two primary approaches to creating standalone builds:
+
+### EAS Build (Recommended)
+
+EAS Build is a cloud-based build service that compiles your app on remote servers. Benefits include:
+
+- No need to install Android Studio or Xcode locally
+- Consistent build environment across team members
+- Handles code signing automatically
+- Build from any operating system (Windows, Linux, macOS)
+- Integrated with EAS Submit for streamlined app store deployment
+
+### Local Builds
+
+Local builds compile your app on your own machine. Use this when:
+
+- Company policies restrict use of third-party CI/CD services
+- You need to debug build failures in detail
+- You want complete control over the build environment
+
+## Building with EAS Build
+
+<Steps>
+
+<Step>
+
+### Install and Configure EAS CLI
+
+```bash
+npm install -g eas-cli
+eas login
+```
+
+Configure your project for EAS Build:
+
+```bash
+eas build:configure
+```
+
+This creates an **eas.json** file with default build profiles:
+
+```json eas.json
+{
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {}
+  }
+}
+```
+
+</Step>
+
+<Step>
+
+### Configure App Identifiers
+
+Set your bundle identifiers in **app.json**:
+
+```json app.json
+{
+  "expo": {
+    "name": "My App",
+    "slug": "my-app",
+    "version": "1.0.0",
+    "ios": {
+      "bundleIdentifier": "com.yourcompany.yourapp"
+    },
+    "android": {
+      "package": "com.yourcompany.yourapp"
+    }
+  }
+}
+```
+
+</Step>
+
+<Step>
+
+### Create Production Builds
+
+<Tabs>
+<Tab label="Android">
+
+```bash
+eas build --platform android --profile production
+```
+
+This creates an **AAB** (Android App Bundle) by default, which is required for Google Play Store submissions.
+
+</Tab>
+<Tab label="iOS">
+
+```bash
+eas build --platform ios --profile production
+```
+
+This creates an **IPA** (iOS App Archive) signed with your distribution certificate.
+
+</Tab>
+<Tab label="Both">
+
+```bash
+eas build --platform all --profile production
+```
+
+Builds for both platforms simultaneously.
+
+</Tab>
+</Tabs>
+
+</Step>
+
+<Step>
+
+### Monitor Build Progress
+
+EAS CLI displays a link to monitor your build:
+
+```
+✔ Build started, it may take a few minutes to complete.
+  https://expo.dev/accounts/yourname/projects/yourapp/builds/abc123
+```
+
+You can also view all builds:
+
+```bash
+eas build:list
+```
+
+</Step>
+
+</Steps>
+
+## Local Build Configuration
+
+<Warning>
+Local builds require Android Studio (for Android) and Xcode (for iOS) to be installed and properly configured on your machine.
+</Warning>
+
+### Running EAS Build Locally
+
+You can run the same EAS Build process locally:
+
+```bash
+eas build --platform android --local
+eas build --platform ios --local
+```
+
+This replicates the cloud build environment on your machine.
+
+**Environment Variables for Debugging:**
+
+```bash
+# Keep build artifacts after build completes
+export EAS_LOCAL_BUILD_SKIP_CLEANUP=1
+
+# Specify custom working directory
+export EAS_LOCAL_BUILD_WORKINGDIR=/path/to/build/dir
+
+# Custom artifacts output directory
+export EAS_LOCAL_BUILD_ARTIFACTS_DIR=./builds
+
+eas build --platform android --local
+```
+
+### Building with Native Tools
+
+For complete control, you can use native build tools directly.
+
+<Tabs>
+<Tab label="Android">
+
+**Step 1: Generate Native Projects**
+
+If using Continuous Native Generation:
+
+```bash
+npx expo prebuild --platform android
+```
+
+**Step 2: Build with Gradle**
+
+```bash
+cd android
+./gradlew assembleRelease  # For APK
+./gradlew bundleRelease    # For AAB (Play Store)
+```
+
+Output locations:
+- **APK**: `android/app/build/outputs/apk/release/app-release.apk`
+- **AAB**: `android/app/build/outputs/bundle/release/app-release.aab`
+
+</Tab>
+<Tab label="iOS">
+
+**Step 1: Generate Native Projects**
+
+```bash
+npx expo prebuild --platform ios
+```
+
+**Step 2: Install Dependencies**
+
+```bash
+cd ios
+pod install
+```
+
+**Step 3: Build with Xcode**
+
+Open **ios/YourApp.xcworkspace** in Xcode, then:
+
+1. Select **Product** > **Archive**
+2. Choose your signing team and certificate
+3. Archive the app
+4. Export the IPA from the Organizer
+
+Or use command line:
+
+```bash
+xcodebuild -workspace ios/YourApp.xcworkspace \
+  -scheme YourApp \
+  -configuration Release \
+  -archivePath build/YourApp.xcarchive \
+  archive
+```
+
+</Tab>
+</Tabs>
+
+## Build Profiles
+
+Customize builds for different scenarios using profiles in **eas.json**:
+
+```json eas.json
+{
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": true
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview"
+    },
+    "production": {
+      "channel": "production",
+      "android": {
+        "buildType": "app-bundle"
+      }
+    },
+    "staging": {
+      "extends": "production",
+      "channel": "staging",
+      "env": {
+        "API_URL": "https://staging-api.example.com"
+      }
+    }
+  }
+}
+```
+
+### Build Profile Options
+
+**Common Options:**
+- `distribution`: `"store"` | `"internal"` - Determines build artifacts
+- `channel`: EAS Update channel name for OTA updates
+- `env`: Environment variables available during build
+- `credentialsSource`: `"remote"` | `"local"` - Where to get signing credentials
+
+**Android Options:**
+- `buildType`: `"apk"` | `"app-bundle"` - Output format
+- `gradleCommand`: Custom Gradle command
+- `image`: Build image version (e.g., `"sdk-54"`)
+
+**iOS Options:**
+- `simulator`: Build for simulator (development only)
+- `buildConfiguration`: `"Debug"` | `"Release"`
+- `scheme`: Xcode scheme to build
+
+## Build Output Types
+
+### Android Build Types
+
+**AAB (Android App Bundle) - Recommended for Store**
+```json
+{
+  "android": {
+    "buildType": "app-bundle"
+  }
+}
+```
+- Required by Google Play Store (for new apps since August 2021)
+- Smaller download size for users
+- Cannot be installed directly on devices
+
+**APK (Android Package) - For Testing**
+```json
+{
+  "android": {
+    "buildType": "apk"
+  }
+}
+```
+- Can be installed directly on devices
+- Useful for internal distribution
+- Larger file size than AAB
+
+### iOS Build Types
+
+**App Store Distribution**
+```json
+{
+  "ios": {
+    "simulator": false
+  }
+}
+```
+- For App Store submission
+- Requires distribution certificate
+- Works on physical devices only
+
+**Simulator Build (Development)**
+```json
+{
+  "ios": {
+    "simulator": true
+  }
+}
+```
+- Runs on iOS Simulator
+- Faster build times
+- No code signing required
+- Cannot run on physical devices
+
+## Advanced Build Options
+
+### Auto-Increment Version
+
+```json eas.json
+{
+  "build": {
+    "production": {
+      "android": {
+        "autoIncrement": "versionCode"
+      },
+      "ios": {
+        "autoIncrement": "buildNumber"
+      }
+    }
+  }
+}
+```
+
+### Custom Build Scripts
+
+Run custom scripts during the build process using **eas-build-pre-install** and **eas-build-post-install** hooks in package.json:
+
+```json package.json
+{
+  "scripts": {
+    "eas-build-pre-install": "echo 'Running before dependencies install'",
+    "eas-build-post-install": "node scripts/post-install.js"
+  }
+}
+```
+
+### Resource Classes
+
+For larger apps, use more powerful build machines:
+
+```json eas.json
+{
+  "build": {
+    "production": {
+      "android": {
+        "resourceClass": "large"  // default | medium | large
+      },
+      "ios": {
+        "resourceClass": "large"  // default | medium | large
+      }
+    }
+  }
+}
+```
+
+## Troubleshooting
+
+### Build Failed with Out of Memory
+
+Increase resource class or enable Hermes (Android):
+
+```json app.json
+{
+  "expo": {
+    "android": {
+      "enableHermes": true
+    }
+  }
+}
+```
+
+### iOS Build Fails with Provisioning Profile Issues
+
+Clear credentials and regenerate:
+
+```bash
+eas credentials --platform ios
+# Select "Remove all credentials"
+eas build --platform ios --clear-cache
+```
+
+### Android Build Fails with Gradle Errors
+
+Clear build cache:
+
+```bash
+eas build --platform android --clear-cache
+```
+
+### Viewing Detailed Build Logs
+
+1. Click the build URL from EAS CLI output
+2. Navigate to the "Logs" tab
+3. Download full logs for offline analysis
+
+For local builds, check the working directory:
+
+```bash
+export EAS_LOCAL_BUILD_SKIP_CLEANUP=1
+eas build --platform android --local
+# Logs will be in the working directory
+```
+
+## Next Steps
+
+- [Configure App Signing](/deployment/app-signing) - Set up certificates and keystores
+- [Build Configuration](/deployment/build-configuration) - Deep dive into eas.json
+- [Submit to App Stores](/deployment/app-stores) - Deploy your builds to stores

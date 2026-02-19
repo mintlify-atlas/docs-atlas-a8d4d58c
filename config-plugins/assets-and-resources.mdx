@@ -1,0 +1,673 @@
+---
+title: Assets and Resources
+description: Learn how to add and manage assets and resources in native projects using config plugins.
+---
+
+import { Tab, Tabs } from '~/ui/components/Tabs';
+import { Terminal } from '~/ui/components/Snippet';
+
+Assets and resources include images, icons, fonts, sounds, and other files that your app needs. Config plugins can automate copying these files to the correct native project locations.
+
+## Types of assets
+
+### iOS assets
+- **Images**: PNG, JPEG files in asset catalogs or Resources folder
+- **Icons**: App icon and alternate icons
+- **Fonts**: TTF, OTF font files
+- **Sounds**: Audio files for notifications and UI
+- **Plists**: Configuration files
+- **Storyboards**: XIB/Storyboard files
+
+### Android assets
+- **Drawables**: Images in `res/drawable-*` folders
+- **Icons**: App launcher icons in `res/mipmap-*` folders
+- **Fonts**: Font files in `assets/fonts/`
+- **Raw resources**: Files in `res/raw/`
+- **XML resources**: Strings, colors, styles in `res/values/`
+
+## Adding assets with dangerous mods
+
+Use `withDangerousMod` to copy files during prebuild:
+
+```ts
+import { withDangerousMod, ConfigPlugin } from '@expo/config-plugins';
+import fs from 'fs';
+import path from 'path';
+
+const withCustomAsset: ConfigPlugin = (config) => {
+  return withDangerousMod(config, ['ios', async (config) => {
+    const { platformProjectRoot } = config.modRequest;
+    const sourceFile = path.join(config.modRequest.projectRoot, 'assets', 'custom.png');
+    const targetFile = path.join(platformProjectRoot, 'Images', 'custom.png');
+    
+    // Ensure target directory exists
+    await fs.promises.mkdir(path.dirname(targetFile), { recursive: true });
+    
+    // Copy file
+    await fs.promises.copyFile(sourceFile, targetFile);
+    
+    return config;
+  }]);
+};
+```
+
+## Managing iOS assets
+
+### Adding images to Resources folder
+
+```ts
+import { withDangerousMod, ConfigPlugin } from '@expo/config-plugins';
+import fs from 'fs';
+import path from 'path';
+import { glob } from 'glob';
+
+const withiOSImages: ConfigPlugin<{ sourceDir: string }> = (config, { sourceDir }) => {
+  return withDangerousMod(config, ['ios', async (config) => {
+    const { platformProjectRoot, projectRoot } = config.modRequest;
+    const sourcePath = path.join(projectRoot, sourceDir);
+    const targetPath = path.join(platformProjectRoot, 'Images');
+    
+    // Ensure target directory exists
+    await fs.promises.mkdir(targetPath, { recursive: true });
+    
+    // Find all image files
+    const images = glob.sync('**/*.{png,jpg,jpeg}', {
+      cwd: sourcePath,
+      absolute: false,
+    });
+    
+    // Copy each image
+    for (const image of images) {
+      const source = path.join(sourcePath, image);
+      const target = path.join(targetPath, path.basename(image));
+      await fs.promises.copyFile(source, target);
+    }
+    
+    return config;
+  }]);
+};
+
+// Usage
+export default withiOSImages(config, {
+  sourceDir: 'assets/ios-images',
+});
+```
+
+### Adding fonts to iOS project
+
+```ts
+import { 
+  withDangerousMod, 
+  withInfoPlist, 
+  withXcodeProject,
+  ConfigPlugin 
+} from '@expo/config-plugins';
+import fs from 'fs';
+import path from 'path';
+
+const withCustomFonts: ConfigPlugin<{ fonts: string[] }> = (config, { fonts }) => {
+  // Copy font files
+  config = withDangerousMod(config, ['ios', async (config) => {
+    const { platformProjectRoot, projectRoot } = config.modRequest;
+    const fontsDir = path.join(platformProjectRoot, 'Fonts');
+    
+    await fs.promises.mkdir(fontsDir, { recursive: true });
+    
+    for (const font of fonts) {
+      const source = path.join(projectRoot, 'assets', 'fonts', font);
+      const target = path.join(fontsDir, font);
+      await fs.promises.copyFile(source, target);
+    }
+    
+    return config;
+  }]);
+  
+  // Add fonts to Info.plist
+  config = withInfoPlist(config, (config) => {
+    if (!config.modResults.UIAppFonts) {
+      config.modResults.UIAppFonts = [];
+    }
+    
+    config.modResults.UIAppFonts = [
+      ...new Set([...config.modResults.UIAppFonts, ...fonts]),
+    ];
+    
+    return config;
+  });
+  
+  // Add fonts to Xcode project
+  config = withXcodeProject(config, (config) => {
+    const xcodeProject = config.modResults;
+    
+    for (const font of fonts) {
+      xcodeProject.addResourceFile(
+        `Fonts/${font}`,
+        { target: xcodeProject.getFirstTarget().uuid }
+      );
+    }
+    
+    return config;
+  });
+  
+  return config;
+};
+
+// Usage
+export default withCustomFonts(config, {
+  fonts: ['CustomFont-Regular.ttf', 'CustomFont-Bold.ttf'],
+});
+```
+
+### Adding sound files
+
+```ts
+import { withDangerousMod, withXcodeProject, ConfigPlugin } from '@expo/config-plugins';
+import fs from 'fs';
+import path from 'path';
+
+const withSoundFiles: ConfigPlugin<{ sounds: string[] }> = (config, { sounds }) => {
+  // Copy sound files
+  config = withDangerousMod(config, ['ios', async (config) => {
+    const { platformProjectRoot, projectRoot } = config.modRequest;
+    const soundsDir = path.join(platformProjectRoot, 'Sounds');
+    
+    await fs.promises.mkdir(soundsDir, { recursive: true });
+    
+    for (const sound of sounds) {
+      const source = path.join(projectRoot, 'assets', 'sounds', sound);
+      const target = path.join(soundsDir, sound);
+      await fs.promises.copyFile(source, target);
+    }
+    
+    return config;
+  }]);
+  
+  // Add to Xcode project
+  config = withXcodeProject(config, (config) => {
+    const xcodeProject = config.modResults;
+    
+    for (const sound of sounds) {
+      xcodeProject.addResourceFile(
+        `Sounds/${sound}`,
+        { target: xcodeProject.getFirstTarget().uuid }
+      );
+    }
+    
+    return config;
+  });
+  
+  return config;
+};
+```
+
+## Managing Android assets
+
+### Adding images to drawable folders
+
+```ts
+import { withDangerousMod, ConfigPlugin } from '@expo/config-plugins';
+import fs from 'fs';
+import path from 'path';
+
+const withAndroidDrawables: ConfigPlugin<{
+  images: { [filename: string]: { [density: string]: string } }
+}> = (config, { images }) => {
+  return withDangerousMod(config, ['android', async (config) => {
+    const { platformProjectRoot, projectRoot } = config.modRequest;
+    const resDir = path.join(platformProjectRoot, 'app', 'src', 'main', 'res');
+    
+    for (const [filename, densities] of Object.entries(images)) {
+      for (const [density, sourcePath] of Object.entries(densities)) {
+        const drawableDir = path.join(resDir, `drawable-${density}`);
+        await fs.promises.mkdir(drawableDir, { recursive: true });
+        
+        const source = path.join(projectRoot, sourcePath);
+        const target = path.join(drawableDir, filename);
+        await fs.promises.copyFile(source, target);
+      }
+    }
+    
+    return config;
+  }]);
+};
+
+// Usage
+export default withAndroidDrawables(config, {
+  images: {
+    'custom_icon.png': {
+      mdpi: 'assets/android/mdpi/custom_icon.png',
+      hdpi: 'assets/android/hdpi/custom_icon.png',
+      xhdpi: 'assets/android/xhdpi/custom_icon.png',
+      xxhdpi: 'assets/android/xxhdpi/custom_icon.png',
+      xxxhdpi: 'assets/android/xxxhdpi/custom_icon.png',
+    },
+  },
+});
+```
+
+### Adding fonts to Android
+
+```ts
+import { withDangerousMod, ConfigPlugin } from '@expo/config-plugins';
+import fs from 'fs';
+import path from 'path';
+
+const withAndroidFonts: ConfigPlugin<{ fonts: string[] }> = (config, { fonts }) => {
+  return withDangerousMod(config, ['android', async (config) => {
+    const { platformProjectRoot, projectRoot } = config.modRequest;
+    const fontsDir = path.join(
+      platformProjectRoot,
+      'app',
+      'src',
+      'main',
+      'assets',
+      'fonts'
+    );
+    
+    await fs.promises.mkdir(fontsDir, { recursive: true });
+    
+    for (const font of fonts) {
+      const source = path.join(projectRoot, 'assets', 'fonts', font);
+      const target = path.join(fontsDir, font);
+      await fs.promises.copyFile(source, target);
+    }
+    
+    return config;
+  }]);
+};
+```
+
+### Adding raw resources
+
+```ts
+import { withDangerousMod, ConfigPlugin } from '@expo/config-plugins';
+import fs from 'fs';
+import path from 'path';
+
+const withRawResources: ConfigPlugin<{ files: string[] }> = (config, { files }) => {
+  return withDangerousMod(config, ['android', async (config) => {
+    const { platformProjectRoot, projectRoot } = config.modRequest;
+    const rawDir = path.join(
+      platformProjectRoot,
+      'app',
+      'src',
+      'main',
+      'res',
+      'raw'
+    );
+    
+    await fs.promises.mkdir(rawDir, { recursive: true });
+    
+    for (const file of files) {
+      const source = path.join(projectRoot, 'assets', 'raw', file);
+      const target = path.join(rawDir, file);
+      await fs.promises.copyFile(source, target);
+    }
+    
+    return config;
+  }]);
+};
+
+// Usage
+export default withRawResources(config, {
+  files: ['notification_sound.mp3', 'config.json'],
+});
+```
+
+## Managing XML resources
+
+### Adding string resources
+
+```ts Resources.ts
+import { withStringsXml, ConfigPlugin } from '@expo/config-plugins';
+import { AndroidConfig } from '@expo/config-plugins';
+
+const withCustomStrings: ConfigPlugin<{
+  strings: { [key: string]: string }
+}> = (config, { strings }) => {
+  return withStringsXml(config, (config) => {
+    const stringsXml = config.modResults;
+    
+    for (const [key, value] of Object.entries(strings)) {
+      AndroidConfig.Resources.setStringItem(
+        { name: key, value },
+        stringsXml
+      );
+    }
+    
+    return config;
+  });
+};
+
+// Usage
+export default withCustomStrings(config, {
+  strings: {
+    app_name: 'My App',
+    welcome_message: 'Welcome to my app',
+    error_message: 'Something went wrong',
+  },
+});
+```
+
+### Adding color resources
+
+```ts Colors.ts
+import { withAndroidColors, ConfigPlugin } from '@expo/config-plugins';
+import { AndroidConfig } from '@expo/config-plugins';
+
+const withCustomColors: ConfigPlugin<{
+  colors: { [key: string]: string }
+}> = (config, { colors }) => {
+  return withAndroidColors(config, (config) => {
+    const colorsXml = config.modResults;
+    
+    for (const [key, value] of Object.entries(colors)) {
+      AndroidConfig.Resources.setColorItem(
+        { name: key, value },
+        colorsXml
+      );
+    }
+    
+    return config;
+  });
+};
+
+// Usage
+export default withCustomColors(config, {
+  colors: {
+    colorPrimary: '#6200EE',
+    colorAccent: '#03DAC5',
+    backgroundColor: '#FFFFFF',
+  },
+});
+```
+
+## Validating asset filenames
+
+Android has strict naming requirements for resource files.
+
+```ts validations.ts
+export function isValidAndroidAssetName(name: string): boolean {
+  // Android resource files must:
+  // - Only contain lowercase letters, numbers, and underscores
+  // - Not start with a number
+  return /^[a-z_][a-z0-9_]*$/.test(name);
+}
+
+export function assertValidAndroidAssetName(name: string): void {
+  if (!isValidAndroidAssetName(name)) {
+    throw new Error(
+      `Invalid Android resource name: "${name}". ` +
+      'Android resource names must contain only lowercase letters, numbers, ' +
+      'and underscores, and must not start with a number.'
+    );
+  }
+}
+```
+
+Usage:
+
+```ts
+import { assertValidAndroidAssetName } from '@expo/config-plugins';
+
+const withValidatedAssets: ConfigPlugin = (config) => {
+  return withDangerousMod(config, ['android', async (config) => {
+    const filename = 'my-custom-icon.png'; // Invalid: contains hyphens
+    
+    // Convert to valid name
+    const validName = filename.replace(/[^a-z0-9_]/g, '_');
+    assertValidAndroidAssetName(validName);
+    
+    // Now safe to use
+    return config;
+  }]);
+};
+```
+
+## Platform-specific assets
+
+Create a unified plugin that handles both platforms:
+
+```ts
+import { withDangerousMod, withPlugins, ConfigPlugin } from '@expo/config-plugins';
+import fs from 'fs';
+import path from 'path';
+
+type Props = {
+  ios?: {
+    images?: string[];
+    fonts?: string[];
+  };
+  android?: {
+    images?: { [filename: string]: { [density: string]: string } };
+    fonts?: string[];
+  };
+};
+
+const withPlatformAssets: ConfigPlugin<Props> = (config, { ios, android }) => {
+  return withPlugins(config, [
+    // iOS assets
+    [
+      withDangerousMod,
+      [
+        'ios',
+        async (config) => {
+          if (!ios) return config;
+          
+          const { platformProjectRoot, projectRoot } = config.modRequest;
+          
+          // Copy iOS images
+          if (ios.images) {
+            const imagesDir = path.join(platformProjectRoot, 'Images');
+            await fs.promises.mkdir(imagesDir, { recursive: true });
+            
+            for (const image of ios.images) {
+              const source = path.join(projectRoot, 'assets', 'ios', image);
+              const target = path.join(imagesDir, image);
+              await fs.promises.copyFile(source, target);
+            }
+          }
+          
+          // Copy iOS fonts
+          if (ios.fonts) {
+            const fontsDir = path.join(platformProjectRoot, 'Fonts');
+            await fs.promises.mkdir(fontsDir, { recursive: true });
+            
+            for (const font of ios.fonts) {
+              const source = path.join(projectRoot, 'assets', 'fonts', font);
+              const target = path.join(fontsDir, font);
+              await fs.promises.copyFile(source, target);
+            }
+          }
+          
+          return config;
+        },
+      ],
+    ],
+    // Android assets
+    [
+      withDangerousMod,
+      [
+        'android',
+        async (config) => {
+          if (!android) return config;
+          
+          const { platformProjectRoot, projectRoot } = config.modRequest;
+          
+          // Copy Android images
+          if (android.images) {
+            const resDir = path.join(platformProjectRoot, 'app', 'src', 'main', 'res');
+            
+            for (const [filename, densities] of Object.entries(android.images)) {
+              for (const [density, sourcePath] of Object.entries(densities)) {
+                const drawableDir = path.join(resDir, `drawable-${density}`);
+                await fs.promises.mkdir(drawableDir, { recursive: true });
+                
+                const source = path.join(projectRoot, sourcePath);
+                const target = path.join(drawableDir, filename);
+                await fs.promises.copyFile(source, target);
+              }
+            }
+          }
+          
+          // Copy Android fonts
+          if (android.fonts) {
+            const fontsDir = path.join(
+              platformProjectRoot,
+              'app',
+              'src',
+              'main',
+              'assets',
+              'fonts'
+            );
+            await fs.promises.mkdir(fontsDir, { recursive: true });
+            
+            for (const font of android.fonts) {
+              const source = path.join(projectRoot, 'assets', 'fonts', font);
+              const target = path.join(fontsDir, font);
+              await fs.promises.copyFile(source, target);
+            }
+          }
+          
+          return config;
+        },
+      ],
+    ],
+  ]);
+};
+
+export default withPlatformAssets;
+```
+
+Usage:
+
+```json app.json
+{
+  "expo": {
+    "plugins": [
+      [
+        "./plugins/withPlatformAssets",
+        {
+          "ios": {
+            "images": ["custom_image.png"],
+            "fonts": ["CustomFont.ttf"]
+          },
+          "android": {
+            "images": {
+              "custom_image.png": {
+                "mdpi": "assets/android/mdpi/custom_image.png",
+                "hdpi": "assets/android/hdpi/custom_image.png"
+              }
+            },
+            "fonts": ["CustomFont.ttf"]
+          }
+        }
+      ]
+    ]
+  }
+}
+```
+
+## Best practices
+
+### 1. Organize assets in source directory
+
+```
+project/
+  assets/
+    ios/
+      images/
+      sounds/
+    android/
+      mdpi/
+      hdpi/
+      xhdpi/
+      xxhdpi/
+      xxxhdpi/
+    fonts/
+      CustomFont-Regular.ttf
+      CustomFont-Bold.ttf
+```
+
+### 2. Validate filenames before copying
+
+```ts
+import { assertValidAndroidAssetName } from '@expo/config-plugins';
+
+for (const filename of androidAssets) {
+  const nameWithoutExt = filename.replace(/\.[^.]+$/, '');
+  assertValidAndroidAssetName(nameWithoutExt);
+}
+```
+
+### 3. Check file existence
+
+```ts
+import fs from 'fs';
+
+if (!fs.existsSync(sourcePath)) {
+  throw new Error(`Asset file not found: ${sourcePath}`);
+}
+```
+
+### 4. Use glob for bulk operations
+
+```ts
+import { glob } from 'glob';
+
+const images = glob.sync('**/*.{png,jpg,jpeg}', {
+  cwd: assetsDir,
+});
+```
+
+### 5. Make plugins idempotent
+
+Copy operations are idempotent by default (overwriting existing files), but be careful with append operations.
+
+### 6. Document required asset structure
+
+Include a README explaining the expected asset organization:
+
+```markdown
+## Assets Structure
+
+Place your assets in the following structure:
+
+- `assets/fonts/` - Font files (used by both platforms)
+- `assets/ios/` - iOS-specific images
+- `assets/android/mdpi/` - Android MDPI density images
+- `assets/android/hdpi/` - Android HDPI density images
+...
+```
+
+## Debugging asset issues
+
+Add logging to verify assets are copied:
+
+```ts
+const withDebugAssets: ConfigPlugin = (config) => {
+  return withDangerousMod(config, ['ios', async (config) => {
+    const { platformProjectRoot } = config.modRequest;
+    
+    console.log('Copying assets to:', platformProjectRoot);
+    
+    // Copy operations...
+    
+    console.log('Assets copied successfully');
+    
+    return config;
+  }]);
+};
+```
+
+Enable debug mode:
+
+```bash
+EXPO_DEBUG=1 npx expo prebuild
+```
+
+## Next steps
+
+- [Modifying native projects](/config-plugins/modifying-native-projects) - More native modifications
+- [Testing plugins](/config-plugins/testing-plugins) - Test asset copying
+- [Build Properties](/config-plugins/build-properties) - Configure build settings

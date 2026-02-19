@@ -1,0 +1,186 @@
+---
+title: Introduction to Expo Router
+description: Learn about Expo Router, a file-based routing library for React Native and web applications
+---
+
+# Introduction to Expo Router
+
+Expo Router is a file-based routing library for React Native and web applications. Built on top of React Navigation, it provides automatic route generation from file structure, deep linking, typed routes, and cross-platform navigation.
+
+## What is Expo Router?
+
+Expo Router brings the simplicity of file-based routing to React Native, similar to what Next.js provides for web applications. Instead of manually configuring routes and navigation stacks, you simply create files in your `app` directory, and Expo Router automatically generates the navigation structure.
+
+## Key Features
+
+### File-Based Routing
+
+Routes are automatically generated from your file structure. Create a file, get a route:
+
+```
+app/
+  index.tsx          → /
+  about.tsx          → /about
+  profile/
+    [id].tsx         → /profile/:id
+    settings.tsx     → /profile/settings
+```
+
+### Universal Navigation
+
+Works seamlessly across iOS, Android, and web with a single codebase. Deep links, URL parameters, and navigation work identically on all platforms.
+
+### Type-Safe Routes
+
+Automatic TypeScript generation ensures type safety for all your routes and parameters:
+
+```tsx
+// TypeScript knows this route exists
+router.push('/profile/123');
+
+// TypeScript error: route doesn't exist
+router.push('/invalid-route');
+```
+
+### Deep Linking Built-In
+
+Every route is automatically deep linkable. No additional configuration needed:
+
+```
+myapp://profile/123
+https://myapp.com/profile/123
+```
+
+### Nested Layouts
+
+Share UI across routes with nested layouts:
+
+```tsx app/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function Layout() {
+  return <Stack />;
+}
+```
+
+## Benefits Over Traditional Navigation
+
+### Simplified Setup
+
+**Traditional React Navigation:**
+
+```tsx
+// Manual configuration required
+const Stack = createNativeStackNavigator();
+
+function Navigation() {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator>
+        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+```
+
+**Expo Router:**
+
+```tsx
+// Just create files - no configuration needed
+app/
+  index.tsx     // HomeScreen
+  profile.tsx   // ProfileScreen
+  settings.tsx  // SettingsScreen
+```
+
+### Automatic Deep Linking
+
+**Traditional:** Requires manual linking configuration with path patterns and parameter parsing.
+
+**Expo Router:** Every route is automatically deep linkable with the correct URL structure.
+
+### Type Safety
+
+**Traditional:** String-based navigation with no type checking.
+
+**Expo Router:** Full TypeScript support with auto-generated types for routes and parameters.
+
+## Quick Example
+
+Create a simple app with navigation:
+
+```tsx app/index.tsx
+import { View, Text } from 'react-native';
+import { Link } from 'expo-router';
+
+export default function Home() {
+  return (
+    <View>
+      <Text>Home Screen</Text>
+      <Link href="/about">Go to About</Link>
+      <Link href="/profile/123">View Profile</Link>
+    </View>
+  );
+}
+```
+
+```tsx app/about.tsx
+import { View, Text } from 'react-native';
+import { router } from 'expo-router';
+
+export default function About() {
+  return (
+    <View>
+      <Text>About Screen</Text>
+      <Text onPress={() => router.back()}>Go Back</Text>
+    </View>
+  );
+}
+```
+
+```tsx app/profile/[id].tsx
+import { View, Text } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+
+export default function Profile() {
+  const { id } = useLocalSearchParams();
+  
+  return (
+    <View>
+      <Text>Profile {id}</Text>
+    </View>
+  );
+}
+```
+
+## Architecture Overview
+
+Expo Router processes your file structure through a pipeline:
+
+1. **Metro `require.context()`** collects route files at build time
+2. **`getRoutes()`** converts file paths to a `RouteNode` tree
+3. **`getReactNavigationConfig()`** generates React Navigation configuration
+4. **`getLinkingConfig()`** creates deep linking configuration
+5. **NavigationContainer** receives the final configuration
+
+This happens automatically - you just create files and components.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/router/installation">
+    Install Expo Router and required dependencies
+  </Card>
+  <Card title="Quick Start" icon="rocket" href="/router/quick-start">
+    Build your first app with Expo Router
+  </Card>
+  <Card title="File-Based Routing" icon="folder" href="/router/file-based-routing">
+    Learn how file structure maps to routes
+  </Card>
+  <Card title="Navigation" icon="compass" href="/router/navigation">
+    Navigate between screens
+  </Card>
+</CardGroup>

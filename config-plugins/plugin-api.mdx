@@ -1,0 +1,754 @@
+---
+title: Config Plugin API Reference
+description: Complete API reference for Expo config plugins including types, functions, and examples.
+---
+
+import { APIBox } from '~/components/plugins/APIBox';
+
+This is the complete API reference for `@expo/config-plugins`. All exports are available from the main package:
+
+```ts
+import { 
+  ConfigPlugin,
+  withPlugins,
+  withInfoPlist,
+  withAndroidManifest,
+  AndroidConfig,
+  IOSConfig,
+} from '@expo/config-plugins';
+```
+
+## Core Types
+
+### ConfigPlugin
+
+```ts Plugin.types.ts
+export type ConfigPlugin<Props = void> = (config: ExpoConfig, props: Props) => ExpoConfig;
+```
+
+The main plugin type. A function that receives an `ExpoConfig` and optional props, then returns a modified `ExpoConfig`.
+
+**Example:**
+
+```ts
+import { ConfigPlugin } from '@expo/config-plugins';
+
+const withCustom: ConfigPlugin<{ value: string }> = (config, { value }) => {
+  config.name = value;
+  return config;
+};
+```
+
+### StaticPlugin
+
+```ts Plugin.types.ts
+export type StaticPlugin<T = any> = [string | ConfigPlugin<T>, T];
+```
+
+A plugin with props, as used in `app.json`. The first element is the plugin (string or function), the second is props.
+
+**Example:**
+
+```json app.json
+{
+  "plugins": [
+    ["expo-camera", { "cameraPermission": "Allow app to use camera" }]
+  ]
+}
+```
+
+### Mod
+
+```ts Plugin.types.ts
+export type Mod<Props = any> = ((config: ExportedConfigWithProps<Props>) => 
+  OptionalPromise<ExportedConfigWithProps<Props>>) & {
+  isProvider?: boolean;
+  isIntrospective?: boolean;
+};
+```
+
+A mod is a function that modifies a specific native file. It receives the config with `modResults` (the file contents).
+
+**Example:**
+
+```ts
+const infoPlistMod: Mod<InfoPlist> = (config) => {
+  config.modResults.CFBundleDisplayName = config.name;
+  return config;
+};
+```
+
+### ModConfig
+
+```ts Plugin.types.ts
+export interface ModConfig {
+  android?: {
+    dangerous?: Mod<unknown>;
+    finalized?: Mod<unknown>;
+    manifest?: Mod<AndroidManifest>;
+    strings?: Mod<ResourceXML>;
+    colors?: Mod<ResourceXML>;
+    colorsNight?: Mod<ResourceXML>;
+    styles?: Mod<ResourceXML>;
+    mainActivity?: Mod<ApplicationProjectFile>;
+    mainApplication?: Mod<ApplicationProjectFile>;
+    appBuildGradle?: Mod<GradleProjectFile>;
+    projectBuildGradle?: Mod<GradleProjectFile>;
+    settingsGradle?: Mod<GradleProjectFile>;
+    gradleProperties?: Mod<PropertiesItem[]>;
+  };
+  ios?: {
+    dangerous?: Mod<unknown>;
+    finalized?: Mod<unknown>;
+    infoPlist?: Mod<InfoPlist>;
+    entitlements?: Mod<Plist>;
+    expoPlist?: Mod<Plist>;
+    xcodeproj?: Mod<XcodeProject>;
+    appDelegate?: Mod<AppDelegateProjectFile>;
+    podfileProperties?: Mod<Record<string, string>>;
+  };
+}
+```
+
+Defines all available mods for iOS and Android platforms.
+
+### ExportedConfigWithProps
+
+```ts Plugin.types.ts
+export interface ExportedConfigWithProps<Data = any> extends ExportedConfig {
+  modResults: Data;
+  modRequest: ModProps<Data>;
+  readonly modRawConfig: ExpoConfig;
+}
+```
+
+The config object passed to mod functions, including:
+- `modResults`: The parsed file contents
+- `modRequest`: Metadata about the current mod
+- `modRawConfig`: The original, unmodified config
+
+## Plugin Composition
+
+### withPlugins
+
+```ts withPlugins.ts
+export const withPlugins: ConfigPlugin<(StaticPlugin | ConfigPlugin | string)[]>;
+```
+
+Apply multiple plugins to a config in sequence.
+
+**Example:**
+
+```ts
+import { withPlugins } from '@expo/config-plugins';
+
+const config = withPlugins(baseConfig, [
+  'expo-camera',
+  'expo-location',
+  [withCustom, { value: 'test' }],
+]);
+```
+
+### withRunOnce
+
+```ts withRunOnce.ts
+export const withRunOnce: ConfigPlugin<{
+  plugin: ConfigPlugin<void>;
+  name: string;
+  version?: string;
+}>;
+```
+
+Ensure a plugin only runs once, even if applied multiple times.
+
+**Example:**
+
+```ts
+import { withRunOnce } from '@expo/config-plugins';
+
+const config = withRunOnce(baseConfig, {
+  plugin: myPlugin,
+  name: 'my-plugin',
+  version: '1.0.0',
+});
+```
+
+### createRunOncePlugin
+
+```ts withRunOnce.ts
+export function createRunOncePlugin<T>(
+  plugin: ConfigPlugin<T>,
+  name: string,
+  version?: string
+): ConfigPlugin<T>;
+```
+
+Helper to wrap a plugin with run-once logic.
+
+**Example:**
+
+```ts
+import { createRunOncePlugin } from '@expo/config-plugins';
+
+const withMyPlugin: ConfigPlugin<Props> = (config, props) => {
+  // Plugin logic
+  return config;
+};
+
+export default createRunOncePlugin(withMyPlugin, 'withMyPlugin', '1.0.0');
+```
+
+## iOS Plugins
+
+### withInfoPlist
+
+```ts ios-plugins.ts
+export const withInfoPlist: ConfigPlugin<Mod<InfoPlist>>;
+```
+
+Modify the iOS `Info.plist` file.
+
+**Example:**
+
+```ts
+import { withInfoPlist } from '@expo/config-plugins';
+
+const config = withInfoPlist(baseConfig, (config) => {
+  config.modResults.NSCameraUsageDescription = 'Allow camera access';
+  config.modResults.UIBackgroundModes = ['remote-notification'];
+  return config;
+});
+```
+
+### withEntitlementsPlist
+
+```ts ios-plugins.ts
+export const withEntitlementsPlist: ConfigPlugin<Mod<JSONObject>>;
+```
+
+Modify the iOS entitlements file.
+
+**Example:**
+
+```ts
+import { withEntitlementsPlist } from '@expo/config-plugins';
+
+const config = withEntitlementsPlist(baseConfig, (config) => {
+  config.modResults['com.apple.developer.associated-domains'] = [
+    'applinks:example.com',
+  ];
+  return config;
+});
+```
+
+### withXcodeProject
+
+```ts ios-plugins.ts
+export const withXcodeProject: ConfigPlugin<Mod<XcodeProject>>;
+```
+
+Modify the Xcode project (`.xcodeproj`).
+
+**Example:**
+
+```ts
+import { withXcodeProject } from '@expo/config-plugins';
+
+const config = withXcodeProject(baseConfig, (config) => {
+  const xcodeProject = config.modResults;
+  
+  // Add build phase, framework, etc.
+  xcodeProject.addBuildPhase(
+    [],
+    'PBXShellScriptBuildPhase',
+    'Run Script',
+    null,
+    { shellScript: 'echo "Hello"' }
+  );
+  
+  return config;
+});
+```
+
+### withAppDelegate
+
+```ts ios-plugins.ts
+export const withAppDelegate: ConfigPlugin<Mod<AppDelegateProjectFile>>;
+```
+
+Modify the iOS `AppDelegate.m` file (dangerous - string manipulation).
+
+**Example:**
+
+```ts
+import { withAppDelegate } from '@expo/config-plugins';
+
+const config = withAppDelegate(baseConfig, (config) => {
+  if (config.modResults.language === 'objc') {
+    config.modResults.contents = config.modResults.contents.replace(
+      /(#import "AppDelegate.h")/,
+      `$1\n#import "MyCustomHeader.h"`
+    );
+  }
+  return config;
+});
+```
+
+### withPodfile
+
+```ts ios-plugins.ts
+export const withPodfile: ConfigPlugin<Mod<PodfileProjectFile>>;
+```
+
+Modify the `Podfile`.
+
+### withPodfileProperties
+
+```ts ios-plugins.ts
+export const withPodfileProperties: ConfigPlugin<Mod<Record<string, string>>>;
+```
+
+Modify the `Podfile.properties.json` (key-value pairs).
+
+**Example:**
+
+```ts
+import { withPodfileProperties } from '@expo/config-plugins';
+
+const config = withPodfileProperties(baseConfig, (config) => {
+  config.modResults['ios.deploymentTarget'] = '13.0';
+  return config;
+});
+```
+
+### withExpoPlist
+
+```ts ios-plugins.ts
+export const withExpoPlist: ConfigPlugin<Mod<ExpoPlist>>;
+```
+
+Modify the `Expo.plist` (Expo Updates configuration).
+
+### createInfoPlistPlugin
+
+```ts ios-plugins.ts
+export function createInfoPlistPlugin(
+  action: (expo: ExpoConfig, infoPlist: InfoPlist) => Promise<InfoPlist> | InfoPlist,
+  name?: string
+): ConfigPlugin;
+```
+
+Helper to create Info.plist plugins.
+
+**Example:**
+
+```ts
+import { createInfoPlistPlugin } from '@expo/config-plugins';
+
+const withCustomKey = createInfoPlistPlugin(
+  (config, infoPlist) => {
+    infoPlist.MyCustomKey = config.myValue;
+    return infoPlist;
+  },
+  'withCustomKey'
+);
+```
+
+### createEntitlementsPlugin
+
+```ts ios-plugins.ts
+export function createEntitlementsPlugin(
+  action: (expo: ExpoConfig, entitlements: JSONObject) => JSONObject,
+  name: string
+): ConfigPlugin;
+```
+
+Helper to create entitlements plugins.
+
+**Example:**
+
+```ts Entitlements.ts
+import { createEntitlementsPlugin } from '@expo/config-plugins';
+
+const withAssociatedDomains = createEntitlementsPlugin(
+  (config, entitlements) => {
+    if (config.ios?.associatedDomains) {
+      return {
+        ...entitlements,
+        'com.apple.developer.associated-domains': config.ios.associatedDomains,
+      };
+    }
+    return entitlements;
+  },
+  'withAssociatedDomains'
+);
+```
+
+## Android Plugins
+
+### withAndroidManifest
+
+```ts android-plugins.ts
+export const withAndroidManifest: ConfigPlugin<Mod<AndroidManifest>>;
+```
+
+Modify the `AndroidManifest.xml`.
+
+**Example:**
+
+```ts
+import { withAndroidManifest } from '@expo/config-plugins';
+
+const config = withAndroidManifest(baseConfig, (config) => {
+  const manifest = config.modResults.manifest;
+  
+  // Add permission
+  if (!manifest['uses-permission']) {
+    manifest['uses-permission'] = [];
+  }
+  manifest['uses-permission'].push({
+    $: { 'android:name': 'android.permission.CAMERA' },
+  });
+  
+  return config;
+});
+```
+
+### withStringsXml
+
+```ts android-plugins.ts
+export const withStringsXml: ConfigPlugin<Mod<ResourceXML>>;
+```
+
+Modify `android/app/src/main/res/values/strings.xml`.
+
+**Example:**
+
+```ts
+import { withStringsXml } from '@expo/config-plugins';
+
+const config = withStringsXml(baseConfig, (config) => {
+  config.modResults.resources.string.push({
+    $: { name: 'custom_string' },
+    _: 'My custom value',
+  });
+  return config;
+});
+```
+
+### withAndroidColors
+
+```ts android-plugins.ts
+export const withAndroidColors: ConfigPlugin<Mod<ResourceXML>>;
+```
+
+Modify `android/app/src/main/res/values/colors.xml`.
+
+### withAndroidColorsNight
+
+```ts android-plugins.ts
+export const withAndroidColorsNight: ConfigPlugin<Mod<ResourceXML>>;
+```
+
+Modify `android/app/src/main/res/values-night/colors.xml`.
+
+### withAndroidStyles
+
+```ts android-plugins.ts
+export const withAndroidStyles: ConfigPlugin<Mod<ResourceXML>>;
+```
+
+Modify `android/app/src/main/res/values/styles.xml`.
+
+### withMainActivity
+
+```ts android-plugins.ts
+export const withMainActivity: ConfigPlugin<Mod<ApplicationProjectFile>>;
+```
+
+Modify the `MainActivity.java` file (dangerous - string manipulation).
+
+### withMainApplication
+
+```ts android-plugins.ts
+export const withMainApplication: ConfigPlugin<Mod<ApplicationProjectFile>>;
+```
+
+Modify the `MainApplication.java` file (dangerous - string manipulation).
+
+### withAppBuildGradle
+
+```ts android-plugins.ts
+export const withAppBuildGradle: ConfigPlugin<Mod<GradleProjectFile>>;
+```
+
+Modify `android/app/build.gradle`.
+
+**Example:**
+
+```ts
+import { withAppBuildGradle } from '@expo/config-plugins';
+
+const config = withAppBuildGradle(baseConfig, (config) => {
+  if (config.modResults.language === 'groovy') {
+    config.modResults.contents = config.modResults.contents.replace(
+      /defaultConfig {/,
+      `defaultConfig {\n        manifestPlaceholders = [customKey: "value"]`
+    );
+  }
+  return config;
+});
+```
+
+### withProjectBuildGradle
+
+```ts android-plugins.ts
+export const withProjectBuildGradle: ConfigPlugin<Mod<GradleProjectFile>>;
+```
+
+Modify `android/build.gradle`.
+
+### withSettingsGradle
+
+```ts android-plugins.ts
+export const withSettingsGradle: ConfigPlugin<Mod<GradleProjectFile>>;
+```
+
+Modify `android/settings.gradle`.
+
+### withGradleProperties
+
+```ts android-plugins.ts
+export const withGradleProperties: ConfigPlugin<Mod<PropertiesItem[]>>;
+```
+
+Modify `android/gradle.properties` as key-value pairs.
+
+**Example:**
+
+```ts
+import { withGradleProperties } from '@expo/config-plugins';
+
+const config = withGradleProperties(baseConfig, (config) => {
+  config.modResults.push({
+    type: 'property',
+    key: 'android.useAndroidX',
+    value: 'true',
+  });
+  return config;
+});
+```
+
+### createAndroidManifestPlugin
+
+```ts android-plugins.ts
+export function createAndroidManifestPlugin(
+  action: (config: ExportedConfigWithProps, manifest: AndroidManifest) => OptionalPromise<AndroidManifest>,
+  name: string
+): ConfigPlugin;
+```
+
+Helper to create Android manifest plugins.
+
+### createStringsXmlPlugin
+
+```ts android-plugins.ts
+export function createStringsXmlPlugin(
+  action: (config: ExportedConfigWithProps, strings: ResourceXML) => OptionalPromise<ResourceXML>,
+  name: string
+): ConfigPlugin;
+```
+
+Helper to create strings.xml plugins.
+
+## Advanced Mods
+
+### withMod
+
+```ts withMod.ts
+export function withMod<T>(
+  config: ExportedConfig,
+  {
+    platform,
+    mod,
+    action,
+  }: {
+    platform: ModPlatform;
+    mod: string;
+    action: Mod<T>;
+  }
+): ExportedConfig;
+```
+
+Low-level function to add a mod to a specific platform and mod name.
+
+**Example:**
+
+```ts
+import { withMod } from '@expo/config-plugins';
+
+const config = withMod(baseConfig, {
+  platform: 'ios',
+  mod: 'infoPlist',
+  action: (config) => {
+    config.modResults.MyKey = 'MyValue';
+    return config;
+  },
+});
+```
+
+### withDangerousMod
+
+```ts withDangerousMod.ts
+export const withDangerousMod: ConfigPlugin<[ModPlatform, Mod<unknown>]>;
+```
+
+Run code before any files are read. Useful for filesystem operations.
+
+**Example:**
+
+```ts
+import { withDangerousMod } from '@expo/config-plugins';
+import fs from 'fs';
+import path from 'path';
+
+const config = withDangerousMod(baseConfig, ['ios', async (config) => {
+  const filePath = path.join(
+    config.modRequest.platformProjectRoot,
+    'custom-file.txt'
+  );
+  await fs.promises.writeFile(filePath, 'content');
+  return config;
+}]);
+```
+
+### withBaseMod
+
+```ts withMod.ts
+export function withBaseMod<T>(
+  config: ExportedConfig,
+  options: BaseModOptions & { action: Mod<T> }
+): ExportedConfig;
+```
+
+Low-level function to create a base mod with provider capabilities.
+
+## Mod Compilation
+
+### compileModsAsync
+
+```ts mod-compiler.ts
+export async function compileModsAsync(
+  config: ExportedConfig,
+  props: {
+    projectRoot: string;
+    platforms?: ModPlatform[];
+    introspect?: boolean;
+    assertMissingModProviders?: boolean;
+  }
+): Promise<ExportedConfig>;
+```
+
+Compile and execute all mods. This is called internally by Expo CLI.
+
+### evalModsAsync
+
+```ts mod-compiler.ts
+export async function evalModsAsync(
+  config: ExportedConfig,
+  props: {
+    projectRoot: string;
+    introspect?: boolean;
+    platforms?: ModPlatform[];
+    assertMissingModProviders?: boolean;
+  }
+): Promise<ExportedConfig>;
+```
+
+Evaluate mods without adding base mods. Use for testing.
+
+## Helper Utilities
+
+### WarningAggregator
+
+```ts
+import { WarningAggregator } from '@expo/config-plugins';
+
+// Add a warning
+WarningAggregator.addWarningIOS(
+  'myPlugin',
+  'This is a warning message'
+);
+
+// Flush warnings
+const warnings = WarningAggregator.flushWarningsAsync();
+```
+
+### CodeGenerator
+
+```ts generateCode.ts
+import { CodeGenerator } from '@expo/config-plugins';
+
+// Merge code with generated sections
+const result = CodeGenerator.mergeContents({
+  src: existingFileContent,
+  newSrc: codeToInsert,
+  tag: 'my-plugin',
+  anchor: /some regex/,
+  offset: 1,
+  comment: '//',
+});
+
+if (result.didMerge || result.didClear) {
+  fileContent = result.contents;
+}
+```
+
+Generates code with headers like:
+
+```
+// @generated begin my-plugin - expo prebuild (DO NOT MODIFY) sync-abc123
+// Your generated code
+// @generated end my-plugin
+```
+
+### PluginError
+
+```ts errors.ts
+import { PluginError } from '@expo/config-plugins';
+
+throw new PluginError(
+  'Something went wrong in the plugin',
+  'CUSTOM_ERROR_CODE'
+);
+```
+
+## Platform-Specific Configs
+
+### AndroidConfig
+
+```ts
+import { AndroidConfig } from '@expo/config-plugins';
+
+// Utilities for Android
+AndroidConfig.Manifest.addPermission(manifest, 'CAMERA');
+AndroidConfig.Permissions.ensurePermissions(manifest, ['CAMERA', 'LOCATION']);
+AndroidConfig.Resources.setStrings(strings, { app_name: 'My App' });
+```
+
+### IOSConfig
+
+```ts
+import { IOSConfig } from '@expo/config-plugins';
+
+// Utilities for iOS
+IOSConfig.BundleIdentifier.setBundleIdentifier(config, 'com.example.app');
+IOSConfig.Entitlements.setAssociatedDomains(entitlements, ['applinks:example.com']);
+IOSConfig.Version.setVersion(config, infoPlist, '1.0.0');
+```
+
+## Next steps
+
+- [Modifying native projects](/config-plugins/modifying-native-projects) - Platform-specific guides
+- [Testing plugins](/config-plugins/testing-plugins) - Test strategies
+- [Creating plugins](/config-plugins/creating-plugins) - Build your own plugins

@@ -1,0 +1,523 @@
+---
+title: expo-apple-authentication
+description: Sign in with Apple capability for iOS apps
+---
+
+# expo-apple-authentication
+
+**Version:** 55.0.6
+
+Provides 'Sign in with Apple' capability for Expo and React Native apps. Allows users to authenticate using their Apple ID with Face ID or Touch ID on iOS 13+.
+
+## Installation
+
+```bash
+npx expo install expo-apple-authentication
+```
+
+## Usage
+
+```typescript
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { View, StyleSheet } from 'react-native';
+
+export default function App() {
+  const handleAppleSignIn = async () => {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      
+      // Signed in successfully
+      console.log('User ID:', credential.user);
+      console.log('Email:', credential.email);
+      console.log('Name:', credential.fullName);
+    } catch (e: any) {
+      if (e.code === 'ERR_CANCELED') {
+        // User canceled
+      } else {
+        // Other error
+      }
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <AppleAuthentication.AppleAuthenticationButton
+        buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+        buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+        cornerRadius={5}
+        style={styles.button}
+        onPress={handleAppleSignIn}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  button: { width: 200, height: 44 },
+});
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="isAvailableAsync()" type="() => Promise<boolean>">
+  Checks if Sign in with Apple is available
+  
+  Returns `true` on iOS 13+ devices, `false` otherwise
+  
+  ```typescript
+  const available = await AppleAuthentication.isAvailableAsync();
+  if (available) {
+    // Show Sign in with Apple button
+  }
+  ```
+</ParamField>
+
+<ParamField path="signInAsync(options)" type="(options: AppleAuthenticationSignInOptions) => Promise<AppleAuthenticationCredential>">
+  Initiates Sign in with Apple flow
+  
+  Opens native authentication dialog
+  
+  ```typescript
+  const credential = await AppleAuthentication.signInAsync({
+    requestedScopes: [
+      AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+      AppleAuthentication.AppleAuthenticationScope.EMAIL,
+    ],
+  });
+  ```
+</ParamField>
+
+<ParamField path="refreshAsync(options)" type="(options: AppleAuthenticationRefreshOptions) => Promise<AppleAuthenticationCredential>">
+  Refreshes user credentials
+  
+  ```typescript
+  const credential = await AppleAuthentication.refreshAsync({
+    user: userId,
+  });
+  ```
+</ParamField>
+
+<ParamField path="signOutAsync(options)" type="(options: AppleAuthenticationSignOutOptions) => Promise<void>">
+  Signs out the user
+  
+  ```typescript
+  await AppleAuthentication.signOutAsync({
+    user: userId,
+  });
+  ```
+</ParamField>
+
+<ParamField path="getCredentialStateAsync(user)" type="(user: string) => Promise<AppleAuthenticationCredentialState>">
+  Checks credential state for a user
+  
+  Returns one of: `AUTHORIZED`, `REVOKED`, `NOT_FOUND`, `TRANSFERRED`
+  
+  ```typescript
+  const state = await AppleAuthentication.getCredentialStateAsync(userId);
+  if (state === AppleAuthentication.AppleAuthenticationCredentialState.AUTHORIZED) {
+    // User is authenticated
+  }
+  ```
+</ParamField>
+
+### Components
+
+<ParamField path="AppleAuthenticationButton" type="component">
+  Native Apple Sign In button component
+  
+  **Props:**
+  - `buttonType`: Button type (SIGN_IN, SIGN_UP, CONTINUE)
+  - `buttonStyle`: Visual style (WHITE, WHITE_OUTLINE, BLACK)
+  - `cornerRadius`: Corner radius in pixels
+  - `onPress`: Callback when button is pressed
+  
+  ```tsx
+  <AppleAuthentication.AppleAuthenticationButton
+    buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+    buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+    cornerRadius={5}
+    style={{ width: 200, height: 44 }}
+    onPress={handleSignIn}
+  />
+  ```
+</ParamField>
+
+### Types
+
+#### AppleAuthenticationCredential
+
+<ResponseField name="user" type="string">
+  Unique user identifier
+</ResponseField>
+
+<ResponseField name="email" type="string | null">
+  User's email (only on first sign-in)
+</ResponseField>
+
+<ResponseField name="fullName" type="AppleAuthenticationFullName | null">
+  User's full name (only on first sign-in)
+</ResponseField>
+
+<ResponseField name="realUserStatus" type="AppleAuthenticationUserDetectionStatus">
+  Indicates if user appears to be real person
+</ResponseField>
+
+<ResponseField name="identityToken" type="string | null">
+  JWT identity token
+</ResponseField>
+
+<ResponseField name="authorizationCode" type="string | null">
+  Authorization code
+</ResponseField>
+
+<ResponseField name="state" type="string | null">
+  State value from request
+</ResponseField>
+
+#### AppleAuthenticationFullName
+
+<ResponseField name="givenName" type="string | null">
+  First name
+</ResponseField>
+
+<ResponseField name="familyName" type="string | null">
+  Last name
+</ResponseField>
+
+<ResponseField name="middleName" type="string | null">
+  Middle name
+</ResponseField>
+
+<ResponseField name="namePrefix" type="string | null">
+  Name prefix (e.g., "Dr.")
+</ResponseField>
+
+<ResponseField name="nameSuffix" type="string | null">
+  Name suffix (e.g., "Jr.")
+</ResponseField>
+
+<ResponseField name="nickname" type="string | null">
+  Nickname
+</ResponseField>
+
+### Enums
+
+```typescript
+enum AppleAuthenticationScope {
+  FULL_NAME,
+  EMAIL,
+}
+
+enum AppleAuthenticationButtonType {
+  SIGN_IN,
+  SIGN_UP,
+  CONTINUE,
+}
+
+enum AppleAuthenticationButtonStyle {
+  WHITE,
+  WHITE_OUTLINE,
+  BLACK,
+}
+
+enum AppleAuthenticationCredentialState {
+  AUTHORIZED,
+  REVOKED,
+  NOT_FOUND,
+  TRANSFERRED,
+}
+```
+
+## Examples
+
+### Basic Sign In
+
+```typescript
+import * as AppleAuthentication from 'expo-apple-authentication';
+
+async function signInWithApple() {
+  try {
+    const credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+    });
+
+    console.log('User ID:', credential.user);
+    
+    // Email and name only available on first sign-in
+    if (credential.email) {
+      console.log('Email:', credential.email);
+    }
+    
+    if (credential.fullName) {
+      console.log('Name:', credential.fullName.givenName, credential.fullName.familyName);
+    }
+
+    // Identity token for backend verification
+    console.log('Identity Token:', credential.identityToken);
+    
+  } catch (e: any) {
+    if (e.code === 'ERR_CANCELED') {
+      console.log('User canceled sign in');
+    } else {
+      console.error('Sign in failed:', e);
+    }
+  }
+}
+```
+
+### Check Availability
+
+```typescript
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { useState, useEffect } from 'react';
+
+function AppleSignInButton() {
+  const [isAvailable, setIsAvailable] = useState(false);
+
+  useEffect(() => {
+    checkAvailability();
+  }, []);
+
+  async function checkAvailability() {
+    const available = await AppleAuthentication.isAvailableAsync();
+    setIsAvailable(available);
+  }
+
+  if (!isAvailable) {
+    return null; // Don't show button on unsupported devices
+  }
+
+  return (
+    <AppleAuthentication.AppleAuthenticationButton
+      buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+      buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+      cornerRadius={5}
+      style={{ width: 200, height: 44 }}
+      onPress={handleSignIn}
+    />
+  );
+}
+```
+
+### Verify Credential State
+
+```typescript
+import * as AppleAuthentication from 'expo-apple-authentication';
+
+async function checkUserStatus(userId: string) {
+  const state = await AppleAuthentication.getCredentialStateAsync(userId);
+
+  switch (state) {
+    case AppleAuthentication.AppleAuthenticationCredentialState.AUTHORIZED:
+      console.log('User is authorized');
+      break;
+    case AppleAuthentication.AppleAuthenticationCredentialState.REVOKED:
+      console.log('User revoked authorization');
+      // Sign out user
+      break;
+    case AppleAuthentication.AppleAuthenticationCredentialState.NOT_FOUND:
+      console.log('No credential found');
+      break;
+  }
+}
+```
+
+### Complete Auth Example
+
+```tsx
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { useState, useEffect } from 'react';
+import { View, Text, Button, StyleSheet } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
+
+export default function AppleAuthExample() {
+  const [user, setUser] = useState<any>(null);
+  const [isAvailable, setIsAvailable] = useState(false);
+
+  useEffect(() => {
+    checkAppleAuth();
+    loadStoredUser();
+  }, []);
+
+  async function checkAppleAuth() {
+    const available = await AppleAuthentication.isAvailableAsync();
+    setIsAvailable(available);
+  }
+
+  async function loadStoredUser() {
+    const userId = await SecureStore.getItemAsync('appleUserId');
+    if (userId) {
+      const state = await AppleAuthentication.getCredentialStateAsync(userId);
+      if (state === AppleAuthentication.AppleAuthenticationCredentialState.AUTHORIZED) {
+        const userData = await SecureStore.getItemAsync('userData');
+        if (userData) {
+          setUser(JSON.parse(userData));
+        }
+      }
+    }
+  }
+
+  async function handleSignIn() {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      // Store user data
+      const userData = {
+        userId: credential.user,
+        email: credential.email,
+        name: credential.fullName?.givenName,
+      };
+
+      await SecureStore.setItemAsync('appleUserId', credential.user);
+      await SecureStore.setItemAsync('userData', JSON.stringify(userData));
+      
+      setUser(userData);
+
+      // Send to backend for verification
+      await verifyWithBackend(credential.identityToken);
+      
+    } catch (e: any) {
+      if (e.code !== 'ERR_CANCELED') {
+        alert('Sign in failed');
+      }
+    }
+  }
+
+  async function handleSignOut() {
+    await SecureStore.deleteItemAsync('appleUserId');
+    await SecureStore.deleteItemAsync('userData');
+    setUser(null);
+  }
+
+  async function verifyWithBackend(identityToken: string | null) {
+    if (!identityToken) return;
+    
+    // Send identity token to your backend for verification
+    await fetch('https://your-api.com/auth/apple', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identityToken }),
+    });
+  }
+
+  if (!isAvailable) {
+    return (
+      <View style={styles.container}>
+        <Text>Sign in with Apple is not available on this device</Text>
+      </View>
+    );
+  }
+
+  if (user) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.welcome}>
+          Welcome{user.name ? `, ${user.name}` : ''}!
+        </Text>
+        {user.email && <Text>{user.email}</Text>}
+        <Button title="Sign Out" onPress={handleSignOut} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <AppleAuthentication.AppleAuthenticationButton
+        buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+        buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+        cornerRadius={5}
+        style={styles.button}
+        onPress={handleSignIn}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+  },
+  button: {
+    width: 200,
+    height: 44,
+  },
+  welcome: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+});
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS 13+  | ✅       |
+| Android  | ❌       |
+| Web      | ❌       |
+
+<Note>
+Sign in with Apple is only available on iOS 13 and later. Always check availability before showing the button.
+</Note>
+
+## Configuration
+
+### app.json
+
+```json
+{
+  "expo": {
+    "ios": {
+      "bundleIdentifier": "com.yourcompany.yourapp",
+      "usesAppleSignIn": true
+    }
+  }
+}
+```
+
+### Apple Developer Account
+
+1. Enable "Sign in with Apple" capability in your app identifier
+2. Create a service ID for web authentication (if needed)
+3. Configure domains and redirect URLs
+
+## Best Practices
+
+1. **Check Availability**: Always check `isAvailableAsync()` before showing button
+2. **First Sign-In**: Email and name are only provided on first sign-in, store them
+3. **Verify Server-Side**: Send `identityToken` to backend for verification
+4. **Credential State**: Check credential state on app launch
+5. **Handle Revocation**: Monitor for `REVOKED` state and sign user out
+
+<Warning>
+User email and full name are only provided during the first sign-in. Store this information as it won't be provided again.
+</Warning>
+
+## App Store Requirements
+
+If your app uses third-party sign-in (Google, Facebook, etc.), Apple requires you to also offer Sign in with Apple as an option.
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/apple-authentication/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-apple-authentication)
+- [Apple Documentation](https://developer.apple.com/sign-in-with-apple/)

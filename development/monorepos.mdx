@@ -1,0 +1,618 @@
+---
+title: Monorepo Support
+description: Use Expo in monorepos with Yarn Workspaces, npm workspaces, and pnpm.
+---
+
+Expo supports monorepo setups where multiple packages and apps share dependencies and code. This guide covers configuration and best practices.
+
+## Overview
+
+A monorepo structure for Expo:
+
+```
+my-monorepo/
+├── packages/
+│   ├── shared-components/
+│   │   ├── src/
+│   │   └── package.json
+│   └── shared-utils/
+│       ├── src/
+│       └── package.json
+├── apps/
+│   ├── mobile/
+│   │   ├── app/
+│   │   ├── app.json
+│   │   └── package.json
+│   └── admin/
+│       ├── app/
+│       ├── app.json
+│       └── package.json
+└── package.json  # Root
+```
+
+## Workspace Managers
+
+### Yarn Workspaces
+
+```json title="package.json (root)"
+{
+  "name": "my-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "mobile": "yarn workspace @myapp/mobile start",
+    "build:mobile": "yarn workspace @myapp/mobile build"
+  }
+}
+```
+
+### npm Workspaces
+
+```json title="package.json (root)"
+{
+  "name": "my-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "mobile": "npm run start -w @myapp/mobile"
+  }
+}
+```
+
+### pnpm Workspaces
+
+```yaml title="pnpm-workspace.yaml"
+packages:
+  - 'apps/*'
+  - 'packages/*'
+```
+
+```json title="package.json (root)"
+{
+  "scripts": {
+    "mobile": "pnpm --filter @myapp/mobile start"
+  }
+}
+```
+
+## Setting Up
+
+<Steps>
+
+<Step title="Initialize root package">
+
+```bash
+mkdir my-monorepo
+cd my-monorepo
+npm init -y
+```
+
+```json title="package.json"
+{
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"]
+}
+```
+
+</Step>
+
+<Step title="Create Expo app">
+
+```bash
+mkdir -p apps
+cd apps
+npx create-expo-app mobile
+```
+
+</Step>
+
+<Step title="Create shared packages">
+
+```bash
+mkdir -p packages/shared-components
+cd packages/shared-components
+npm init -y
+```
+
+```json title="packages/shared-components/package.json"
+{
+  "name": "@myapp/shared-components",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "dependencies": {
+    "react": "*",
+    "react-native": "*"
+  }
+}
+```
+
+</Step>
+
+<Step title="Link packages">
+
+```json title="apps/mobile/package.json"
+{
+  "name": "@myapp/mobile",
+  "dependencies": {
+    "@myapp/shared-components": "*",
+    "@myapp/shared-utils": "*"
+  }
+}
+```
+
+```bash
+# Install dependencies
+cd ../..
+yarn install
+# or: npm install
+# or: pnpm install
+```
+
+</Step>
+
+</Steps>
+
+## Metro Configuration
+
+Configure Metro to resolve workspace packages.
+
+### Basic Config
+
+```javascript title="apps/mobile/metro.config.js"
+const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
+
+// Find the project root
+const projectRoot = __dirname;
+const monorepoRoot = path.resolve(projectRoot, '../..');
+
+const config = getDefaultConfig(projectRoot);
+
+// Watch all files in the monorepo
+config.watchFolders = [monorepoRoot];
+
+// Resolve modules from monorepo
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, 'node_modules'),
+  path.resolve(monorepoRoot, 'node_modules'),
+];
+
+// Support workspace packages
+config.resolver.disableHierarchicalLookup = true;
+
+module.exports = config;
+```
+
+### Advanced Config
+
+```javascript title="apps/mobile/metro.config.js"
+const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
+
+const projectRoot = __dirname;
+const monorepoRoot = path.resolve(projectRoot, '../..');
+
+const config = getDefaultConfig(projectRoot);
+
+// 1. Watch all workspace packages
+config.watchFolders = [monorepoRoot];
+
+// 2. Resolve modules
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, 'node_modules'),
+  path.resolve(monorepoRoot, 'node_modules'),
+];
+
+// 3. Disable hierarchical lookup
+config.resolver.disableHierarchicalLookup = true;
+
+// 4. Support TypeScript in workspace packages
+config.resolver.sourceExts = ['js', 'jsx', 'ts', 'tsx', 'json'];
+
+// 5. Handle symlinks (for some workspace managers)
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  // Let Metro handle workspace packages
+  if (moduleName.startsWith('@myapp/')) {
+    return context.resolveRequest(context, moduleName, platform);
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+
+module.exports = config;
+```
+
+## TypeScript Configuration
+
+### Root Config
+
+```json title="tsconfig.json (root)"
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    "jsx": "react-native",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true
+  },
+  "exclude": ["node_modules"]
+}
+```
+
+### App Config
+
+```json title="apps/mobile/tsconfig.json"
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@myapp/shared-components": ["../../packages/shared-components/src"],
+      "@myapp/shared-utils": ["../../packages/shared-utils/src"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
+}
+```
+
+### Package Config
+
+```json title="packages/shared-components/tsconfig.json"
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": true
+  },
+  "include": ["src/**/*"]
+}
+```
+
+## Shared Packages
+
+### Component Library
+
+```typescript title="packages/shared-components/src/Button.tsx"
+import { Pressable, Text, StyleSheet } from 'react-native';
+
+interface ButtonProps {
+  title: string;
+  onPress: () => void;
+}
+
+export function Button({ title, onPress }: ButtonProps) {
+  return (
+    <Pressable style={styles.button} onPress={onPress}>
+      <Text style={styles.text}>{title}</Text>
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  button: {
+    backgroundColor: '#007AFF',
+    padding: 12,
+    borderRadius: 8,
+  },
+  text: {
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+});
+```
+
+```typescript title="packages/shared-components/src/index.ts"
+export { Button } from './Button';
+export { Card } from './Card';
+export { Input } from './Input';
+```
+
+### Utility Library
+
+```typescript title="packages/shared-utils/src/format.ts"
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(amount);
+}
+
+export function formatDate(date: Date): string {
+  return new Intl.DateTimeFormat('en-US').format(date);
+}
+```
+
+```typescript title="packages/shared-utils/src/index.ts"
+export * from './format';
+export * from './validation';
+```
+
+### Using Shared Code
+
+```typescript title="apps/mobile/app/index.tsx"
+import { Button } from '@myapp/shared-components';
+import { formatCurrency } from '@myapp/shared-utils';
+
+export default function HomeScreen() {
+  const price = formatCurrency(99.99);
+  
+  return (
+    <View>
+      <Text>Price: {price}</Text>
+      <Button title="Buy Now" onPress={() => {}} />
+    </View>
+  );
+}
+```
+
+## Native Modules in Monorepos
+
+### Autolinking
+
+Expo modules need special handling:
+
+```javascript title="apps/mobile/metro.config.js"
+const { getDefaultConfig } = require('expo/metro-config');
+const path = require('path');
+
+const projectRoot = __dirname;
+const monorepoRoot = path.resolve(projectRoot, '../..');
+
+const config = getDefaultConfig(projectRoot);
+
+config.watchFolders = [monorepoRoot];
+config.resolver.nodeModulesPaths = [
+  path.resolve(projectRoot, 'node_modules'),
+  path.resolve(monorepoRoot, 'node_modules'),
+];
+
+// Important for native modules
+config.resolver.disableHierarchicalLookup = true;
+
+module.exports = config;
+```
+
+### Custom Native Modules
+
+```
+packages/
+└── my-native-module/
+    ├── android/
+    ├── ios/
+    ├── src/
+    ├── expo-module.config.json
+    └── package.json
+```
+
+```json title="packages/my-native-module/package.json"
+{
+  "name": "@myapp/my-native-module",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "expo": {
+    "platforms": ["ios", "android"]
+  }
+}
+```
+
+## Building and Deployment
+
+### Local Builds
+
+```bash
+# From root
+yarn workspace @myapp/mobile run ios
+yarn workspace @myapp/mobile run android
+
+# Or from app directory
+cd apps/mobile
+npx expo run:ios
+npx expo run:android
+```
+
+### EAS Build
+
+EAS Build automatically supports monorepos:
+
+```json title="apps/mobile/eas.json"
+{
+  "build": {
+    "development": {
+      "developmentClient": true
+    },
+    "production": {}
+  }
+}
+```
+
+```bash
+cd apps/mobile
+eas build --platform ios
+```
+
+### CI/CD
+
+```yaml title=".github/workflows/build.yml"
+name: Build Mobile App
+
+on:
+  push:
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies (root)
+        run: |
+          cd ../..
+          yarn install
+      
+      - name: Build
+        run: npx expo export
+```
+
+## Troubleshooting
+
+### Metro Can't Resolve Module
+
+```
+Error: Unable to resolve module @myapp/shared-components
+```
+
+**Solution:**
+
+```bash
+# Clear Metro cache
+npx expo start --clear
+
+# Reinstall dependencies
+rm -rf node_modules
+yarn install
+```
+
+### Duplicate Module in Graph
+
+```
+Error: Duplicate module in graph: react-native
+```
+
+**Solution:**
+
+```javascript title="metro.config.js"
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === 'react-native') {
+    return {
+      filePath: path.resolve(projectRoot, 'node_modules/react-native/index.js'),
+      type: 'sourceFile',
+    };
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+```
+
+### Native Module Not Found
+
+```
+Error: Native module 'ExpoCamera' is not available
+```
+
+**Solution:**
+
+```bash
+# Install native modules in app directory
+cd apps/mobile
+npx expo install expo-camera
+
+# NOT in packages
+```
+
+### Build Fails: Package Not Found
+
+```bash
+# Ensure all workspace packages are built
+cd packages/shared-components
+npm run build
+
+# Or add prepare script in root
+"scripts": {
+  "prepare": "yarn workspaces foreach -A run build"
+}
+```
+
+## Best Practices
+
+### 1. Use Path Aliases
+
+```json title="tsconfig.json"
+{
+  "compilerOptions": {
+    "paths": {
+      "@myapp/*": ["packages/*/src"]
+    }
+  }
+}
+```
+
+### 2. Shared ESLint Config
+
+```javascript title=".eslintrc.js (root)"
+module.exports = {
+  extends: ['expo', 'prettier'],
+  rules: {
+    // Shared rules
+  },
+};
+```
+
+```javascript title="apps/mobile/.eslintrc.js"
+module.exports = {
+  extends: ['../../.eslintrc.js'],
+};
+```
+
+### 3. Hoisted Dependencies
+
+```json title="package.json (root)"
+{
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/react": "^18.0.0",
+    "eslint": "^8.0.0"
+  }
+}
+```
+
+### 4. Build Scripts
+
+```json title="package.json (root)"
+{
+  "scripts": {
+    "build:packages": "yarn workspaces foreach -A --exclude @myapp/mobile run build",
+    "dev:mobile": "yarn workspace @myapp/mobile start",
+    "test": "yarn workspaces foreach -A run test",
+    "lint": "yarn workspaces foreach -A run lint"
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Prebuild" icon="folder" href="/development/prebuild">
+    Generate native projects in monorepos
+  </Card>
+  <Card title="Build Properties" icon="gear" href="/development/build-properties">
+    Configure builds
+  </Card>
+  <Card title="Native Modules" icon="cube" href="/development/native-modules">
+    Create shared native modules
+  </Card>
+  <Card title="Testing" icon="flask" href="/development/unit-testing">
+    Test across packages
+  </Card>
+</CardGroup>

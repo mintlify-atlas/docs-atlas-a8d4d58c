@@ -1,0 +1,365 @@
+---
+title: expo Package Reference
+description: Complete API reference for the expo package, including core exports and functionality.
+---
+
+The `expo` package is the core of the Expo SDK, providing essential functionality for Expo applications.
+
+## Installation
+
+```bash
+npx expo install expo
+```
+
+## Overview
+
+The `expo` package serves as the entry point for Expo applications and provides:
+
+- Core module APIs (EventEmitter, SharedObject, NativeModule)
+- Root component registration
+- Development tools integration
+- Native module access utilities
+- React hooks for event handling
+
+## Main Exports
+
+### registerRootComponent
+
+Sets the initial React component to render natively in your app's root React Native view on Android, iOS, tvOS and web.
+
+<ParamField path="component" type="ComponentType<P>" required>
+  The React component class that renders the rest of your app.
+</ParamField>
+
+**What it does:**
+
+- Invokes React Native's `AppRegistry.registerComponent`
+- On web, invokes `AppRegistry.runApplication` to render to the root `index.html` file
+- Polyfills the `process.nextTick` function globally
+- In development, adds Fast Refresh and bundle splitting indicators
+- In development, validates `expo-updates` configuration
+
+**Usage:**
+
+```tsx
+import { registerRootComponent } from 'expo';
+import App from './App';
+
+registerRootComponent(App);
+```
+
+<Note>
+  This is typically used in your `index.js` or `App.js` file as the entry point.
+</Note>
+
+### Core Classes
+
+These classes are re-exported from `expo-modules-core` for convenience.
+
+#### EventEmitter
+
+A class for objects that emit events. Native modules and shared objects can extend this class to provide event emitting capabilities.
+
+```tsx
+import { EventEmitter } from 'expo';
+
+type EventsMap = {
+  onChange: (value: string) => void;
+};
+
+const emitter = new EventEmitter<EventsMap>();
+
+const subscription = emitter.addListener('onChange', (value) => {
+  console.log('Value changed:', value);
+});
+
+// Later, remove the listener
+subscription.remove();
+```
+
+#### SharedObject
+
+Represents an instance of a native shared object that can be passed between different independent libraries. Allows for sharing native object instances across the JSI boundary.
+
+```tsx
+import { SharedObject } from 'expo';
+
+// SharedObjects are typically returned by native modules
+// and can be passed to other native modules
+const sharedObj = nativeModule.createSharedObject();
+```
+
+#### SharedRef
+
+A mutable ref that can hold a reference to a shared object and allows for updating that reference across the native boundary.
+
+```tsx
+import { SharedRef } from 'expo';
+
+const ref = new SharedRef(initialObject);
+```
+
+#### NativeModule
+
+Base class for native modules to inherit from, providing the foundation for Expo's module system.
+
+```tsx
+import { NativeModule } from 'expo';
+
+// Native modules are accessed through requireNativeModule
+const MyModule = requireNativeModule<MyModuleType>('MyModule');
+```
+
+### Module Access Functions
+
+#### requireNativeModule
+
+Imports a native module registered with the given name.
+
+<ParamField path="moduleName" type="string" required>
+  Name of the requested native module.
+</ParamField>
+
+<ResponseField name="return" type="ModuleType">
+  Object representing the native module.
+</ResponseField>
+
+```tsx
+import { requireNativeModule } from 'expo';
+
+const MyNativeModule = requireNativeModule('MyNativeModule');
+MyNativeModule.someMethod();
+```
+
+<Warning>
+  Throws an error if the native module cannot be found.
+</Warning>
+
+#### requireOptionalNativeModule
+
+Same as `requireNativeModule`, but returns `null` when the module cannot be found instead of throwing an error.
+
+<ParamField path="moduleName" type="string" required>
+  Name of the requested native module.
+</ParamField>
+
+<ResponseField name="return" type="ModuleType | null">
+  Object representing the native module or `null` if not found.
+</ResponseField>
+
+```tsx
+import { requireOptionalNativeModule } from 'expo';
+
+const MyModule = requireOptionalNativeModule('MyModule');
+
+if (MyModule) {
+  MyModule.someMethod();
+}
+```
+
+#### requireNativeView
+
+Requires a native view manager for creating native UI components.
+
+```tsx
+import { requireNativeView } from 'expo';
+
+const MyNativeView = requireNativeView('MyNativeView');
+```
+
+#### registerWebModule
+
+Registers a web implementation for a native module, allowing for platform-specific implementations.
+
+```tsx
+import { registerWebModule } from 'expo';
+
+registerWebModule('MyModule', {
+  someMethod: () => {
+    // Web implementation
+  },
+});
+```
+
+### React Hooks
+
+#### useEvent
+
+React hook that listens to events emitted by an object and returns the latest event parameter.
+
+<ParamField path="eventEmitter" type="EventEmitter<TEventsMap>" required>
+  An object that emits events (native module, shared object, or EventEmitter instance).
+</ParamField>
+
+<ParamField path="eventName" type="string" required>
+  Name of the event to listen to.
+</ParamField>
+
+<ParamField path="initialValue" type="any" default="null">
+  Initial value to use until the first event is received.
+</ParamField>
+
+```tsx
+import { useEvent } from 'expo';
+import { VideoPlayer } from 'expo-video';
+
+function PlayerStatus({ videoPlayer }: { videoPlayer: VideoPlayer }) {
+  const { status } = useEvent(videoPlayer, 'statusChange', { 
+    status: videoPlayer.status 
+  });
+
+  return <Text>{`Player status: ${status}`}</Text>;
+}
+```
+
+#### useEventListener
+
+React hook that listens to events and calls a listener function whenever a new event is dispatched.
+
+<ParamField path="eventEmitter" type="EventEmitter<TEventsMap>" required>
+  An object that emits events.
+</ParamField>
+
+<ParamField path="eventName" type="string" required>
+  Name of the event to listen to.
+</ParamField>
+
+<ParamField path="listener" type="Function" required>
+  Function to call when the event is dispatched.
+</ParamField>
+
+```tsx
+import { useEventListener } from 'expo';
+import { useVideoPlayer, VideoView } from 'expo-video';
+
+function VideoPlayerView() {
+  const player = useVideoPlayer(videoSource);
+
+  useEventListener(player, 'playingChange', ({ isPlaying }) => {
+    console.log('Player is playing:', isPlaying);
+  });
+
+  return <VideoView player={player} />;
+}
+```
+
+### Utility Functions
+
+#### reloadAppAsync
+
+Reloads the app, similar to refreshing a web page.
+
+```tsx
+import { reloadAppAsync } from 'expo';
+
+await reloadAppAsync();
+```
+
+#### disableErrorHandling
+
+Disables Expo's error handling overlay (useful for custom error boundaries).
+
+```tsx
+import { disableErrorHandling } from 'expo';
+
+disableErrorHandling();
+```
+
+#### isRunningInExpoGo
+
+Checks if the app is running inside Expo Go.
+
+<ResponseField name="return" type="boolean">
+  `true` if running in Expo Go, `false` otherwise.
+</ResponseField>
+
+```tsx
+import { isRunningInExpoGo } from 'expo';
+
+if (isRunningInExpoGo()) {
+  console.log('Running in Expo Go');
+}
+```
+
+#### getExpoGoProjectConfig
+
+Gets the project configuration when running in Expo Go.
+
+```tsx
+import { getExpoGoProjectConfig } from 'expo';
+
+const config = getExpoGoProjectConfig();
+```
+
+### Worklets
+
+#### installOnUIRuntime
+
+Installs a worklet on the UI runtime for use with react-native-reanimated.
+
+```tsx
+import { installOnUIRuntime } from 'expo';
+
+installOnUIRuntime(() => {
+  'worklet';
+  // Worklet code
+});
+```
+
+## Included Dependencies
+
+The `expo` package includes several core dependencies:
+
+- `expo-asset` - Asset system for managing and loading assets
+- `expo-constants` - System and app constants
+- `expo-file-system` - File system access
+- `expo-font` - Custom font loading
+- `expo-keep-awake` - Prevents the screen from sleeping
+- `@expo/vector-icons` - Icon library
+
+## CLI Integration
+
+The `expo` package includes the Expo CLI as a dependency. When you install `expo`, you get access to:
+
+```bash
+npx expo start
+npx expo build
+npx expo export
+```
+
+See the [CLI Reference](/reference/cli-reference) for complete documentation.
+
+## Metro Configuration
+
+The package provides a Metro configuration helper:
+
+```js
+// metro.config.js
+const { getDefaultConfig } = require('expo/metro-config');
+
+const config = getDefaultConfig(__dirname);
+
+module.exports = config;
+```
+
+See [Metro Config Reference](/reference/metro-config) for more details.
+
+## TypeScript
+
+The `expo` package includes full TypeScript definitions. Import types from `expo-modules-core/types`:
+
+```tsx
+import type { EventEmitter, SharedObject } from 'expo-modules-core/types';
+```
+
+## Source Code
+
+View the source code on GitHub:
+- [expo package](https://github.com/expo/expo/tree/main/packages/expo)
+- [expo-modules-core](https://github.com/expo/expo/tree/main/packages/expo-modules-core)
+
+## Related Documentation
+
+- [Expo Modules Core](/reference/expo-modules-core)
+- [App Configuration](/reference/config-schema)
+- [CLI Reference](/reference/cli-reference)

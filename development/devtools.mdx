@@ -1,0 +1,657 @@
+---
+title: Expo DevTools
+description: Use the Expo developer menu, DevTools plugins, and inspector for debugging.
+---
+
+Expo DevTools provide a comprehensive suite of development utilities accessible through the developer menu, CLI, and DevTools plugins.
+
+## Developer Menu
+
+The developer menu is the central hub for accessing debugging tools in your development build.
+
+### Opening the Dev Menu
+
+<table>
+  <thead>
+    <tr>
+      <th>Platform</th>
+      <th>Physical Device</th>
+      <th>Simulator/Emulator</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>iOS</td>
+      <td>Shake device</td>
+      <td><code>Cmd+D</code></td>
+    </tr>
+    <tr>
+      <td>Android</td>
+      <td>Shake device</td>
+      <td><code>Cmd+M</code> or <code>Ctrl+M</code></td>
+    </tr>
+  </tbody>
+</table>
+
+### Dev Menu Options
+
+When you open the dev menu, you'll see:
+
+```
+Expo Developer Menu
+
+› Reload
+› Debug with Chrome
+› Show Element Inspector
+› Show Performance Monitor
+› Toggle Network Inspector
+› Open React DevTools
+› Settings
+```
+
+#### Reload
+
+Reloads your JavaScript bundle:
+
+```typescript
+import { DevSettings } from 'react-native';
+
+// Programmatically reload
+DevSettings.reload();
+```
+
+#### Debug with Chrome
+
+Opens Chrome DevTools for JavaScript debugging. See [Debugging guide](/development/debugging) for details.
+
+#### Show Element Inspector
+
+Visually inspect UI elements. See [Inspector guide](/development/inspector) for details.
+
+#### Show Performance Monitor
+
+Displays real-time performance metrics:
+- JavaScript FPS
+- UI FPS
+- Memory usage
+- Views count
+
+#### Toggle Network Inspector
+
+Monitors network requests:
+
+```typescript
+// All fetch requests are automatically tracked
+const response = await fetch('https://api.example.com/data');
+
+// View in Network Inspector:
+// - Request method, URL, headers
+// - Response status, headers, body
+// - Timing information
+// - Request/response size
+```
+
+## DevTools Plugins
+
+Create custom DevTools panels using the `@expo/devtools` package.
+
+### Creating a DevTools Plugin
+
+<Steps>
+
+<Step title="Install dependencies">
+
+```bash
+npm install @expo/devtools
+```
+
+</Step>
+
+<Step title="Create plugin client (app side)">
+
+```typescript title="app/plugins/MyDevToolsPlugin.tsx"
+import { useEffect } from 'react';
+import { useDevToolsPluginClient } from 'expo/devtools';
+
+export function useMyDevToolsPlugin() {
+  const client = useDevToolsPluginClient('my-plugin');
+  
+  useEffect(() => {
+    if (!client) return;
+    
+    // Send data to plugin UI
+    client.sendMessage('app-state', {
+      user: getCurrentUser(),
+      navigation: getCurrentRoute(),
+    });
+    
+    // Listen for messages from plugin UI
+    const listener = (message: any) => {
+      if (message.type === 'navigate') {
+        navigate(message.route);
+      }
+    };
+    
+    client.addMessageListener(listener);
+    return () => client.removeMessageListener(listener);
+  }, [client]);
+}
+```
+
+</Step>
+
+<Step title="Use in your app">
+
+```typescript title="app/_layout.tsx"
+import { useMyDevToolsPlugin } from './plugins/MyDevToolsPlugin';
+
+export default function RootLayout() {
+  useMyDevToolsPlugin();
+  
+  return <Slot />;
+}
+```
+
+</Step>
+
+<Step title="Create plugin UI (web side)">
+
+```typescript title="devtools-plugin/index.tsx"
+import { useEffect, useState } from 'react';
+
+export default function MyDevToolsPluginUI() {
+  const [appState, setAppState] = useState(null);
+  
+  useEffect(() => {
+    // Listen for messages from app
+    const handleMessage = (message: any) => {
+      if (message.type === 'app-state') {
+        setAppState(message.data);
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+  
+  const handleNavigate = (route: string) => {
+    // Send message to app
+    window.parent.postMessage({
+      type: 'navigate',
+      route,
+    }, '*');
+  };
+  
+  return (
+    <div>
+      <h1>My DevTools Plugin</h1>
+      {appState && (
+        <div>
+          <p>User: {appState.user}</p>
+          <p>Route: {appState.navigation}</p>
+          <button onClick={() => handleNavigate('/home')}>
+            Go to Home
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+</Step>
+
+<Step title="Register plugin">
+
+```json title="package.json"
+{
+  "name": "my-app",
+  "devtools": {
+    "plugins": [
+      {
+        "name": "my-plugin",
+        "path": "./devtools-plugin"
+      }
+    ]
+  }
+}
+```
+
+</Step>
+
+</Steps>
+
+### DevTools Plugin API
+
+#### Client-Side Hooks
+
+```typescript
+import { useDevToolsPluginClient } from 'expo/devtools';
+
+// Get plugin client
+const client = useDevToolsPluginClient('plugin-name');
+
+// Send messages
+client?.sendMessage('event-type', { data: 'value' });
+
+// Listen for messages
+const listener = (message) => console.log(message);
+client?.addMessageListener(listener);
+client?.removeMessageListener(listener);
+
+// Close connection
+client?.closeConnection();
+```
+
+#### Message Types
+
+```typescript
+type DevToolsMessage = {
+  type: string;
+  data?: any;
+  timestamp?: number;
+};
+
+// App to Plugin
+client.sendMessage('log', {
+  level: 'info',
+  message: 'User logged in',
+  user: { id: 123 }
+});
+
+// Plugin to App  
+client.sendMessage('action', {
+  type: 'RESET_STATE'
+});
+```
+
+### Example: Redux DevTools Plugin
+
+```typescript title="app/plugins/ReduxDevTools.tsx"
+import { useEffect } from 'react';
+import { useDevToolsPluginClient } from 'expo/devtools';
+import { useStore } from 'react-redux';
+
+export function useReduxDevTools() {
+  const store = useStore();
+  const client = useDevToolsPluginClient('redux-devtools');
+  
+  useEffect(() => {
+    if (!client) return;
+    
+    // Send initial state
+    client.sendMessage('init', {
+      state: store.getState()
+    });
+    
+    // Subscribe to state changes
+    const unsubscribe = store.subscribe(() => {
+      client.sendMessage('state-change', {
+        state: store.getState()
+      });
+    });
+    
+    // Listen for time-travel actions
+    const listener = (message: any) => {
+      if (message.type === 'dispatch') {
+        store.dispatch(message.action);
+      }
+    };
+    
+    client.addMessageListener(listener);
+    
+    return () => {
+      unsubscribe();
+      client.removeMessageListener(listener);
+    };
+  }, [client, store]);
+}
+```
+
+## CLI DevTools
+
+Interactive debugging from the terminal.
+
+### Starting DevTools
+
+```bash
+# Start with DevTools enabled
+npx expo start --dev-client
+
+# Additional flags
+npx expo start --dev-client --clear  # Clear cache
+npx expo start --dev-client --host tunnel  # Use tunnel
+npx expo start --dev-client --https  # Enable HTTPS
+```
+
+### Terminal Interface
+
+When running, the CLI shows:
+
+```
+› Metro waiting on exp://192.168.1.100:8081
+› Scan the QR code above to open in Expo Go or development build
+
+Log levels:
+  › Press s │ switch to development build
+  › Press a │ open Android
+  › Press i │ open iOS simulator
+  › Press w │ open web
+
+  › Press j │ open debugger
+  › Press r │ reload app
+  › Press m │ toggle menu
+
+  › Press ? │ show all commands
+```
+
+### CLI Commands
+
+<table>
+  <thead>
+    <tr>
+      <th>Key</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>j</code></td>
+      <td>Open JavaScript debugger</td>
+    </tr>
+    <tr>
+      <td><code>r</code></td>
+      <td>Reload app</td>
+    </tr>
+    <tr>
+      <td><code>m</code></td>
+      <td>Toggle developer menu</td>
+    </tr>
+    <tr>
+      <td><code>a</code></td>
+      <td>Open on Android device/emulator</td>
+    </tr>
+    <tr>
+      <td><code>i</code></td>
+      <td>Open on iOS simulator</td>
+    </tr>
+    <tr>
+      <td><code>w</code></td>
+      <td>Open in web browser</td>
+    </tr>
+    <tr>
+      <td><code>c</code></td>
+      <td>Clear Metro bundler cache</td>
+    </tr>
+    <tr>
+      <td><code>?</code></td>
+      <td>Show all commands</td>
+    </tr>
+  </tbody>
+</table>
+
+## Settings and Configuration
+
+### Development Settings
+
+Access via dev menu > Settings:
+
+```typescript
+import { DevSettings } from 'react-native';
+
+// Fast Refresh (default: enabled)
+DevSettings.setHotLoadingEnabled(true);
+
+// Remote JS Debugging
+DevSettings.setIsDebuggingRemotely(true);
+
+// FPS Monitor
+DevSettings.setIsShakeToShowDevMenuEnabled(true);
+```
+
+### Customizing Dev Menu
+
+Add custom actions to the dev menu:
+
+```typescript title="app/_layout.tsx"
+import { useEffect } from 'react';
+import { DevSettings } from 'react-native';
+
+export default function RootLayout() {
+  useEffect(() => {
+    if (__DEV__) {
+      // Add custom dev menu item
+      DevSettings.addMenuItem('Clear App Data', () => {
+        // Clear AsyncStorage, caches, etc.
+        clearAllData();
+      });
+      
+      DevSettings.addMenuItem('Simulate Push Notification', () => {
+        // Trigger test notification
+        sendTestNotification();
+      });
+      
+      DevSettings.addMenuItem('Toggle Feature Flag', () => {
+        // Toggle feature flags
+        toggleFeatureFlag('new-ui');
+      });
+    }
+  }, []);
+  
+  return <Slot />;
+}
+```
+
+## Advanced Features
+
+### WebSocket Connection
+
+DevTools use WebSocket for real-time communication:
+
+```typescript
+import { DevToolsPluginClient } from '@expo/devtools';
+
+const client = new DevToolsPluginClient({
+  pluginName: 'my-plugin',
+  onConnect: () => console.log('Connected'),
+  onDisconnect: () => console.log('Disconnected'),
+  onMessage: (message) => console.log('Received:', message),
+});
+
+// Connect
+await client.connect();
+
+// Send message
+client.sendMessage('test', { data: 'hello' });
+
+// Close
+client.close();
+```
+
+### Message Queuing
+
+Messages are queued when disconnected:
+
+```typescript
+const client = useDevToolsPluginClient('my-plugin');
+
+// These messages are queued if disconnected
+client?.sendMessage('log', { message: 'Event 1' });
+client?.sendMessage('log', { message: 'Event 2' });
+client?.sendMessage('log', { message: 'Event 3' });
+
+// All sent when connection is restored
+```
+
+### Binary Data Support
+
+Send binary data like images:
+
+```typescript
+import { blobToBase64, base64ToBlob } from '@expo/devtools/utils/blobUtils';
+
+// Send image to plugin
+const imageBlob = await fetch(imageUri).then(r => r.blob());
+const base64 = await blobToBase64(imageBlob);
+
+client?.sendMessage('screenshot', {
+  image: base64,
+  mimeType: 'image/png'
+});
+
+// Receive in plugin
+const blob = await base64ToBlob(message.data.image, message.data.mimeType);
+const url = URL.createObjectURL(blob);
+```
+
+## Environment-Specific Configuration
+
+### Development Only
+
+```typescript
+if (__DEV__) {
+  // Only in development
+  import('./devtools-setup').then(({ setupDevTools }) => {
+    setupDevTools();
+  });
+}
+```
+
+### Production Stripping
+
+DevTools code is automatically stripped in production:
+
+```typescript
+import { useDevToolsPluginClient } from 'expo/devtools';
+
+// Returns null in production
+const client = useDevToolsPluginClient('my-plugin');
+
+if (client) {
+  // This code only runs in development
+  client.sendMessage('debug', data);
+}
+```
+
+## Troubleshooting
+
+### Dev Menu Not Opening
+
+```bash
+# Check if shake gesture is enabled
+# iOS: Settings > Accessibility > Touch > Shake to Undo
+# Android: Enable shake detection in device settings
+
+# Alternative: Use CLI
+npx expo start --dev-client
+# Press 'm' to toggle menu
+```
+
+### DevTools Plugin Not Connecting
+
+```typescript
+// Check WebSocket connection
+const client = useDevToolsPluginClient('my-plugin');
+
+if (!client) {
+  console.warn('DevTools plugin not connected');
+  // Fallback behavior
+}
+```
+
+### Performance Issues with DevTools
+
+DevTools can slow down the app:
+
+```typescript
+// Throttle updates
+let lastSent = 0;
+const THROTTLE_MS = 100;
+
+const sendUpdate = (data: any) => {
+  const now = Date.now();
+  if (now - lastSent > THROTTLE_MS) {
+    client?.sendMessage('update', data);
+    lastSent = now;
+  }
+};
+```
+
+### Network Inspector Not Showing Requests
+
+Ensure fetch is being used:
+
+```typescript
+// Works with network inspector
+fetch('https://api.example.com/data');
+
+// Does not work
+XMLHttpRequest(); // Use fetch instead
+```
+
+## Best Practices
+
+### 1. Guard DevTools Code
+
+```typescript
+if (__DEV__) {
+  // Development only
+  useDevToolsPlugin();
+}
+```
+
+### 2. Minimize Data Size
+
+```typescript
+// Bad: Sending entire state
+client.sendMessage('state', store.getState());
+
+// Good: Send only relevant data
+client.sendMessage('state', {
+  user: store.getState().user,
+  activeRoute: store.getState().navigation.activeRoute
+});
+```
+
+### 3. Use Descriptive Message Types
+
+```typescript
+// Bad
+client.sendMessage('data', { x: 1 });
+
+// Good
+client.sendMessage('user-login-success', {
+  userId: user.id,
+  timestamp: Date.now()
+});
+```
+
+### 4. Handle Disconnections
+
+```typescript
+const client = useDevToolsPluginClient('my-plugin');
+
+if (client) {
+  client.sendMessage('log', data);
+} else {
+  // Fallback logging
+  console.log('DevTools not connected:', data);
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Inspector" icon="magnifying-glass" href="/development/inspector">
+    Use the element inspector
+  </Card>
+  <Card title="Debugging" icon="bug" href="/development/debugging">
+    Learn debugging techniques
+  </Card>
+  <Card title="Error Handling" icon="triangle-exclamation" href="/development/errors">
+    Handle errors and crashes
+  </Card>
+  <Card title="Network Debugging" icon="network-wired" href="/development/debugging#network-debugging">
+    Debug network requests
+  </Card>
+</CardGroup>

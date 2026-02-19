@@ -1,0 +1,224 @@
+---
+title: expo-sensors
+description: Access device sensors including accelerometer, gyroscope, magnetometer, and more
+---
+
+# expo-sensors
+
+**Version:** 55.0.6
+
+Provides access to a hardware device's accelerometer, gyroscope, magnetometer, barometer, and pedometer.
+
+## Installation
+
+```bash
+npx expo install expo-sensors
+```
+
+## Usage
+
+```typescript
+import { Accelerometer } from 'expo-sensors';
+import { useEffect, useState } from 'react';
+
+function App() {
+  const [data, setData] = useState({ x: 0, y: 0, z: 0 });
+
+  useEffect(() => {
+    Accelerometer.setUpdateInterval(100);
+    
+    const subscription = Accelerometer.addListener(setData);
+    
+    return () => subscription.remove();
+  }, []);
+
+  return <Text>x: {data.x.toFixed(2)}</Text>;
+}
+```
+
+## API Reference
+
+### Accelerometer
+
+<ParamField path="Accelerometer.addListener(listener)" type="(listener: (data: AccelerometerData) => void) => EventSubscription">
+  Listens for accelerometer updates
+  
+  ```typescript
+  const subscription = Accelerometer.addListener(({ x, y, z }) => {
+    console.log({ x, y, z });
+  });
+  ```
+</ParamField>
+
+<ParamField path="Accelerometer.setUpdateInterval(interval)" type="(interval: number) => void">
+  Sets update interval in milliseconds
+</ParamField>
+
+<ParamField path="Accelerometer.isAvailableAsync()" type="() => Promise<boolean>">
+  Checks if accelerometer is available
+</ParamField>
+
+### Gyroscope
+
+<ParamField path="Gyroscope.addListener(listener)" type="(listener: (data: GyroscopeData) => void) => EventSubscription">
+  Listens for gyroscope updates
+  
+  ```typescript
+  const subscription = Gyroscope.addListener(({ x, y, z }) => {
+    console.log('Rotation:', { x, y, z });
+  });
+  ```
+</ParamField>
+
+<ParamField path="Gyroscope.setUpdateInterval(interval)" type="(interval: number) => void">
+  Sets update interval in milliseconds
+</ParamField>
+
+### Magnetometer
+
+<ParamField path="Magnetometer.addListener(listener)" type="(listener: (data: MagnetometerData) => void) => EventSubscription">
+  Listens for magnetometer updates (compass)
+</ParamField>
+
+### Barometer
+
+<ParamField path="Barometer.addListener(listener)" type="(listener: (data: BarometerData) => void) => EventSubscription">
+  Listens for barometer updates (air pressure)
+  
+  ```typescript
+  const subscription = Barometer.addListener(({ pressure, relativeAltitude }) => {
+    console.log('Pressure:', pressure, 'hPa');
+  });
+  ```
+</ParamField>
+
+### Pedometer
+
+<ParamField path="Pedometer.isAvailableAsync()" type="() => Promise<boolean>">
+  Checks if step counting is available
+</ParamField>
+
+<ParamField path="Pedometer.getStepCountAsync(start, end)" type="(start: Date, end: Date) => Promise<PedometerResult>">
+  Gets step count for a time period
+  
+  ```typescript
+  const now = new Date();
+  const start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const result = await Pedometer.getStepCountAsync(start, now);
+  console.log('Steps:', result.steps);
+  ```
+</ParamField>
+
+<ParamField path="Pedometer.watchStepCount(listener)" type="(listener: (data: PedometerResult) => void) => EventSubscription">
+  Watches for step count changes
+</ParamField>
+
+### DeviceMotion
+
+<ParamField path="DeviceMotion.addListener(listener)" type="(listener: (data: DeviceMotionData) => void) => EventSubscription">
+  Listens for combined device motion data
+  
+  Includes acceleration, rotation, and orientation data.
+</ParamField>
+
+## Examples
+
+### Shake Detector
+
+```tsx
+import { Accelerometer } from 'expo-sensors';
+import { useEffect, useState } from 'react';
+import { Text } from 'react-native';
+
+function ShakeDetector() {
+  const [shakeCount, setShakeCount] = useState(0);
+
+  useEffect(() => {
+    Accelerometer.setUpdateInterval(100);
+
+    const subscription = Accelerometer.addListener(({ x, y, z }) => {
+      const acceleration = Math.sqrt(x * x + y * y + z * z);
+      
+      if (acceleration > 2.5) {
+        setShakeCount(c => c + 1);
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
+
+  return <Text>Shakes detected: {shakeCount}</Text>;
+}
+```
+
+### Compass
+
+```tsx
+import { Magnetometer } from 'expo-sensors';
+import { useEffect, useState } from 'react';
+import { Text, View } from 'react-native';
+
+function Compass() {
+  const [heading, setHeading] = useState(0);
+
+  useEffect(() => {
+    const subscription = Magnetometer.addListener(({ x, y }) => {
+      let angle = Math.atan2(y, x) * (180 / Math.PI);
+      if (angle < 0) angle += 360;
+      setHeading(Math.round(angle));
+    });
+
+    return () => subscription.remove();
+  }, []);
+
+  return (
+    <View style={{ alignItems: 'center' }}>
+      <Text style={{ fontSize: 48 }}>{heading}°</Text>
+      <Text>North</Text>
+    </View>
+  );
+}
+```
+
+### Step Counter
+
+```tsx
+import { Pedometer } from 'expo-sensors';
+import { useEffect, useState } from 'react';
+import { Text } from 'react-native';
+
+function StepCounter() {
+  const [steps, setSteps] = useState(0);
+  const [available, setAvailable] = useState(false);
+
+  useEffect(() => {
+    Pedometer.isAvailableAsync().then(setAvailable);
+
+    if (available) {
+      const subscription = Pedometer.watchStepCount(result => {
+        setSteps(result.steps);
+      });
+
+      return () => subscription.remove();
+    }
+  }, [available]);
+
+  return <Text>Steps today: {steps}</Text>;
+}
+```
+
+## Platform Support
+
+| Sensor | iOS | Android | Web |
+|--------|-----|---------|-----|
+| Accelerometer | ✅ | ✅ | ✅ |
+| Gyroscope | ✅ | ✅ | ✅ |
+| Magnetometer | ✅ | ✅ | ❌ |
+| Barometer | ✅ | ✅ | ❌ |
+| Pedometer | ✅ | ✅ | ❌ |
+| DeviceMotion | ✅ | ✅ | ✅ |
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/sensors/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-sensors)

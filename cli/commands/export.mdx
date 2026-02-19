@@ -1,0 +1,577 @@
+---
+title: expo export
+description: Export static files and production bundles for deployment.
+---
+
+The `expo export` command generates optimized production bundles of your app, creating static files ready for deployment to hosting services or over-the-air (OTA) updates.
+
+## Usage
+
+```bash
+npx expo export [directory] [options]
+```
+
+## Arguments
+
+<ParamField path="directory" type="string">
+  Directory of the Expo project. Defaults to the current working directory.
+</ParamField>
+
+## Options
+
+### Output Options
+
+<ParamField path="--output-dir" type="string">
+  The directory to export static files to. Default: `dist`
+</ParamField>
+
+<ParamField path="--platform" type="string[]">
+  Platforms to export. Options: `android`, `ios`, `web`, `all`. Default: `all`. Alias: `-p`
+</ParamField>
+
+### Build Options
+
+<ParamField path="--dev" type="boolean">
+  Configure static files for developing locally using a non-https server. Disables optimizations.
+</ParamField>
+
+<ParamField path="--no-minify" type="boolean">
+  Prevent minifying JavaScript source code.
+</ParamField>
+
+<ParamField path="--no-bytecode" type="boolean">
+  Prevent generating Hermes bytecode for Android. Keeps JavaScript in text format.
+</ParamField>
+
+### Bundler Options
+
+<ParamField path="--clear" type="boolean">
+  Clear the Metro bundler cache before exporting. Alias: `-c`, `--reset-cache`
+</ParamField>
+
+<ParamField path="--max-workers" type="number">
+  Maximum number of tasks to allow the bundler to spawn. Controls parallelization.
+</ParamField>
+
+### Source Maps
+
+<ParamField path="--source-maps" type="string | boolean">
+  Emit JavaScript source maps. Alias: `-s`
+  
+  Options:
+  - `true` - Generate source maps
+  - `false` - No source maps (default)
+  - `inline` - Inline source maps in bundle
+  - `external` - Generate separate .map files
+</ParamField>
+
+### Web-Specific Options
+
+<ParamField path="--no-ssg" type="boolean">
+  Skip exporting static HTML files and only export API routes for web. Alias: `--api-only`
+</ParamField>
+
+<ParamField path="--dump-assetmap" type="boolean">
+  Emit an asset map JSON file for further processing.
+</ParamField>
+
+## What Gets Exported
+
+The export command creates:
+
+- **JavaScript bundles** - Optimized, minified code for each platform
+- **Assets** - Images, fonts, and other static files
+- **Metadata** - Asset manifests and configuration
+- **Source maps** - Debug information (if enabled)
+- **HTML files** - Static web pages (for web platform)
+
+## Examples
+
+### Basic Export
+
+Export for all platforms:
+
+```bash
+npx expo export
+```
+
+Creates `dist/` directory with:
+```
+dist/
+├── assets/          # Images, fonts, etc.
+├── bundles/         # JavaScript bundles
+│   ├── android-*.js
+│   ├── ios-*.js
+│   └── web-*.js
+├── metadata.json    # Asset metadata
+└── index.html       # Web entry (if web platform included)
+```
+
+### Specific Platform
+
+Export only for Android:
+
+```bash
+npx expo export --platform android
+```
+
+Export for iOS and Android only:
+
+```bash
+npx expo export --platform ios --platform android
+```
+
+### Custom Output Directory
+
+Export to a specific directory:
+
+```bash
+npx expo export --output-dir build
+```
+
+### Clear Cache First
+
+Ensure fresh build:
+
+```bash
+npx expo export --clear
+```
+
+### With Source Maps
+
+Generate source maps for debugging:
+
+```bash
+npx expo export --source-maps
+```
+
+Or specify source map type:
+
+```bash
+# External .map files
+npx expo export --source-maps external
+
+# Inline source maps
+npx expo export --source-maps inline
+```
+
+### Development Export
+
+Create unoptimized bundles for testing:
+
+```bash
+npx expo export --dev
+```
+
+This skips:
+- Minification
+- Bytecode compilation
+- Production optimizations
+
+### Web API Routes Only
+
+Export only API routes without static HTML:
+
+```bash
+npx expo export --no-ssg
+```
+
+Useful for:
+- Server-side API deployment
+- Serverless functions
+- Backend-only exports
+
+### Without Bytecode
+
+Skip Hermes bytecode compilation:
+
+```bash
+npx expo export --no-bytecode
+```
+
+Keeps JavaScript in readable format for debugging.
+
+### Control Workers
+
+Limit CPU usage during export:
+
+```bash
+npx expo export --max-workers 2
+```
+
+## Platform-Specific Exports
+
+### iOS Export
+
+```bash
+npx expo export --platform ios
+```
+
+Generates:
+- iOS-specific JavaScript bundle
+- Universal assets (images, fonts)
+- Metadata for iOS runtime
+
+Used for:
+- OTA updates with expo-updates
+- Embedding in iOS binary
+- EAS Update deployments
+
+### Android Export
+
+```bash
+npx expo export --platform android
+```
+
+Generates:
+- Android-specific JavaScript bundle
+- Hermes bytecode (unless `--no-bytecode`)
+- Universal assets
+- Metadata for Android runtime
+
+Used for:
+- OTA updates with expo-updates
+- Embedding in APK/AAB
+- EAS Update deployments
+
+### Web Export
+
+```bash
+npx expo export --platform web
+```
+
+Generates:
+- Web-optimized JavaScript bundles
+- Static HTML files
+- Progressive Web App manifest
+- Service worker (if configured)
+- Web assets
+
+Used for:
+- Static site hosting
+- CDN deployment
+- Server-side rendering
+
+## Output Structure
+
+### Native Platforms (iOS/Android)
+
+```
+dist/
+├── bundles/
+│   ├── android-1234567890abcdef.js       # Android bundle
+│   ├── android-1234567890abcdef.js.map   # Source map (if enabled)
+│   ├── ios-abcdef1234567890.js           # iOS bundle
+│   └── ios-abcdef1234567890.js.map       # Source map (if enabled)
+├── assets/
+│   └── [hash]/                           # Content-addressed assets
+│       ├── image.png
+│       └── font.ttf
+├── metadata.json                         # Asset manifest
+└── _expo/                                # Expo metadata
+    └── fingerprint
+```
+
+### Web Platform
+
+```
+dist/
+├── _expo/
+│   └── static/
+│       ├── js/                           # JavaScript chunks
+│       │   ├── web-*.js
+│       │   └── *.js.map
+│       └── css/                          # Stylesheets
+│           └── *.css
+├── assets/                               # Static assets
+├── index.html                            # Main entry point
+├── favicon.ico                           # Favicon
+└── manifest.json                         # PWA manifest
+```
+
+## Deployment
+
+### Hosting Static Web
+
+After exporting for web, deploy to:
+
+**Vercel:**
+```bash
+npx expo export --platform web
+vercel dist
+```
+
+**Netlify:**
+```bash
+npx expo export --platform web
+netlify deploy --dir=dist --prod
+```
+
+**GitHub Pages:**
+```bash
+npx expo export --platform web
+# Commit and push dist/ to gh-pages branch
+```
+
+### OTA Updates
+
+Use with expo-updates for over-the-air updates:
+
+```bash
+# Export for updates
+npx expo export
+
+# Serve from update server
+# expo-updates will fetch from this endpoint
+```
+
+Or use EAS Update:
+```bash
+eas update --branch production
+```
+
+### Embedding in Native Apps
+
+Export and embed in native builds:
+
+```bash
+# Export native bundles
+npx expo export --platform ios --platform android
+
+# Copy to native projects
+cp -r dist/bundles/* ios/Generated/
+cp -r dist/bundles/* android/app/src/main/assets/
+```
+
+## Asset Optimization
+
+### Automatic Optimizations
+
+Expo export automatically:
+- Compresses images
+- Minifies JavaScript
+- Tree-shakes unused code
+- Content-hashes filenames
+- Generates multiple resolutions for images
+
+### Asset Map
+
+Generate asset map for custom processing:
+
+```bash
+npx expo export --dump-assetmap
+```
+
+Creates `assetmap.json`:
+```json
+{
+  "assets": [
+    {
+      "path": "assets/icon.png",
+      "hash": "abc123...",
+      "type": "png",
+      "platform": "all"
+    }
+  ]
+}
+```
+
+## Source Maps
+
+### Why Use Source Maps
+
+Source maps help you:
+- Debug production issues
+- Get readable stack traces
+- Map minified code to source
+- Use error reporting tools
+
+### Generating Source Maps
+
+```bash
+npx expo export --source-maps
+```
+
+### Uploading to Error Services
+
+Upload source maps to services like Sentry:
+
+```bash
+# Export with source maps
+npx expo export --source-maps
+
+# Upload to Sentry
+sentry-cli releases files VERSION upload-sourcemaps dist/bundles
+```
+
+## Hermes Bytecode
+
+### What is Hermes Bytecode
+
+Hermes bytecode is a binary format that:
+- Reduces app startup time
+- Decreases bundle size
+- Improves performance on Android
+
+### Disabling Bytecode
+
+For debugging or compatibility:
+
+```bash
+npx expo export --no-bytecode
+```
+
+### Enabling on iOS
+
+Configure in app.json:
+
+```json
+{
+  "expo": {
+    "ios": {
+      "jsEngine": "hermes"
+    }
+  }
+}
+```
+
+## Server-Side Generation (SSG)
+
+### Static Site Generation
+
+For web, Expo exports static HTML:
+
+```bash
+npx expo export --platform web
+```
+
+Each route becomes an HTML file:
+```
+dist/
+├── index.html           # Home page
+├── about.html           # /about route
+└── blog/
+    └── post.html        # /blog/post route
+```
+
+### Disabling SSG
+
+Export only client-side JavaScript:
+
+```bash
+npx expo export --no-ssg
+```
+
+### API Routes
+
+API routes are exported as serverless functions:
+
+```
+dist/
+└── api/
+    └── hello.js        # /api/hello endpoint
+```
+
+## Troubleshooting
+
+### Export Fails
+
+Clear cache and retry:
+
+```bash
+npx expo export --clear
+```
+
+### Bundle Size Too Large
+
+Analyze bundle size:
+
+```bash
+EXPO_ATLAS=1 npx expo export
+```
+
+Reduce size by:
+- Removing unused dependencies
+- Using dynamic imports
+- Optimizing images
+- Enabling Hermes bytecode
+
+### Missing Assets
+
+Ensure assets are properly referenced:
+
+```javascript
+// Good
+<Image source={require('./image.png')} />
+
+// Bad (not bundled)
+<Image source={{ uri: './image.png' }} />
+```
+
+### Source Maps Not Working
+
+Verify source maps are generated:
+
+```bash
+npx expo export --source-maps
+ls dist/bundles/*.map
+```
+
+### Hermes Bytecode Issues
+
+Disable if encountering errors:
+
+```bash
+npx expo export --no-bytecode
+```
+
+Or check Hermes compatibility of dependencies.
+
+## Best Practices
+
+### Version Control
+
+Don't commit `dist/` directory:
+
+```gitignore
+# .gitignore
+dist/
+```
+
+### CI/CD
+
+Automate exports in CI:
+
+```yaml
+# .github/workflows/export.yml
+- name: Export app
+  run: npx expo export --platform web
+
+- name: Deploy
+  run: vercel dist --prod
+```
+
+### Multiple Environments
+
+Use environment variables:
+
+```bash
+ENV=production npx expo export
+```
+
+### Testing Exports
+
+Test exported bundles locally:
+
+```bash
+npx expo export
+npx serve dist
+```
+
+## Performance Tips
+
+- Use `--max-workers` to control CPU usage
+- Enable Hermes bytecode for faster startup
+- Optimize images before importing
+- Use dynamic imports for code splitting
+- Enable source maps only when needed

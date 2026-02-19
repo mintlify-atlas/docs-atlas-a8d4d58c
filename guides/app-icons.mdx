@@ -1,0 +1,457 @@
+---
+title: "App Icons"
+description: "Configure app icons for iOS and Android, including adaptive icons and asset generation"
+---
+
+## Overview
+
+Your app icon is the first thing users see. Expo makes it easy to configure icons for both iOS and Android with support for adaptive icons and automatic asset generation.
+
+## Basic Configuration
+
+### Single icon for all platforms
+
+```json app.json
+{
+  "expo": {
+    "icon": "./assets/icon.png"
+  }
+}
+```
+
+**Requirements:**
+- **Size**: 1024 x 1024 pixels
+- **Format**: PNG
+- **Design**: Square with important content centered
+
+<Warning>
+  The icon should be a perfect square (1:1 aspect ratio). Avoid transparency in the corners as Android may render it differently.
+</Warning>
+
+## Platform-Specific Icons
+
+<Tabs>
+  <Tab title="iOS">
+    ### iOS app icon
+
+    ```json app.json
+    {
+      "expo": {
+        "ios": {
+          "icon": "./assets/icon-ios.png"
+        }
+      }
+    }
+    ```
+
+    **iOS requirements:**
+    - Size: 1024 x 1024 pixels
+    - Format: PNG (no transparency)
+    - No alpha channel (fully opaque)
+    - Border radius applied automatically by iOS
+
+    ### Multiple icon sizes
+
+    Expo automatically generates all required sizes:
+    - 20x20 (Notification)
+    - 29x29 (Settings)
+    - 40x40 (Spotlight)
+    - 58x58 (Settings @2x)
+    - 60x60 (App)
+    - 76x76 (iPad)
+    - 80x80 (Spotlight @2x)
+    - 87x87 (Settings @3x)
+    - 120x120 (App @2x)
+    - 152x152 (iPad @2x)
+    - 167x167 (iPad Pro)
+    - 180x180 (App @3x)
+    - 1024x1024 (App Store)
+
+    <Note>
+      You only need to provide the 1024x1024 icon. Expo generates all other sizes automatically.
+    </Note>
+  </Tab>
+
+  <Tab title="Android">
+    ### Standard Android icon
+
+    ```json app.json
+    {
+      "expo": {
+        "android": {
+          "icon": "./assets/icon-android.png"
+        }
+      }
+    }
+    ```
+
+    ### Adaptive icons
+
+    Android 8.0+ supports adaptive icons with separate foreground and background layers:
+
+    ```json app.json
+    {
+      "expo": {
+        "android": {
+          "adaptiveIcon": {
+            "foregroundImage": "./assets/adaptive-icon-foreground.png",
+            "backgroundImage": "./assets/adaptive-icon-background.png",
+            "backgroundColor": "#ffffff"
+          }
+        }
+      }
+    }
+    ```
+
+    **Adaptive icon requirements:**
+    - Size: 1024 x 1024 pixels
+    - Foreground: PNG with transparency
+    - Background: PNG or solid color
+    - Safe zone: 528 x 528 pixels (centered)
+
+    <Tip>
+      Use `backgroundColor` instead of `backgroundImage` for better performance when using a solid color.
+    </Tip>
+
+    ### Icon shapes
+
+    Different Android devices use different icon shapes:
+    - Circle (Google Pixel)
+    - Squircle (Samsung)
+    - Rounded square (OnePlus)
+    - Teardrop (Some manufacturers)
+
+    The safe zone ensures your icon looks good on all shapes.
+
+    ### Generated sizes
+
+    Expo generates these drawable densities:
+    - mdpi (48x48)
+    - hdpi (72x72)
+    - xhdpi (96x96)
+    - xxhdpi (144x144)
+    - xxxhdpi (192x192)
+  </Tab>
+</Tabs>
+
+## Creating Adaptive Icons
+
+### Foreground layer
+
+The foreground contains your logo or main icon element:
+
+```
+┌──────────────────────┐
+│  1024 x 1024 pixels  │
+│  ┌──────────────┐  │
+│  │ Safe zone   │  │
+│  │ 528 x 528   │  │
+│  │ (centered)  │  │
+│  └──────────────┘  │
+└──────────────────────┘
+```
+
+- Keep important elements within the 528x528 safe zone
+- Use transparency for areas that should show the background
+- Test with different mask shapes
+
+### Background layer
+
+Options for the background:
+
+<Tabs>
+  <Tab title="Solid Color">
+    ```json app.json
+    {
+      "expo": {
+        "android": {
+          "adaptiveIcon": {
+            "foregroundImage": "./assets/adaptive-icon.png",
+            "backgroundColor": "#4630EB"
+          }
+        }
+      }
+    }
+    ```
+    
+    Best for: Simple designs, better performance
+  </Tab>
+
+  <Tab title="Image">
+    ```json app.json
+    {
+      "expo": {
+        "android": {
+          "adaptiveIcon": {
+            "foregroundImage": "./assets/adaptive-icon-foreground.png",
+            "backgroundImage": "./assets/adaptive-icon-background.png"
+          }
+        }
+      }
+    }
+    ```
+    
+    Best for: Complex backgrounds, gradients, patterns
+  </Tab>
+
+  <Tab title="Both">
+    ```json app.json
+    {
+      "expo": {
+        "android": {
+          "adaptiveIcon": {
+            "foregroundImage": "./assets/adaptive-icon-foreground.png",
+            "backgroundImage": "./assets/adaptive-icon-background.png",
+            "backgroundColor": "#4630EB"
+          }
+        }
+      }
+    }
+    ```
+    
+    The background color shows while the image loads.
+  </Tab>
+</Tabs>
+
+## Round Icons
+
+Android also supports legacy round icons:
+
+```json app.json
+{
+  "expo": {
+    "android": {
+      "icon": "./assets/icon.png",
+      "roundIcon": "./assets/icon-round.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    }
+  }
+}
+```
+
+The round icon is used on older Android versions that support round icons but not adaptive icons.
+
+## Notification Icons
+
+Configure icons for notifications:
+
+```json app.json
+{
+  "expo": {
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#4630EB",
+      "androidMode": "default",
+      "androidCollapsedTitle": "#{unread_notifications} new notifications"
+    }
+  }
+}
+```
+
+**Notification icon requirements:**
+- Size: 96 x 96 pixels (xxxhdpi)
+- Format: PNG with transparency
+- Content: White with transparency (background removed)
+- Android only uses the alpha channel, tinting it with the specified color
+
+## Asset Generation
+
+### Using online tools
+
+- [Expo Asset Generator](https://www.appicon.co/)
+- [App Icon Generator](https://appicon.co/)
+- [Adaptive Icon Generator](https://adapticon.tooo.io/)
+
+### Using command-line tools
+
+```bash
+# Install sharp-cli
+npm install -g sharp-cli
+
+# Generate 1024x1024 icon
+sharp -i icon-source.png -o assets/icon.png resize 1024 1024
+
+# Generate adaptive icon foreground
+sharp -i logo.png -o assets/adaptive-icon.png resize 1024 1024
+```
+
+### Programmatic generation
+
+```javascript scripts/generate-icons.js
+const sharp = require('sharp');
+const fs = require('fs');
+
+async function generateIcons() {
+  const source = 'assets/icon-source.png';
+  
+  // Main icon
+  await sharp(source)
+    .resize(1024, 1024)
+    .toFile('assets/icon.png');
+  
+  // Adaptive icon foreground
+  await sharp(source)
+    .resize(1024, 1024)
+    .toFile('assets/adaptive-icon.png');
+  
+  // Notification icon (white silhouette)
+  await sharp(source)
+    .resize(96, 96)
+    .greyscale()
+    .toFile('assets/notification-icon.png');
+}
+
+generateIcons();
+```
+
+Run with:
+```bash
+node scripts/generate-icons.js
+```
+
+## Design Guidelines
+
+### iOS design tips
+
+- **No transparency**: iOS icons should have no transparent areas
+- **No border radius**: iOS applies the border radius automatically
+- **High contrast**: Icons should be recognizable at small sizes
+- **Consistent style**: Match iOS design patterns
+- **Test in context**: View your icon next to other iOS apps
+
+### Android design tips
+
+- **Use adaptive icons**: Support all Android devices and OEM customizations
+- **Safe zone**: Keep important content in the 528x528 center area
+- **Flexible colors**: Your icon will be displayed on various backgrounds
+- **Test all shapes**: Preview your icon as circle, square, squircle, and teardrop
+- **Material Design**: Follow [Material Design icon guidelines](https://material.io/design/iconography/product-icons.html)
+
+### Universal tips
+
+- **Simple and memorable**: Avoid complex details that don't scale
+- **Unique**: Stand out from other apps
+- **Consistent branding**: Match your brand colors and style
+- **Test at small sizes**: Icons are often viewed at 60x60 or smaller
+- **Avoid text**: Text in icons is hard to read at small sizes
+- **Use vectors**: Start with SVG or vector graphics for best quality
+
+## Testing Your Icons
+
+### Preview on device
+
+```bash
+# Build and install
+npx expo run:ios
+npx expo run:android
+```
+
+### Preview adaptive icon shapes
+
+Use Android Studio's Adaptive Icon Preview:
+
+1. Open Android Studio
+2. Navigate to `android/app/src/main/res/mipmap-anydpi-v26/`
+3. Right-click on `ic_launcher.xml`
+4. Select "Preview Adaptive Icon"
+
+### Online preview tools
+
+- [Adaptive Icon Preview](https://adapticon.tooo.io/)
+- [Icon Viewer](https://icon-previewer.com/)
+
+## Advanced Configuration
+
+### Custom icon sets
+
+Provide different icons for different contexts:
+
+```json app.json
+{
+  "expo": {
+    "icon": "./assets/icon.png",
+    "ios": {
+      "icon": "./assets/icon-ios.png"
+    },
+    "android": {
+      "icon": "./assets/icon-android-legacy.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon-foreground.png",
+        "backgroundImage": "./assets/adaptive-icon-background.png"
+      }
+    }
+  }
+}
+```
+
+### Development vs production icons
+
+Use different icons for development builds:
+
+```json app.development.json
+{
+  "expo": {
+    "icon": "./assets/icon-dev.png",
+    "name": "MyApp (Dev)"
+  }
+}
+```
+
+Build with:
+```bash
+EXPO_PUBLIC_ENV=development npx expo prebuild
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Icon not updating after rebuild">
+    - Clear build cache: `npx expo prebuild --clean`
+    - Uninstall the app from your device
+    - Rebuild and reinstall
+    - On iOS: Clean Xcode build folder (Cmd+Shift+K)
+  </Accordion>
+
+  <Accordion title="Adaptive icon looks wrong on some devices">
+    - Verify safe zone: Important content within 528x528 center
+    - Test with different mask shapes using preview tools
+    - Check that foreground and background are 1024x1024
+  </Accordion>
+
+  <Accordion title="iOS icon has black background">
+    iOS doesn't support transparency in app icons. Ensure your icon has a solid background color with no transparent areas.
+  </Accordion>
+
+  <Accordion title="Notification icon appears as gray square">
+    - Notification icons should be white silhouettes with transparency
+    - Remove all colors from the notification icon
+    - Use only the alpha channel for the icon shape
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  Changes to app icons require a rebuild. Run `npx expo prebuild --clean` and rebuild your app after changing icons.
+</Warning>
+
+## Icon Checklist
+
+- [ ] Main icon is 1024x1024 PNG
+- [ ] iOS icon has no transparency
+- [ ] Android adaptive icon configured
+- [ ] Foreground content within safe zone (528x528)
+- [ ] Notification icon is white silhouette
+- [ ] Tested on both iOS and Android
+- [ ] Tested at small sizes
+- [ ] Previewed with different adaptive icon shapes
+- [ ] Icon matches brand guidelines
+- [ ] High contrast and recognizable
+
+## Related Resources
+
+- [Expo app icons documentation](https://docs.expo.dev/guides/app-icons/)
+- [iOS Human Interface Guidelines - App Icon](https://developer.apple.com/design/human-interface-guidelines/app-icons)
+- [Android Adaptive Icons](https://developer.android.com/develop/ui/views/launch/icon_design_adaptive)
+- [Material Design - Product Icons](https://material.io/design/iconography/product-icons.html)

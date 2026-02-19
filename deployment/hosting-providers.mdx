@@ -1,0 +1,889 @@
+---
+title: Web Hosting Providers
+description: Complete guide to deploying your Expo static export to popular hosting providers including Vercel, Netlify, Cloudflare Pages, and more.
+---
+
+import { Steps } from '~/components/Steps';
+import { Step } from '~/components/Step';
+import { Warning } from '~/components/Warning';
+import { Tabs, Tab } from '~/components/Tabs';
+
+# Web Hosting Providers
+
+After creating a static export of your Expo Router web app, you can deploy it to any static hosting provider. This guide covers popular options with step-by-step deployment instructions.
+
+## Choosing a Hosting Provider
+
+| Provider | Best For | Free Tier | Custom Domain | CDN | Edge Functions |
+|----------|----------|-----------|---------------|-----|----------------|
+| **EAS Hosting** | Expo projects, unified mobile+web | Yes | Yes (paid) | Yes | Yes |
+| **Vercel** | Next.js-like experience, edge network | Yes | Yes | Yes | Yes |
+| **Netlify** | Simple deployment, forms | Yes | Yes | Yes | Yes |
+| **Cloudflare Pages** | Global CDN, speed | Yes | Yes | Yes | Yes |
+| **GitHub Pages** | GitHub repositories, free hosting | Yes | Limited | No | No |
+| **AWS Amplify** | AWS ecosystem integration | Free tier | Yes | Yes | Limited |
+| **Render** | Full-stack apps, databases | Free tier | Yes | Yes | No |
+
+## EAS Hosting (Recommended for Expo)
+
+EAS Hosting provides seamless integration with Expo projects and unified deployment for mobile and web.
+
+<Steps>
+
+<Step>
+
+### Export Your App
+
+Create a static build:
+
+```bash
+npx expo export --platform web
+```
+
+This creates a **dist** directory with your static files.
+
+</Step>
+
+<Step>
+
+### Install EAS CLI
+
+```bash
+npm install -g eas-cli
+eas login
+```
+
+</Step>
+
+<Step>
+
+### Deploy to EAS Hosting
+
+```bash
+eas deploy
+```
+
+EAS CLI will:
+1. Upload your **dist** directory
+2. Deploy to global CDN
+3. Provide a preview URL: `https://[project].exp.app`
+
+</Step>
+
+<Step>
+
+### Set Up Custom Domain (Optional)
+
+Available on paid plans:
+
+1. Go to [EAS Dashboard](https://expo.dev/)
+2. Navigate to your project > **Hosting**
+3. Click **Custom domain**
+4. Add your domain and configure DNS:
+   ```
+   CNAME  www  [your-project].exp.direct
+   ```
+
+</Step>
+
+<Step>
+
+### Configure Deployment Aliases
+
+Create production alias:
+
+```bash
+# Create production deployment
+eas deploy --alias production
+
+# Or make existing deployment production
+eas deploy:alias --prod --id [deployment-id]
+```
+
+</Step>
+
+</Steps>
+
+### EAS Hosting Features
+
+**Unified deployment:**
+- Deploy web alongside mobile builds
+- Single command for all platforms
+- Integrated with EAS Update for mobile
+
+**API routes support:**
+- Server functions via Cloudflare Workers
+- Monitor API logs in dashboard
+- Built-in crash reporting
+
+**Automatic optimization:**
+- Global CDN distribution
+- Automatic compression
+- Edge caching
+
+## Vercel
+
+Vercel offers excellent performance and developer experience, similar to their Next.js platform.
+
+<Steps>
+
+<Step>
+
+### Install Vercel CLI
+
+```bash
+npm install -g vercel
+```
+
+</Step>
+
+<Step>
+
+### Configure Vercel
+
+Create **vercel.json** in your project root:
+
+```json vercel.json
+{
+  "buildCommand": "npx expo export --platform web",
+  "outputDirectory": "dist",
+  "devCommand": "npx expo start --web",
+  "framework": null,
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/:path*",
+      "destination": "/"
+    }
+  ]
+}
+```
+
+<Warning>
+For static export (not server mode), use the rewrite configuration above to handle client-side routing.
+</Warning>
+
+</Step>
+
+<Step>
+
+### Deploy
+
+```bash
+vercel
+```
+
+Follow prompts to:
+1. Link to existing project or create new
+2. Configure project settings
+3. Deploy
+
+Vercel provides:
+- Preview URL: `https://[project]-[hash].vercel.app`
+- Production URL: `https://[project].vercel.app`
+
+</Step>
+
+<Step>
+
+### Deploy from Git (Recommended)
+
+1. Push code to GitHub/GitLab/Bitbucket
+2. Go to [Vercel Dashboard](https://vercel.com/dashboard)
+3. Click **New Project**
+4. Import your repository
+5. Configure:
+   - **Build Command**: `npx expo export --platform web`
+   - **Output Directory**: `dist`
+6. Deploy
+
+Automatic deployments on every push to main branch.
+
+</Step>
+
+<Step>
+
+### Custom Domain
+
+1. Go to Project Settings > Domains
+2. Add your domain
+3. Configure DNS:
+   ```
+   A     @       76.76.21.21
+   CNAME www     cname.vercel-dns.com
+   ```
+4. SSL automatically provisioned
+
+</Step>
+
+</Steps>
+
+### Vercel Environment Variables
+
+Add environment variables in dashboard or via CLI:
+
+```bash
+vercel env add EXPO_PUBLIC_API_URL
+# Enter value: https://api.example.com
+```
+
+Or in **vercel.json**:
+
+```json
+{
+  "env": {
+    "EXPO_PUBLIC_API_URL": "https://api.example.com"
+  }
+}
+```
+
+## Netlify
+
+Netlify provides simple deployment with great CI/CD integration and form handling.
+
+<Steps>
+
+<Step>
+
+### Install Netlify CLI
+
+```bash
+npm install -g netlify-cli
+```
+
+</Step>
+
+<Step>
+
+### Configure Netlify
+
+Create **netlify.toml** in project root:
+
+```toml netlify.toml
+[build]
+  command = "npx expo export --platform web"
+  publish = "dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+```
+
+</Step>
+
+<Step>
+
+### Deploy
+
+```bash
+netlify deploy
+
+# For production
+netlify deploy --prod
+```
+
+Or connect to Git:
+
+1. Go to [Netlify Dashboard](https://app.netlify.com/)
+2. Click **New site from Git**
+3. Connect repository
+4. Build settings auto-detected from **netlify.toml**
+5. Deploy
+
+</Step>
+
+<Step>
+
+### Custom Domain
+
+1. Go to Site settings > Domain management
+2. Add custom domain
+3. Configure DNS:
+   ```
+   CNAME www [site-name].netlify.app
+   ```
+4. Enable HTTPS (automatic)
+
+</Step>
+
+</Steps>
+
+### Netlify Features
+
+**Forms:**
+Add forms with zero configuration:
+
+```tsx
+<form netlify>
+  <input type="text" name="name" />
+  <input type="email" name="email" />
+  <button type="submit">Submit</button>
+</form>
+```
+
+**Split testing:**
+A/B test different branches:
+
+```toml netlify.toml
+[split_testing]
+  branch = "feature-branch"
+  traffic = 0.2  # 20% traffic to feature branch
+```
+
+## Cloudflare Pages
+
+Cloudflare Pages offers global CDN with excellent performance and security.
+
+<Steps>
+
+<Step>
+
+### Create Cloudflare Account
+
+Sign up at [Cloudflare Pages](https://pages.cloudflare.com/)
+
+</Step>
+
+<Step>
+
+### Deploy from Git
+
+1. Go to Cloudflare Pages dashboard
+2. Click **Create a project**
+3. Connect to GitHub/GitLab
+4. Select repository
+5. Configure build:
+   - **Build command**: `npx expo export --platform web`
+   - **Build output directory**: `dist`
+   - **Root directory**: (leave empty or set if monorepo)
+
+</Step>
+
+<Step>
+
+### Configure _redirects
+
+Create **public/_redirects** for client-side routing:
+
+```txt public/_redirects
+/*    /index.html    200
+```
+
+</Step>
+
+<Step>
+
+### Custom Domain
+
+1. Go to Custom domains
+2. Add your domain
+3. Configure DNS (if domain not on Cloudflare):
+   ```
+   CNAME www [project].pages.dev
+   ```
+   Or migrate nameservers to Cloudflare for automatic setup
+
+</Step>
+
+</Steps>
+
+### Cloudflare Workers
+
+Add serverless functions:
+
+```javascript functions/api/hello.js
+export async function onRequest() {
+  return new Response(JSON.stringify({ message: 'Hello' }), {
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+```
+
+Access at: `https://[project].pages.dev/api/hello`
+
+## GitHub Pages
+
+Free hosting for public repositories with GitHub.
+
+<Steps>
+
+<Step>
+
+### Install gh-pages
+
+```bash
+npm install --save-dev gh-pages
+```
+
+</Step>
+
+<Step>
+
+### Configure package.json
+
+Add deployment scripts:
+
+```json package.json
+{
+  "scripts": {
+    "deploy": "npx expo export --platform web && npx gh-pages -d dist"
+  },
+  "homepage": "https://[username].github.io/[repo-name]"
+}
+```
+
+For custom domain:
+
+```json
+{
+  "homepage": "https://example.com"
+}
+```
+
+</Step>
+
+<Step>
+
+### Create CNAME file
+
+For custom domains, create **public/CNAME**:
+
+```txt public/CNAME
+example.com
+```
+
+</Step>
+
+<Step>
+
+### Deploy
+
+```bash
+npm run deploy
+```
+
+This:
+1. Exports your app to **dist**
+2. Pushes **dist** to `gh-pages` branch
+3. GitHub Pages serves from that branch
+
+</Step>
+
+<Step>
+
+### Configure Repository
+
+1. Go to repository Settings > Pages
+2. Source: **gh-pages** branch
+3. Custom domain: Enter your domain (optional)
+4. Enforce HTTPS: Enabled
+
+</Step>
+
+<Step>
+
+### Configure DNS (Custom Domain)
+
+```
+A     @     185.199.108.153
+A     @     185.199.109.153
+A     @     185.199.110.153
+A     @     185.199.111.153
+CNAME www   [username].github.io
+```
+
+</Step>
+
+</Steps>
+
+### GitHub Pages Limitations
+
+- Single-page app routing requires workaround
+- No server-side logic
+- 100GB bandwidth/month limit
+- 1GB repository size limit
+
+## AWS Amplify
+
+AWS Amplify integrates with AWS services and provides full CI/CD.
+
+<Steps>
+
+<Step>
+
+### Install Amplify CLI
+
+```bash
+npm install -g @aws-amplify/cli
+amplify configure
+```
+
+</Step>
+
+<Step>
+
+### Deploy from Console
+
+1. Go to [AWS Amplify Console](https://console.aws.amazon.com/amplify/)
+2. Click **New app** > **Host web app**
+3. Connect repository (GitHub, GitLab, Bitbucket, CodeCommit)
+4. Configure build:
+   - **Build command**: `npx expo export --platform web`
+   - **Output directory**: `dist`
+5. Deploy
+
+</Step>
+
+<Step>
+
+### Configure amplify.yml
+
+Create **amplify.yml** for custom build:
+
+```yaml amplify.yml
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm install
+    build:
+      commands:
+        - npx expo export --platform web
+  artifacts:
+    baseDirectory: dist
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+```
+
+</Step>
+
+<Step>
+
+### Custom Domain
+
+1. Go to App settings > Domain management
+2. Add domain
+3. Amplify handles DNS configuration automatically
+4. Or manually configure:
+   ```
+   CNAME www [branch-name].[app-id].amplifyapp.com
+   ```
+
+</Step>
+
+</Steps>
+
+### Amplify Features
+
+**Branch deployments:**
+- Preview URLs for each branch
+- Automatic builds on pull requests
+
+**Environment variables:**
+- Managed in Amplify Console
+- Different values per branch/environment
+
+## Render
+
+Render provides free static site hosting with automatic SSL.
+
+<Steps>
+
+<Step>
+
+### Create Account
+
+Sign up at [Render](https://render.com/)
+
+</Step>
+
+<Step>
+
+### Deploy Static Site
+
+1. Click **New** > **Static Site**
+2. Connect GitHub/GitLab
+3. Select repository
+4. Configure:
+   - **Build Command**: `npx expo export --platform web`
+   - **Publish Directory**: `dist`
+5. Create Static Site
+
+</Step>
+
+<Step>
+
+### Custom Domain
+
+1. Go to site Settings > Custom Domain
+2. Add domain
+3. Configure DNS:
+   ```
+   CNAME www [site-name].onrender.com
+   ```
+4. SSL automatically provisioned
+
+</Step>
+
+</Steps>
+
+## Deployment Best Practices
+
+### Automated Deployments
+
+Set up CI/CD for automatic deployments:
+
+```yaml .github/workflows/deploy.yml
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Export web
+        run: npx expo export --platform web
+      
+      - name: Deploy to Netlify
+        uses: netlify/actions/cli@master
+        with:
+          args: deploy --dir=dist --prod
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+```
+
+### Environment-Specific Builds
+
+Use different configurations per environment:
+
+```json package.json
+{
+  "scripts": {
+    "build:staging": "EXPO_PUBLIC_ENV=staging npx expo export --platform web",
+    "build:production": "EXPO_PUBLIC_ENV=production npx expo export --platform web",
+    "deploy:staging": "npm run build:staging && netlify deploy --dir=dist",
+    "deploy:production": "npm run build:production && netlify deploy --prod --dir=dist"
+  }
+}
+```
+
+### Performance Optimization
+
+**Enable compression:**
+
+Most hosts enable automatically, but verify:
+
+```toml netlify.toml
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Encoding = "gzip"
+```
+
+**Cache static assets:**
+
+```toml netlify.toml
+[[headers]]
+  for = "/_expo/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+```
+
+**Optimize images:**
+
+Use Cloudflare Images, Vercel Image Optimization, or similar:
+
+```tsx
+// Cloudflare Images example
+<img 
+  src="https://imagedelivery.net/[account]/[image-id]/public"
+  alt="Optimized image"
+/>
+```
+
+### Security Headers
+
+Add security headers to protect your app:
+
+```toml netlify.toml
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+```
+
+### Monitoring and Analytics
+
+**Google Analytics:**
+
+```tsx app/_layout.tsx
+import { useEffect } from 'react';
+import { usePathname } from 'expo-router';
+
+export default function RootLayout() {
+  const pathname = usePathname();
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('config', 'GA_MEASUREMENT_ID', {
+        page_path: pathname,
+      });
+    }
+  }, [pathname]);
+  
+  return <Slot />;
+}
+```
+
+**Vercel Analytics:**
+
+```bash
+npm install @vercel/analytics
+```
+
+```tsx app/_layout.tsx
+import { Analytics } from '@vercel/analytics/react';
+
+export default function RootLayout() {
+  return (
+    <>
+      <Slot />
+      <Analytics />
+    </>
+  );
+}
+```
+
+## Troubleshooting
+
+### 404 Errors on Refresh
+
+**Issue:** Routes return 404 when directly accessed or refreshed
+
+**Solution:** Configure redirects to index.html:
+
+<Tabs>
+<Tab label="Vercel">
+
+```json vercel.json
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/" }
+  ]
+}
+```
+
+</Tab>
+<Tab label="Netlify">
+
+```toml netlify.toml
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+```
+
+</Tab>
+<Tab label="Cloudflare">
+
+```txt public/_redirects
+/*  /index.html  200
+```
+
+</Tab>
+</Tabs>
+
+### Environment Variables Not Working
+
+**Issue:** `process.env.EXPO_PUBLIC_*` is undefined
+
+**Solutions:**
+
+1. **Prefix with EXPO_PUBLIC_:**
+   ```bash
+   EXPO_PUBLIC_API_URL=https://api.example.com
+   ```
+
+2. **Add to hosting provider:**
+   - Vercel: Project Settings > Environment Variables
+   - Netlify: Site settings > Build & deploy > Environment
+   - Cloudflare: Settings > Environment variables
+
+3. **Rebuild app** (env vars are embedded at build time)
+
+### Assets Not Loading
+
+**Issue:** Images/fonts return 404
+
+**Solution:** Use absolute paths from root:
+
+```tsx
+// Correct
+<Image source={{ uri: '/images/logo.png' }} />
+
+// Wrong (relative path)
+<Image source={{ uri: './images/logo.png' }} />
+```
+
+### Build Fails on Hosting Provider
+
+**Issue:** Build works locally but fails in CI
+
+**Check:**
+
+1. **Node version matches:**
+   ```json package.json
+   {
+     "engines": {
+       "node": ">=18.0.0"
+     }
+   }
+   ```
+
+2. **Install script:**
+   ```json
+   {
+     "scripts": {
+       "postinstall": "npx expo-optimize"
+     }
+   }
+   ```
+
+3. **Check build logs** for specific errors
+
+## Next Steps
+
+- [Static Export](/deployment/static-export) - Learn more about creating static exports
+- [Build Configuration](/deployment/build-configuration) - Configure for mobile platforms
+- [Over-the-Air Updates](/deployment/over-the-air-updates) - Update mobile apps remotely

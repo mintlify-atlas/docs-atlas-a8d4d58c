@@ -1,0 +1,564 @@
+---
+title: "Installation & Setup"
+description: "Complete guide to setting up your Expo development environment"
+icon: "download"
+---
+
+This guide covers everything you need to develop, build, and deploy Expo apps. Choose your setup based on what you're building:
+
+- **Quick start**: Just Node.js and a phone → Use Expo Go
+- **Full setup**: Native builds → Install platform-specific tools
+
+## System Requirements
+
+<CardGroup cols={2}>
+  <Card title="Required for All">
+    - Node.js 18 or newer
+    - npm, yarn, or pnpm
+    - Code editor (VS Code recommended)
+  </Card>
+  
+  <Card title="For Native Builds">
+    - macOS (for iOS development)
+    - Xcode 15+ (iOS)
+    - Android Studio (Android)
+    - CocoaPods (iOS)
+  </Card>
+</CardGroup>
+
+## Step 1: Install Node.js
+
+Expo requires Node.js version 18 or newer.
+
+<Tabs>
+  <Tab title="macOS">
+    **Using Homebrew (recommended):**
+
+    ```bash
+    brew install node
+    ```
+
+    **Or download from nodejs.org:**
+    
+    Visit [nodejs.org](https://nodejs.org/) and download the LTS version.
+
+    **Verify installation:**
+
+    ```bash
+    node --version  # Should show v18.0.0 or higher
+    npm --version
+    ```
+  </Tab>
+  
+  <Tab title="Windows">
+    **Download installer:**
+    
+    Visit [nodejs.org](https://nodejs.org/) and download the LTS version for Windows.
+
+    **Or use winget:**
+
+    ```powershell
+    winget install OpenJS.NodeJS
+    ```
+
+    **Verify installation:**
+
+    ```powershell
+    node --version  # Should show v18.0.0 or higher
+    npm --version
+    ```
+
+    <Note>
+      You may need to restart your terminal after installation.
+    </Note>
+  </Tab>
+  
+  <Tab title="Linux">
+    **Using package manager:**
+
+    ```bash
+    # Ubuntu/Debian
+    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+
+    # Fedora
+    curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
+    sudo dnf install -y nodejs
+    ```
+
+    **Verify installation:**
+
+    ```bash
+    node --version  # Should show v18.0.0 or higher
+    npm --version
+    ```
+  </Tab>
+</Tabs>
+
+<Info>
+  The Expo SDK requires Node.js 22.14.0 as specified in the monorepo, but Node 18+ is generally supported for app development.
+</Info>
+
+## Step 2: Install Expo CLI
+
+Expo CLI is included with the `expo` package. You don't need to install it globally!
+
+<CodeGroup>
+
+```bash Create new project (includes CLI)
+npx create-expo-app my-app
+cd my-app
+```
+
+```bash Add to existing project
+npm install expo
+```
+
+</CodeGroup>
+
+<Accordion title="Why no global install?">
+
+The `@expo/cli` package is versioned with the Expo SDK, ensuring compatibility. Running `npx expo` uses your project's local version automatically.
+
+**Benefits:**
+- No version conflicts between projects
+- Automatic updates with SDK upgrades
+- Faster CI/CD (no global install needed)
+
+</Accordion>
+
+### Verify CLI Installation
+
+```bash
+npx expo --version
+```
+
+You should see output like:
+
+```
+55.0.9
+```
+
+## Step 3: Platform-Specific Setup
+
+<Tabs>
+  <Tab title="iOS Development">
+    
+    <Warning>
+      iOS development requires a Mac with macOS.
+    </Warning>
+
+    ### Install Xcode
+
+    1. Install Xcode from the Mac App Store (15+ required)
+    2. Open Xcode and accept the license agreement
+    3. Install command line tools:
+
+    ```bash
+    xcode-select --install
+    ```
+
+    ### Install CocoaPods
+
+    CocoaPods manages iOS native dependencies:
+
+    ```bash
+    sudo gem install cocoapods
+    ```
+
+    Or using Homebrew:
+
+    ```bash
+    brew install cocoapods
+    ```
+
+    ### Verify iOS Setup
+
+    ```bash
+    # Check Xcode
+    xcodebuild -version
+
+    # Check CocoaPods
+    pod --version
+
+    # List available simulators
+    xcrun simctl list devices
+    ```
+
+    ### Set Up iOS Simulator
+
+    Open the iOS Simulator:
+
+    ```bash
+    open -a Simulator
+    ```
+
+    In Xcode, go to **Xcode → Settings → Platforms** to download additional iOS versions.
+
+  </Tab>
+  
+  <Tab title="Android Development">
+    
+    ### Install Android Studio
+
+    1. Download from [developer.android.com/studio](https://developer.android.com/studio)
+    2. Run the installer and follow the setup wizard
+    3. Install the Android SDK through Android Studio
+
+    ### Configure Android SDK
+
+    In Android Studio:
+
+    1. Open **Settings → Languages & Frameworks → Android SDK**
+    2. Under **SDK Platforms**, install:
+       - Android 14 (API 34)
+       - Android 13 (API 33)
+    3. Under **SDK Tools**, install:
+       - Android SDK Build-Tools
+       - Android Emulator
+       - Android SDK Platform-Tools
+
+    ### Set Environment Variables
+
+    Add to your shell profile (`~/.zshrc`, `~/.bashrc`, etc.):
+
+    ```bash
+    export ANDROID_HOME=$HOME/Library/Android/sdk
+    export PATH=$PATH:$ANDROID_HOME/emulator
+    export PATH=$PATH:$ANDROID_HOME/platform-tools
+    ```
+
+    **Windows:** Add to System Environment Variables:
+    - `ANDROID_HOME`: `C:\Users\YourUsername\AppData\Local\Android\Sdk`
+    - Add to `Path`: `%ANDROID_HOME%\platform-tools`
+
+    Reload your shell:
+
+    ```bash
+    source ~/.zshrc  # or ~/.bashrc
+    ```
+
+    ### Verify Android Setup
+
+    ```bash
+    # Check ADB
+    adb --version
+
+    # List available emulators
+    emulator -list-avds
+    ```
+
+    ### Create Android Emulator
+
+    1. Open Android Studio
+    2. Go to **Tools → Device Manager**
+    3. Click **Create Device**
+    4. Select a device (e.g., Pixel 6)
+    5. Download and select a system image (e.g., Android 14)
+    6. Finish creation
+
+    ### Start an Emulator
+
+    ```bash
+    # List available emulators
+    emulator -list-avds
+
+    # Start an emulator
+    emulator -avd Pixel_6_API_34
+    ```
+
+  </Tab>
+  
+  <Tab title="Web Development">
+    
+    Web development requires no additional setup! Expo uses Metro bundler which includes web support.
+
+    ### Browser Requirements
+
+    - Chrome, Firefox, Safari, or Edge (latest version)
+    - JavaScript enabled
+    - Local development: `localhost` access
+
+    ### Start Web Development
+
+    ```bash
+    npx expo start --web
+    ```
+
+    Or press `w` in the Expo dev server terminal.
+
+    ### Web-Specific Configuration
+
+    Configure web settings in `app.json`:
+
+    ```json app.json
+    {
+      "expo": {
+        "web": {
+          "bundler": "metro",
+          "favicon": "./assets/favicon.png"
+        }
+      }
+    }
+    ```
+
+  </Tab>
+  
+  <Tab title="Expo Go (No Build)">
+    
+    Skip native tool installation if you're only using Expo Go:
+
+    ### Install Expo Go on Your Device
+
+    - **iOS**: [App Store](https://apps.apple.com/app/expo-go/id982107779)
+    - **Android**: [Play Store](https://play.google.com/store/apps/details?id=host.exp.exponent)
+
+    ### What You Can Do
+
+    <Check>
+      - Develop and test apps instantly
+      - Use all built-in Expo SDK modules
+      - Share with QR code
+      - Hot reload during development
+    </Check>
+
+    ### Limitations
+
+    <Warning>
+      - Cannot add custom native code
+      - Limited to modules included in Expo Go
+      - Cannot use some third-party native libraries
+    </Warning>
+
+    For custom native code, you'll need to create a [development build](https://docs.expo.dev/develop/development-builds/).
+
+  </Tab>
+</Tabs>
+
+## Step 4: Editor Setup
+
+### Visual Studio Code (Recommended)
+
+**Install VS Code Extensions:**
+
+1. Open VS Code
+2. Install these extensions:
+   - **ES7+ React/Redux/React-Native snippets**
+   - **React Native Tools**
+   - **Prettier - Code formatter**
+   - **ESLint**
+
+**Configure VS Code:**
+
+Create `.vscode/settings.json` in your project:
+
+```json .vscode/settings.json
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  }
+}
+```
+
+## Step 5: Verify Installation
+
+Create a test project to verify everything works:
+
+<Steps>
+
+<Step title="Create test project">
+
+```bash
+npx create-expo-app test-app
+cd test-app
+```
+
+</Step>
+
+<Step title="Start development server">
+
+```bash
+npx expo start
+```
+
+</Step>
+
+<Step title="Test on platforms">
+
+**iOS Simulator (Mac only):**
+```bash
+Press 'i' in the terminal
+```
+
+**Android Emulator:**
+```bash
+Press 'a' in the terminal
+```
+
+**Web Browser:**
+```bash
+Press 'w' in the terminal
+```
+
+**Physical Device:**
+- Scan QR code with Expo Go app
+
+</Step>
+
+</Steps>
+
+<Check>
+  If your app opens successfully on any platform, your setup is complete!
+</Check>
+
+## Troubleshooting
+
+<AccordionGroup>
+
+<Accordion title="iOS: 'command line tools are not installed'">
+
+Install Xcode command line tools:
+
+```bash
+xcode-select --install
+```
+
+If that doesn't work, reset the path:
+
+```bash
+sudo xcode-select --reset
+```
+
+</Accordion>
+
+<Accordion title="Android: 'ANDROID_HOME not set'">
+
+Add to your shell profile:
+
+```bash ~/.zshrc
+export ANDROID_HOME=$HOME/Library/Android/sdk
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+```
+
+Reload:
+
+```bash
+source ~/.zshrc
+```
+
+</Accordion>
+
+<Accordion title="iOS: 'Unable to boot simulator'">
+
+Reset iOS Simulator:
+
+1. Open Simulator app
+2. Go to **Device → Erase All Content and Settings**
+3. Try again
+
+Or from command line:
+
+```bash
+xcrun simctl erase all
+```
+
+</Accordion>
+
+<Accordion title="Android: 'No emulators found'">
+
+Create a new emulator in Android Studio:
+
+1. Open Android Studio
+2. **Tools → Device Manager**
+3. Click **Create Device**
+4. Follow the wizard
+
+</Accordion>
+
+<Accordion title="CocoaPods: 'pod install' fails">
+
+Update CocoaPods and try again:
+
+```bash
+sudo gem install cocoapods
+cd ios
+pod repo update
+pod install
+```
+
+</Accordion>
+
+<Accordion title="Node version issues">
+
+Use a Node version manager:
+
+**nvm (Mac/Linux):**
+
+```bash
+# Install nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+
+# Install Node 18
+nvm install 18
+nvm use 18
+```
+
+**nvm-windows:**
+
+Download from [github.com/coreybutler/nvm-windows](https://github.com/coreybutler/nvm-windows/releases)
+
+</Accordion>
+
+</AccordionGroup>
+
+## Package Manager Choice
+
+Expo works with npm, yarn, or pnpm:
+
+<CodeGroup>
+
+```bash npm
+npx create-expo-app my-app
+npm install
+npm start
+```
+
+```bash yarn
+yarn create expo-app my-app
+yarn install
+yarn start
+```
+
+```bash pnpm
+pnpm create expo-app my-app
+pnpm install
+pnpm start
+```
+
+</CodeGroup>
+
+<Note>
+  Once you choose a package manager, stick with it for the entire project. Don't mix them!
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="bolt" href="/quickstart">
+    Create your first app in 5 minutes
+  </Card>
+  
+  <Card title="Core Concepts" icon="book" href="/core-concepts/architecture">
+    Learn how Expo works
+  </Card>
+  
+  <Card title="Tutorial" icon="graduation-cap" href="/tutorial/create-project">
+    Build a complete app step-by-step
+  </Card>
+  
+  <Card title="Development Builds" icon="hammer" href="https://docs.expo.dev/develop/development-builds/">
+    Set up for custom native code
+  </Card>
+</CardGroup>

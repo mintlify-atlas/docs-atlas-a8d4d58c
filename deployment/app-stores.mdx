@@ -1,0 +1,641 @@
+---
+title: Deploying to App Stores
+description: Complete guide to submitting your Expo app to the Apple App Store and Google Play Store.
+---
+
+import { Steps } from '~/components/Steps';
+import { Step } from '~/components/Step';
+import { Warning } from '~/components/Warning';
+import { Tabs, Tab } from '~/components/Tabs';
+
+# Deploying to App Stores
+
+Once you've built your production app, the final step is submitting it to the Apple App Store and Google Play Store. This guide walks through the entire submission process.
+
+## Prerequisites
+
+Before submitting to app stores:
+
+### Apple App Store
+- Apple Developer Program membership ($99/year)
+- Production iOS build (.ipa file)
+- App Store Connect account
+- App screenshots and metadata
+- Privacy policy URL (required)
+
+### Google Play Store
+- Google Play Developer account ($25 one-time fee)
+- Production Android build (.aab file)
+- Google Play Console access
+- App screenshots and metadata
+- App manually uploaded at least once (API limitation)
+
+## Submitting to Apple App Store
+
+<Steps>
+
+<Step>
+
+### Create App in App Store Connect
+
+1. Go to [App Store Connect](https://appstoreconnect.apple.com/)
+2. Click **My Apps** > **+** > **New App**
+3. Fill in app information:
+   - **Platform**: iOS
+   - **Name**: Your app name (max 30 characters)
+   - **Primary Language**: Main language
+   - **Bundle ID**: Select your bundle identifier
+   - **SKU**: Unique identifier (e.g., `com-company-app-001`)
+   - **User Access**: Full access or Limited access
+
+</Step>
+
+<Step>
+
+### Configure App Information
+
+**Required Information:**
+
+**General > App Information**
+- Privacy Policy URL (required)
+- Category (Primary and Secondary)
+- Content Rights (whether it contains third-party content)
+
+**App Privacy**
+Starting December 2020, you must answer privacy questions:
+- What data does your app collect?
+- Is data linked to user identity?
+- Is data used for tracking?
+
+Common answers for Expo apps:
+- If using `expo-updates`: Select **Crash Data** collection
+- If using analytics: Declare analytics data collection
+- If using authentication: Declare user identity data
+
+</Step>
+
+<Step>
+
+### Prepare App Metadata
+
+**Version Information > App Store**
+
+Required assets:
+- **Screenshots** (iPhone and iPad)
+  - iPhone 6.7": 1290 x 2796 pixels (at least 3)
+  - iPhone 6.5": 1284 x 2778 pixels (at least 3)
+  - iPad Pro 12.9": 2048 x 2732 pixels (optional)
+
+- **App Preview Videos** (optional but recommended)
+  - 15-30 seconds showcasing your app
+  - Portrait or landscape orientation
+
+**Text Content:**
+- **Description**: Full description (max 4000 characters)
+- **Keywords**: Comma-separated (max 100 characters)
+- **Support URL**: Customer support website
+- **Marketing URL**: App marketing page (optional)
+- **Promotional Text**: Featured text (max 170 characters, can be updated without new version)
+
+</Step>
+
+<Step>
+
+### Build and Submit with EAS
+
+Build and submit in one command:
+
+```bash
+eas build --platform ios --auto-submit
+```
+
+Or build first, then submit:
+
+```bash
+# Build
+eas build --platform ios --profile production
+
+# Submit latest build
+eas submit --platform ios
+```
+
+**Configure submission in eas.json:**
+
+```json eas.json
+{
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "1234567890",
+        "appleId": "your-email@example.com",
+        "appleTeamId": "ABC123XYZ"
+      }
+    }
+  }
+}
+```
+
+**Find your ascAppId:**
+1. Go to App Store Connect > Apps
+2. Click your app
+3. Go to **App Information**
+4. Find **Apple ID** under General Information
+
+</Step>
+
+<Step>
+
+### Submit for Review
+
+After upload completes:
+
+1. Go to App Store Connect
+2. Navigate to your app version
+3. Complete any missing metadata
+4. Add build:
+   - Click **+** next to Build
+   - Select your uploaded build
+   - Wait for processing (10-15 minutes)
+5. Complete **App Review Information**:
+   - Contact information
+   - Demo account (if login required)
+   - Notes for reviewer
+6. Complete **Version Release** settings:
+   - Manual release or Automatic release
+7. Click **Submit for Review**
+
+</Step>
+
+<Step>
+
+### App Review Process
+
+**Timeline:**
+- Initial review: 24-48 hours typically
+- Rejections can be appealed
+- Emergency reviews available (with justification)
+
+**Common Rejection Reasons:**
+- Missing privacy policy
+- Crashes on launch
+- Incomplete functionality
+- Misleading metadata
+- Requires demo account but none provided
+- Uses private APIs
+- Minimal functionality
+
+**After Approval:**
+- Auto-release or manual release
+- Available on App Store within hours
+- Can be removed or updated anytime
+
+</Step>
+
+</Steps>
+
+## Submitting to Google Play Store
+
+<Steps>
+
+<Step>
+
+### Create App in Google Play Console
+
+1. Go to [Google Play Console](https://play.google.com/console/)
+2. Click **Create app**
+3. Fill in details:
+   - **App name**: Your app name
+   - **Default language**: Primary language
+   - **App or game**: Select appropriate type
+   - **Free or paid**: Select pricing
+   - Accept declarations
+4. Click **Create app**
+
+</Step>
+
+<Step>
+
+### Complete Store Listing
+
+**Store listing > Main store listing**
+
+Required information:
+
+**App details:**
+- Short description (max 80 characters)
+- Full description (max 4000 characters)
+
+**Graphics:**
+- **App icon**: 512 x 512 px PNG (32-bit with alpha)
+- **Feature graphic**: 1024 x 500 px JPG or PNG
+- **Phone screenshots**: At least 2 (16:9 or 9:16 aspect ratio)
+  - Min 320px, max 3840px
+- **Tablet screenshots**: At least 2 (recommended)
+- **Promo video**: YouTube URL (optional)
+
+**Categorization:**
+- App category
+- Tags (optional)
+- Content rating (complete questionnaire)
+
+**Contact details:**
+- Email address
+- Phone number (optional)
+- Website (optional)
+
+</Step>
+
+<Step>
+
+### Set Up Google Service Account
+
+For EAS Submit API access:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create or select project
+3. Enable **Google Play Android Developer API**
+4. Create service account:
+   - IAM & Admin > Service Accounts > Create
+   - Name: "EAS Submit"
+   - Click Create and Continue
+   - Skip optional steps
+5. Create key:
+   - Click on service account
+   - Keys > Add Key > Create new key
+   - Select JSON
+   - Download and save securely
+6. Grant access in Play Console:
+   - Users and permissions > Invite new users
+   - Add service account email
+   - Set permissions: **Release to production tracks**
+
+</Step>
+
+<Step>
+
+### Upload First Build Manually
+
+<Warning>
+Google Play requires the first build to be uploaded manually before API submissions work.
+</Warning>
+
+1. Go to Play Console > Your app
+2. Navigate to **Production** > **Create new release**
+3. Upload your .aab file
+4. Add release notes
+5. Save (don't publish yet)
+
+Now API submissions will work for future builds.
+
+</Step>
+
+<Step>
+
+### Submit with EAS
+
+Configure eas.json:
+
+```json eas.json
+{
+  "submit": {
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "./path/to/api-key.json",
+        "track": "production",
+        "releaseStatus": "draft"
+      }
+    }
+  }
+}
+```
+
+**Track options:**
+- `"production"`: Public release
+- `"beta"`: Beta testing
+- `"alpha"`: Alpha testing  
+- `"internal"`: Internal testing (up to 100 testers)
+
+**Release status:**
+- `"completed"`: Immediately publish
+- `"draft"`: Save as draft (review in console before publishing)
+- `"inProgress"`: Start rollout
+- `"halted"`: Paused rollout
+
+Submit build:
+
+```bash
+# Build and submit
+eas build --platform android --auto-submit
+
+# Or submit existing build
+eas submit --platform android --latest
+```
+
+</Step>
+
+<Step>
+
+### Complete Remaining Requirements
+
+**Content rating:**
+1. Go to **Policy > App content**
+2. Complete content rating questionnaire
+3. Submit for rating
+
+**Target audience:**
+1. Select target age groups
+2. Complete required declarations
+
+**News apps:**
+If applicable, declare news app status
+
+**COVID-19 contact tracing/status:**
+If applicable, complete required information
+
+**Data safety:**
+1. Go to **Policy > Data safety**
+2. Answer questions about data collection:
+   - Location data
+   - Personal info
+   - Photos/videos
+   - Audio files
+   - Financial info
+   - And more...
+3. Explain data usage and sharing
+
+</Step>
+
+<Step>
+
+### Publish Release
+
+1. Go to **Production** track
+2. Review your release
+3. Click **Review release**
+4. Verify all information
+5. Click **Start rollout to Production**
+
+**Rollout options:**
+- Staged rollout: 1%, 5%, 10%, 20%, 50%, 100%
+- Full rollout: 100% immediately
+
+**Review process:**
+- Usually 1-3 days
+- Can take up to 7 days
+- Check status in Play Console
+
+</Step>
+
+</Steps>
+
+## Automated Submissions
+
+### Using EAS Workflows
+
+Automate builds and submissions:
+
+```yaml .eas/workflows/release.yml
+name: Release to Stores
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build_and_submit_ios:
+    name: Build and Submit iOS
+    type: build
+    params:
+      platform: ios
+      profile: production
+      auto_submit: true
+  
+  build_and_submit_android:
+    name: Build and Submit Android
+    type: build
+    params:
+      platform: android
+      profile: production
+      auto_submit: true
+```
+
+Trigger with:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+### Using CI/CD
+
+Example GitHub Actions:
+
+```yaml .github/workflows/submit.yml
+name: Submit to Stores
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        type: choice
+        options:
+          - android
+          - ios
+          - all
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      
+      - name: Submit to stores
+        run: |
+          if [[ "${{ github.event.inputs.platform }}" == "all" ]]; then
+            eas submit --platform android --latest --non-interactive
+            eas submit --platform ios --latest --non-interactive
+          else
+            eas submit --platform ${{ github.event.inputs.platform }} --latest --non-interactive
+          fi
+```
+
+## Version Management
+
+### iOS Version Numbers
+
+**CFBundleShortVersionString** (Version):
+- User-facing version: `1.0.0`
+- Must increment for each App Store release
+- Semantic versioning recommended: `MAJOR.MINOR.PATCH`
+
+**CFBundleVersion** (Build Number):
+- Internal build number: `1`, `2`, `3`...
+- Must increment for each build
+- Can auto-increment with EAS:
+
+```json eas.json
+{
+  "build": {
+    "production": {
+      "ios": {
+        "autoIncrement": "buildNumber"
+      }
+    }
+  }
+}
+```
+
+### Android Version Numbers
+
+**versionName** (Version):
+- User-facing version: `"1.0.0"`
+- Displayed in Play Store
+- String value in app.json
+
+**versionCode** (Version Code):
+- Internal integer: `1`, `2`, `3`...
+- Must increment for each release
+- Can auto-increment with EAS:
+
+```json eas.json
+{
+  "build": {
+    "production": {
+      "android": {
+        "autoIncrement": "versionCode"
+      }
+    }
+  }
+}
+```
+
+Configure in app.json:
+
+```json app.json
+{
+  "expo": {
+    "version": "1.0.0",
+    "ios": {
+      "buildNumber": "1"
+    },
+    "android": {
+      "versionCode": 1
+    }
+  }
+}
+```
+
+## Store Requirements Checklist
+
+### iOS App Store
+
+- [ ] App Store Connect account created
+- [ ] App created in App Store Connect
+- [ ] Bundle identifier matches build
+- [ ] Privacy policy URL provided
+- [ ] App privacy questions answered
+- [ ] Screenshots (at least 3 for iPhone)
+- [ ] App icon (1024x1024px)
+- [ ] Description and keywords
+- [ ] Support and marketing URLs
+- [ ] Content rights information
+- [ ] Export compliance answered
+- [ ] Demo account (if app requires login)
+- [ ] Build uploaded and processed
+- [ ] Build selected for version
+- [ ] Version submitted for review
+
+### Google Play Store
+
+- [ ] Google Play Developer account created
+- [ ] App created in Play Console
+- [ ] Package name matches build
+- [ ] Store listing completed
+- [ ] Graphics uploaded (icon, feature graphic, screenshots)
+- [ ] Content rating completed
+- [ ] Target audience selected
+- [ ] Data safety form completed
+- [ ] App categories selected
+- [ ] Pricing and distribution set
+- [ ] Google Service Account created
+- [ ] First build uploaded manually
+- [ ] Production release created
+- [ ] Release reviewed and rolled out
+
+## Troubleshooting
+
+### iOS: "This bundle is invalid"
+
+**Issue:** Build rejected during upload
+
+**Solutions:**
+- Ensure bundle identifier matches App Store Connect
+- Verify build is signed with distribution certificate
+- Check for missing required device capabilities
+- Rebuild with latest EAS CLI
+
+### iOS: "Missing compliance"
+
+**Issue:** Export compliance warning
+
+**Solution:** Add to app.json:
+
+```json app.json
+{
+  "expo": {
+    "ios": {
+      "config": {
+        "usesNonExemptEncryption": false
+      }
+    }
+  }
+}
+```
+
+### Android: "Version code has already been used"
+
+**Issue:** Duplicate version code
+
+**Solution:** Increment versionCode in app.json or use auto-increment:
+
+```json eas.json
+{
+  "android": {
+    "autoIncrement": "versionCode"
+  }
+}
+```
+
+### Android: "Upload failed: Forbidden"
+
+**Issue:** Service account lacks permissions
+
+**Solution:**
+1. Go to Play Console > Users and permissions
+2. Find your service account
+3. Grant "Release to production tracks" permission
+4. Wait 24 hours for permissions to propagate
+
+### Submission stuck in processing
+
+**iOS:**
+- Processing usually takes 10-15 minutes
+- If stuck > 1 hour, contact Apple Developer Support
+
+**Android:**
+- Check Play Console for error messages
+- Verify build uploaded successfully
+- Review release status in console
+
+## Next Steps
+
+- [Over-the-Air Updates](/deployment/over-the-air-updates) - Deploy updates without store review
+- [Internal Distribution](/deployment/internal-distribution) - Beta testing before store release
+- [Versioning Best Practices](/build-reference/app-versions) - Manage app versions effectively

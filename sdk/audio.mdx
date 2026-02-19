@@ -1,0 +1,295 @@
+---
+title: expo-audio
+description: A cross-platform audio library for playing and recording audio in React Native and Expo apps
+---
+
+# expo-audio
+
+**Version:** 55.0.6
+
+A cross-platform audio library for React Native and Expo apps. Provides playback and recording capabilities with support for various audio formats.
+
+## Installation
+
+```bash
+npx expo install expo-audio
+```
+
+## Usage
+
+```typescript
+import { AudioPlayer } from 'expo-audio';
+import { useState } from 'react';
+import { Button, View } from 'react-native';
+
+function App() {
+  const [player, setPlayer] = useState<AudioPlayer | null>(null);
+
+  async function playSound() {
+    const audioPlayer = new AudioPlayer(require('./assets/sound.mp3'));
+    setPlayer(audioPlayer);
+    await audioPlayer.play();
+  }
+
+  return (
+    <View>
+      <Button title="Play Sound" onPress={playSound} />
+    </View>
+  );
+}
+```
+
+## API Reference
+
+### AudioPlayer
+
+The main class for playing audio files.
+
+<ParamField path="new AudioPlayer(source)" type="constructor">
+  Creates a new audio player instance
+  
+  **Parameters:**
+  - `source`: Audio source (require() or URI string)
+  
+  ```typescript
+  const player = new AudioPlayer(require('./audio.mp3'));
+  // or
+  const player = new AudioPlayer('https://example.com/audio.mp3');
+  ```
+</ParamField>
+
+<ParamField path="player.play()" type="() => Promise<void>">
+  Starts or resumes playback
+  
+  ```typescript
+  await player.play();
+  ```
+</ParamField>
+
+<ParamField path="player.pause()" type="() => Promise<void>">
+  Pauses playback
+  
+  ```typescript
+  await player.pause();
+  ```
+</ParamField>
+
+<ParamField path="player.stop()" type="() => Promise<void>">
+  Stops playback and resets position
+  
+  ```typescript
+  await player.stop();
+  ```
+</ParamField>
+
+<ParamField path="player.seekTo(position)" type="(position: number) => Promise<void>">
+  Seeks to specified position in milliseconds
+  
+  ```typescript
+  await player.seekTo(30000); // Seek to 30 seconds
+  ```
+</ParamField>
+
+<ParamField path="player.setVolume(volume)" type="(volume: number) => Promise<void>">
+  Sets playback volume (0.0 to 1.0)
+  
+  ```typescript
+  await player.setVolume(0.5); // 50% volume
+  ```
+</ParamField>
+
+<ParamField path="player.release()" type="() => Promise<void>">
+  Releases resources associated with the player
+  
+  ```typescript
+  await player.release();
+  ```
+</ParamField>
+
+### AudioRecorder
+
+<ParamField path="new AudioRecorder(options)" type="constructor">
+  Creates a new audio recorder instance
+  
+  ```typescript
+  import { AudioRecorder } from 'expo-audio';
+  
+  const recorder = new AudioRecorder({
+    sampleRate: 44100,
+    numberOfChannels: 2,
+    bitRate: 128000,
+  });
+  ```
+</ParamField>
+
+<ParamField path="recorder.record()" type="() => Promise<void>">
+  Starts recording audio
+  
+  ```typescript
+  await recorder.record();
+  ```
+</ParamField>
+
+<ParamField path="recorder.stop()" type="() => Promise<string>">
+  Stops recording and returns the URI of the recorded file
+  
+  ```typescript
+  const uri = await recorder.stop();
+  console.log('Recorded audio:', uri);
+  ```
+</ParamField>
+
+### Permissions
+
+<ParamField path="requestRecordingPermissionsAsync()" type="() => Promise<PermissionResponse>">
+  Asks the user to grant permissions for audio recording
+  
+  ```typescript
+  import { requestRecordingPermissionsAsync } from 'expo-audio';
+  
+  const { status } = await requestRecordingPermissionsAsync();
+  if (status === 'granted') {
+    // Permission granted
+  }
+  ```
+</ParamField>
+
+<ParamField path="getRecordingPermissionsAsync()" type="() => Promise<PermissionResponse>">
+  Checks the current recording permission status
+</ParamField>
+
+## Examples
+
+### Audio Player with Controls
+
+```tsx
+import { AudioPlayer } from 'expo-audio';
+import { useState, useEffect } from 'react';
+import { View, Button, Text, StyleSheet } from 'react-native';
+
+function AudioPlayerExample() {
+  const [player, setPlayer] = useState<AudioPlayer | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      player?.release();
+    };
+  }, [player]);
+
+  async function loadAndPlay() {
+    const audioPlayer = new AudioPlayer(
+      'https://example.com/audio.mp3'
+    );
+    setPlayer(audioPlayer);
+    await audioPlayer.play();
+    setIsPlaying(true);
+  }
+
+  async function togglePlayback() {
+    if (!player) return;
+    
+    if (isPlaying) {
+      await player.pause();
+      setIsPlaying(false);
+    } else {
+      await player.play();
+      setIsPlaying(true);
+    }
+  }
+
+  return (
+    <View style={styles.container}>
+      <Button title="Load Audio" onPress={loadAndPlay} />
+      {player && (
+        <Button
+          title={isPlaying ? 'Pause' : 'Play'}
+          onPress={togglePlayback}
+        />
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { padding: 20, gap: 10 },
+});
+```
+
+### Audio Recorder
+
+```tsx
+import { AudioRecorder, requestRecordingPermissionsAsync } from 'expo-audio';
+import { useState } from 'react';
+import { View, Button } from 'react-native';
+
+function RecorderExample() {
+  const [recorder] = useState(() => new AudioRecorder());
+  const [recording, setRecording] = useState(false);
+
+  async function startRecording() {
+    const { status } = await requestRecordingPermissionsAsync();
+    if (status !== 'granted') {
+      alert('Permission required');
+      return;
+    }
+
+    await recorder.record();
+    setRecording(true);
+  }
+
+  async function stopRecording() {
+    const uri = await recorder.stop();
+    setRecording(false);
+    console.log('Recording saved to:', uri);
+  }
+
+  return (
+    <View>
+      <Button
+        title={recording ? 'Stop Recording' : 'Start Recording'}
+        onPress={recording ? stopRecording : startRecording}
+      />
+    </View>
+  );
+}
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ✅       |
+
+## Permissions
+
+### iOS
+
+Add to `app.json`:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
+        }
+      ]
+    ]
+  }
+}
+```
+
+### Android
+
+Permissions are automatically added to `AndroidManifest.xml`:
+- `RECORD_AUDIO` - for recording audio
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/audio/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-audio)

@@ -1,0 +1,678 @@
+---
+title: E2E Testing
+description: End-to-end testing with Maestro, Detox, and Appium for Expo apps.
+---
+
+End-to-end (E2E) testing validates complete user workflows across your app. This guide covers popular E2E frameworks and best practices for Expo apps.
+
+## Overview
+
+E2E tests run on real devices or simulators, simulating user interactions:
+
+<table>
+  <thead>
+    <tr>
+      <th>Framework</th>
+      <th>Ease of Setup</th>
+      <th>Best For</th>
+      <th>Supported Platforms</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Maestro</td>
+      <td>Easy</td>
+      <td>Quick tests, visual validation</td>
+      <td>iOS, Android</td>
+    </tr>
+    <tr>
+      <td>Detox</td>
+      <td>Moderate</td>
+      <td>React Native apps, complex flows</td>
+      <td>iOS, Android</td>
+    </tr>
+    <tr>
+      <td>Appium</td>
+      <td>Complex</td>
+      <td>Cross-platform, existing infrastructure</td>
+      <td>iOS, Android, Web</td>
+    </tr>
+  </tbody>
+</table>
+
+## Maestro
+
+Maestro is a simple, powerful E2E testing framework ideal for Expo apps.
+
+### Installation
+
+```bash
+# Install Maestro CLI
+curl -Ls "https://get.maestro.mobile.dev" | bash
+
+# Or with Homebrew
+brew tap mobile-dev-inc/tap
+brew install maestro
+
+# Verify installation
+maestro --version
+```
+
+### Writing Tests
+
+<Steps>
+
+<Step title="Create test file">
+
+```yaml title="e2e/login.yaml"
+appId: com.yourapp.app
+---
+# Launch app
+- launchApp
+
+# Navigate to login
+- tapOn: "Login"
+
+# Enter credentials
+- tapOn: "Email"
+- inputText: "user@example.com"
+- tapOn: "Password"
+- inputText: "password123"
+
+# Submit
+- tapOn: "Sign In"
+
+# Verify success
+- assertVisible: "Welcome back!"
+- assertVisible:
+    id: "home-screen"
+```
+
+</Step>
+
+<Step title="Run test">
+
+```bash
+# Start your app first
+npx expo start --dev-client
+
+# Run test on iOS simulator
+maestro test e2e/login.yaml --platform ios
+
+# Run on Android emulator
+maestro test e2e/login.yaml --platform android
+
+# Run on specific device
+maestro test e2e/login.yaml --device "iPhone 15 Pro"
+```
+
+</Step>
+
+</Steps>
+
+### Maestro Commands
+
+#### Navigation
+
+```yaml
+# Tap elements
+- tapOn: "Button Text"
+- tapOn:
+    id: "button-id"
+- tapOn:
+    point: "50%,80%"  # Relative coordinates
+
+# Scroll
+- scrollUntilVisible:
+    element:
+      text: "Item 50"
+    direction: DOWN
+    
+# Swipe
+- swipe:
+    direction: LEFT
+    duration: 500
+
+# Back navigation
+- back
+```
+
+#### Input
+
+```yaml
+# Text input
+- inputText: "Hello World"
+
+# Clear and type
+- tapOn: "Search"
+- eraseText
+- inputText: "New search"
+
+# Special keys
+- pressKey: Enter
+- pressKey: Backspace
+```
+
+#### Assertions
+
+```yaml
+# Visible elements
+- assertVisible: "Success message"
+- assertVisible:
+    id: "user-profile"
+    enabled: true
+
+# Not visible
+- assertNotVisible: "Error"
+
+# Text content
+- assertVisible:
+    text: "John Doe"
+    
+# Multiple assertions
+- assertVisible:
+    - "Header Text"
+    - id: "footer"
+```
+
+#### Waiting
+
+```yaml
+# Wait for element
+- extendedWaitUntil:
+    visible: "Loading complete"
+    timeout: 10000
+
+# Wait with polling
+- extendedWaitUntil:
+    visible:
+      id: "data-loaded"
+    timeout: 5000
+    interval: 500
+```
+
+### Advanced Features
+
+#### Deep Links
+
+```yaml
+appId: com.yourapp.app
+---
+- launchApp
+- openLink: "myapp://profile/123"
+- assertVisible:
+    id: "profile-screen"
+```
+
+#### Environment Variables
+
+```yaml
+env:
+  API_URL: https://staging-api.example.com
+  TEST_USER_EMAIL: test@example.com
+---
+- launchApp
+- tapOn: "Settings"
+- assertVisible: "${API_URL}"
+```
+
+#### Screenshots
+
+```yaml
+- tapOn: "Take Photo"
+- takeScreenshot: "photo-screen"
+```
+
+#### JavaScript Functions
+
+```yaml
+- runScript:
+    file: scripts/login.js
+    env:
+      username: testuser
+```
+
+```javascript title="scripts/login.js"
+module.exports = async (maestro, username) => {
+  await maestro.tap('Email');
+  await maestro.inputText(`${username}@example.com`);
+};
+```
+
+### Maestro Studio
+
+Interactive test creation:
+
+```bash
+# Start Maestro Studio
+maestro studio
+
+# Opens browser interface to:
+# - Record interactions
+# - Inspect elements
+# - Generate test YAML
+```
+
+## Detox
+
+Gray-box testing framework synchronized with React Native.
+
+### Setup
+
+<Steps>
+
+<Step title="Install Detox">
+
+```bash
+npm install --save-dev detox jest-expo
+```
+
+</Step>
+
+<Step title="Configure Detox">
+
+```json title=".detoxrc.js"
+module.exports = {
+  testRunner: {
+    args: {
+      '$0': 'jest',
+      config: 'e2e/jest.config.js',
+    },
+    jest: {
+      setupTimeout: 120000,
+    },
+  },
+  apps: {
+    'ios.debug': {
+      type: 'ios.app',
+      binaryPath: 'ios/build/Build/Products/Debug-iphonesimulator/YourApp.app',
+      build: 'xcodebuild -workspace ios/YourApp.xcworkspace -scheme YourApp -configuration Debug -sdk iphonesimulator -derivedDataPath ios/build',
+    },
+    'android.debug': {
+      type: 'android.apk',
+      binaryPath: 'android/app/build/outputs/apk/debug/app-debug.apk',
+      build: 'cd android && ./gradlew assembleDebug assembleAndroidTest -DtestBuildType=debug',
+    },
+  },
+  devices: {
+    simulator: {
+      type: 'ios.simulator',
+      device: {
+        type: 'iPhone 15 Pro',
+      },
+    },
+    emulator: {
+      type: 'android.emulator',
+      device: {
+        avdName: 'Pixel_7_Pro_API_36',
+      },
+    },
+  },
+  configurations: {
+    'ios.sim.debug': {
+      device: 'simulator',
+      app: 'ios.debug',
+    },
+    'android.emu.debug': {
+      device: 'emulator',
+      app: 'android.debug',
+    },
+  },
+};
+```
+
+</Step>
+
+<Step title="Create test">
+
+```typescript title="e2e/login.test.ts"
+import { by, device, element, expect as detoxExpect } from 'detox';
+
+describe('Login', () => {
+  beforeAll(async () => {
+    await device.launchApp();
+  });
+
+  beforeEach(async () => {
+    await device.reloadReactNative();
+  });
+
+  it('should login successfully', async () => {
+    // Navigate to login
+    await element(by.text('Login')).tap();
+
+    // Enter credentials
+    await element(by.id('email-input')).typeText('user@example.com');
+    await element(by.id('password-input')).typeText('password123');
+
+    // Submit
+    await element(by.id('login-button')).tap();
+
+    // Verify
+    await detoxExpect(element(by.text('Welcome back!'))).toBeVisible();
+  });
+});
+```
+
+</Step>
+
+<Step title="Run tests">
+
+```bash
+# Build app
+detox build --configuration ios.sim.debug
+
+# Run tests
+detox test --configuration ios.sim.debug
+```
+
+</Step>
+
+</Steps>
+
+### Detox API
+
+#### Matchers
+
+```typescript
+// By ID
+element(by.id('login-button'))
+
+// By text
+element(by.text('Sign In'))
+
+// By label (accessibility)
+element(by.label('Submit'))
+
+// By type
+element(by.type('RCTButton'))
+
+// Nested
+element(by.id('user-card').withDescendant(by.text('John')))
+```
+
+#### Actions
+
+```typescript
+// Tap
+await element(by.id('button')).tap();
+
+// Long press
+await element(by.id('item')).longPress();
+
+// Type text
+await element(by.id('input')).typeText('Hello');
+
+// Replace text
+await element(by.id('input')).replaceText('New text');
+
+// Clear text
+await element(by.id('input')).clearText();
+
+// Scroll
+await element(by.id('scroll-view')).scroll(200, 'down');
+await element(by.id('scroll-view')).scrollTo('bottom');
+
+// Swipe
+await element(by.id('card')).swipe('left', 'fast');
+```
+
+#### Assertions
+
+```typescript
+// Visibility
+await detoxExpect(element(by.id('header'))).toBeVisible();
+await detoxExpect(element(by.id('modal'))).not.toBeVisible();
+
+// Existence
+await detoxExpect(element(by.id('button'))).toExist();
+
+// Text
+await detoxExpect(element(by.id('title'))).toHaveText('Welcome');
+
+// Value
+await detoxExpect(element(by.id('input'))).toHaveValue('test');
+
+// Enabled/disabled
+await detoxExpect(element(by.id('button'))).toBeEnabled();
+```
+
+## Appium
+
+Cross-platform testing with WebDriver protocol.
+
+### Setup
+
+```bash
+# Install Appium
+npm install -g appium
+
+# Install drivers
+appium driver install xcuitest  # iOS
+appium driver install uiautomator2  # Android
+
+# Start server
+appium
+```
+
+### Writing Tests
+
+```typescript title="e2e/login.test.ts"
+import { remote } from 'webdriverio';
+
+describe('Login', () => {
+  let client: WebdriverIO.Browser;
+
+  beforeAll(async () => {
+    client = await remote({
+      capabilities: {
+        platformName: 'iOS',
+        'appium:deviceName': 'iPhone 15 Pro',
+        'appium:platformVersion': '17.0',
+        'appium:app': '/path/to/app.app',
+        'appium:automationName': 'XCUITest',
+      },
+    });
+  });
+
+  afterAll(async () => {
+    await client.deleteSession();
+  });
+
+  it('should login', async () => {
+    const loginButton = await client.$('~login-button');
+    await loginButton.click();
+
+    const emailField = await client.$('~email-input');
+    await emailField.setValue('user@example.com');
+
+    const passwordField = await client.$('~password-input');
+    await passwordField.setValue('password123');
+
+    const submitButton = await client.$('~submit-button');
+    await submitButton.click();
+
+    const welcome = await client.$('~welcome-message');
+    await welcome.waitForDisplayed({ timeout: 5000 });
+    expect(await welcome.getText()).toBe('Welcome back!');
+  });
+});
+```
+
+## Test Structure
+
+### Page Object Pattern
+
+```typescript title="e2e/pages/LoginPage.ts"
+import { by, element, expect as detoxExpect } from 'detox';
+
+export class LoginPage {
+  // Selectors
+  private emailInput = element(by.id('email-input'));
+  private passwordInput = element(by.id('password-input'));
+  private loginButton = element(by.id('login-button'));
+  private errorMessage = element(by.id('error-message'));
+
+  // Actions
+  async login(email: string, password: string) {
+    await this.emailInput.typeText(email);
+    await this.passwordInput.typeText(password);
+    await this.loginButton.tap();
+  }
+
+  async verifyLoginSuccess() {
+    await detoxExpect(element(by.text('Welcome back!'))).toBeVisible();
+  }
+
+  async verifyLoginError(message: string) {
+    await detoxExpect(this.errorMessage).toHaveText(message);
+  }
+}
+```
+
+```typescript title="e2e/tests/login.test.ts"
+import { LoginPage } from '../pages/LoginPage';
+
+describe('Login', () => {
+  const loginPage = new LoginPage();
+
+  it('should login with valid credentials', async () => {
+    await loginPage.login('user@example.com', 'password123');
+    await loginPage.verifyLoginSuccess();
+  });
+
+  it('should show error with invalid credentials', async () => {
+    await loginPage.login('wrong@example.com', 'wrong');
+    await loginPage.verifyLoginError('Invalid credentials');
+  });
+});
+```
+
+## CI/CD Integration
+
+### GitHub Actions (Maestro)
+
+```yaml title=".github/workflows/e2e.yml"
+name: E2E Tests
+
+on: [push, pull_request]
+
+jobs:
+  e2e-ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "${HOME}/.maestro/bin" >> $GITHUB_PATH
+      
+      - name: Build app
+        run: |
+          npx expo prebuild --platform ios
+          cd ios
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug -sdk iphonesimulator -derivedDataPath build
+      
+      - name: Run Maestro tests
+        run: |
+          maestro test e2e/ --format junit --output test-results/
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: maestro-results
+          path: test-results/
+```
+
+### EAS Build with E2E Tests
+
+```json title="eas.json"
+{
+  "build": {
+    "e2e": {
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleDebug"
+      },
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "E2E_TESTING": "true"
+      }
+    }
+  }
+}
+```
+
+## Best Practices
+
+### 1. Use Accessibility IDs
+
+```typescript
+// Component
+<Button testID="submit-button" accessibilityLabel="Submit form">
+  Submit
+</Button>
+
+// Test
+element(by.id('submit-button'))
+```
+
+### 2. Wait for Elements
+
+```typescript
+// Bad: Flaky test
+await element(by.id('data')).tap();
+
+// Good: Wait for element
+await waitFor(element(by.id('data')))
+  .toBeVisible()
+  .withTimeout(5000);
+await element(by.id('data')).tap();
+```
+
+### 3. Independent Tests
+
+```typescript
+// Each test should be independent
+beforeEach(async () => {
+  await device.reloadReactNative();
+  // Reset to clean state
+});
+```
+
+### 4. Test Critical Paths
+
+Focus on user-critical workflows:
+- Authentication
+- Core features
+- Purchase flows
+- Data submission
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Unit Testing" icon="flask" href="/development/unit-testing">
+    Complement E2E with unit tests
+  </Card>
+  <Card title="Testing Router" icon="route" href="/development/testing-router">
+    Test Expo Router navigation
+  </Card>
+  <Card title="Debugging" icon="bug" href="/development/debugging">
+    Debug test failures
+  </Card>
+  <Card title="CI/CD" icon="arrows-rotate" href="#cicd-integration">
+    Automate E2E tests
+  </Card>
+</CardGroup>

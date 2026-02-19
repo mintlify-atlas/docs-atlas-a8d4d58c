@@ -1,0 +1,700 @@
+---
+title: App Configuration Schema
+description: Complete reference for app.json and app.config.js configuration options.
+---
+
+Expo apps are configured using `app.json` (static configuration) or `app.config.js` (dynamic configuration). This page documents all available configuration options.
+
+## Configuration Files
+
+### app.json
+
+Static JSON configuration file at the root of your project.
+
+```json
+{
+  "expo": {
+    "name": "My App",
+    "slug": "my-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "platforms": ["ios", "android", "web"]
+  }
+}
+```
+
+### app.config.js
+
+Dynamic JavaScript configuration that can access environment variables and perform computations.
+
+```js
+export default ({ config }) => ({
+  ...config,
+  name: process.env.APP_NAME || 'My App',
+  slug: 'my-app',
+  extra: {
+    apiUrl: process.env.API_URL,
+  },
+});
+```
+
+<Note>
+  If both files exist, `app.config.js` takes precedence.
+</Note>
+
+## Root Properties
+
+### expo
+
+<ParamField path="expo" type="object" required>
+  The root configuration object containing all Expo-specific settings.
+</ParamField>
+
+## General Settings
+
+### name
+
+<ParamField path="name" type="string" required>
+  The name of your app as it appears on the home screen and in the app stores.
+</ParamField>
+
+```json
+"name": "My Awesome App"
+```
+
+### slug
+
+<ParamField path="slug" type="string" required>
+  URL-friendly name used for various Expo services. Must be lowercase and can contain hyphens.
+</ParamField>
+
+```json
+"slug": "my-awesome-app"
+```
+
+### version
+
+<ParamField path="version" type="string" required>
+  Your app version visible to users. Must follow semantic versioning (e.g., "1.0.0").
+</ParamField>
+
+```json
+"version": "1.2.3"
+```
+
+### owner
+
+<ParamField path="owner" type="string">
+  Expo account name that owns this project. Defaults to the owner of the Expo project.
+</ParamField>
+
+### description
+
+<ParamField path="description" type="string">
+  A short description of your app.
+</ParamField>
+
+### privacy
+
+<ParamField path="privacy" type="string">
+  Either `public` or `unlisted`. Controls visibility in the Expo Go app.
+</ParamField>
+
+## Display Settings
+
+### orientation
+
+<ParamField path="orientation" type="string" default="default">
+  Lock your app to a specific orientation.
+  - `default` - No lock, all orientations supported
+  - `portrait` - Portrait orientation only
+  - `landscape` - Landscape orientation only
+</ParamField>
+
+```json
+"orientation": "portrait"
+```
+
+### backgroundColor
+
+<ParamField path="backgroundColor" type="string" default="#ffffff">
+  Background color for the app. Hex format.
+</ParamField>
+
+```json
+"backgroundColor": "#000000"
+```
+
+### primaryColor
+
+<ParamField path="primaryColor" type="string">
+  Primary color for your app used in Expo Go and other Expo tools.
+</ParamField>
+
+### userInterfaceStyle
+
+<ParamField path="userInterfaceStyle" type="string" default="automatic">
+  Configuration for appearance mode.
+  - `automatic` - Follows system settings
+  - `light` - Always light mode
+  - `dark` - Always dark mode
+</ParamField>
+
+```json
+"userInterfaceStyle": "automatic"
+```
+
+## Assets
+
+### icon
+
+<ParamField path="icon" type="string" required>
+  Local path to your app icon image. Must be a PNG or JPG, recommended 1024x1024.
+</ParamField>
+
+```json
+"icon": "./assets/icon.png"
+```
+
+### splash
+
+<ParamField path="splash" type="object">
+  Configuration for the splash screen displayed while the app loads.
+</ParamField>
+
+<Accordion title="Splash Screen Properties">
+
+#### splash.image
+
+<ParamField path="splash.image" type="string" required>
+  Local path to splash screen image.
+</ParamField>
+
+#### splash.backgroundColor
+
+<ParamField path="splash.backgroundColor" type="string" default="#ffffff">
+  Background color of the splash screen. Hex format.
+</ParamField>
+
+#### splash.resizeMode
+
+<ParamField path="splash.resizeMode" type="string" default="contain">
+  How the splash image should be resized.
+  - `contain` - Fit within screen, maintaining aspect ratio
+  - `cover` - Cover the screen, maintaining aspect ratio
+  - `native` - Use native platform resizing
+</ParamField>
+
+```json
+"splash": {
+  "image": "./assets/splash.png",
+  "backgroundColor": "#ffffff",
+  "resizeMode": "contain"
+}
+```
+
+</Accordion>
+
+### assetBundlePatterns
+
+<ParamField path="assetBundlePatterns" type="array">
+  Glob patterns to include assets in the bundled app.
+</ParamField>
+
+```json
+"assetBundlePatterns": [
+  "assets/images/**/*",
+  "assets/fonts/**/*"
+]
+```
+
+## App Behavior
+
+### platforms
+
+<ParamField path="platforms" type="array" default="[\"ios\", \"android\", \"web\"]">
+  Platforms your app supports.
+</ParamField>
+
+```json
+"platforms": ["ios", "android"]
+```
+
+### runtimeVersion
+
+<ParamField path="runtimeVersion" type="string | object">
+  Runtime version for EAS Update compatibility. Can be a string or an object with platform-specific versions.
+</ParamField>
+
+```json
+"runtimeVersion": "1.0.0"
+```
+
+Or with policy:
+
+```json
+"runtimeVersion": {
+  "policy": "appVersion"
+}
+```
+
+### updates
+
+<ParamField path="updates" type="object">
+  Configuration for expo-updates.
+</ParamField>
+
+<Accordion title="Updates Properties">
+
+#### updates.url
+
+<ParamField path="updates.url" type="string">
+  URL to check for updates.
+</ParamField>
+
+#### updates.enabled
+
+<ParamField path="updates.enabled" type="boolean" default="true">
+  Whether updates are enabled.
+</ParamField>
+
+#### updates.checkAutomatically
+
+<ParamField path="updates.checkAutomatically" type="string" default="ON_LOAD">
+  When to check for updates.
+  - `ON_LOAD` - Check on app launch
+  - `ON_ERROR_RECOVERY` - Only check after errors
+  - `NEVER` - Never check automatically
+</ParamField>
+
+#### updates.fallbackToCacheTimeout
+
+<ParamField path="updates.fallbackToCacheTimeout" type="number" default="0">
+  Milliseconds to wait for update before falling back to cached version.
+</ParamField>
+
+```json
+"updates": {
+  "url": "https://u.expo.dev/your-project-id",
+  "enabled": true,
+  "checkAutomatically": "ON_LOAD",
+  "fallbackToCacheTimeout": 0
+}
+```
+
+</Accordion>
+
+### jsEngine
+
+<ParamField path="jsEngine" type="string" default="hermes">
+  JavaScript engine to use.
+  - `hermes` - Use Hermes engine (recommended)
+  - `jsc` - Use JavaScriptCore
+</ParamField>
+
+```json
+"jsEngine": "hermes"
+```
+
+### scheme
+
+<ParamField path="scheme" type="string | array">
+  URL scheme(s) for deep linking into your app.
+</ParamField>
+
+```json
+"scheme": "myapp"
+```
+
+Or multiple schemes:
+
+```json
+"scheme": ["myapp", "myapp-staging"]
+```
+
+### entryPoint
+
+<ParamField path="entryPoint" type="string" default="./index.js">
+  Entry point file for your app.
+</ParamField>
+
+## iOS-Specific Settings
+
+### ios
+
+<ParamField path="ios" type="object">
+  iOS-specific configuration.
+</ParamField>
+
+<Accordion title="iOS Properties">
+
+#### ios.bundleIdentifier
+
+<ParamField path="ios.bundleIdentifier" type="string" required>
+  Bundle identifier for your iOS app. Must be unique on the App Store.
+</ParamField>
+
+```json
+"ios": {
+  "bundleIdentifier": "com.yourcompany.yourapp"
+}
+```
+
+#### ios.buildNumber
+
+<ParamField path="ios.buildNumber" type="string" default="1">
+  Build number for the iOS app. Must be incremented for each build submitted to the App Store.
+</ParamField>
+
+#### ios.icon
+
+<ParamField path="ios.icon" type="string">
+  iOS-specific icon. Overrides the root `icon` field.
+</ParamField>
+
+#### ios.supportsTablet
+
+<ParamField path="ios.supportsTablet" type="boolean" default="true">
+  Whether your app supports iPad.
+</ParamField>
+
+#### ios.infoPlist
+
+<ParamField path="ios.infoPlist" type="object">
+  Additional Info.plist keys for iOS.
+</ParamField>
+
+```json
+"ios": {
+  "infoPlist": {
+    "NSCameraUsageDescription": "This app uses the camera to take photos.",
+    "NSPhotoLibraryUsageDescription": "This app accesses your photos."
+  }
+}
+```
+
+#### ios.associatedDomains
+
+<ParamField path="ios.associatedDomains" type="array">
+  Associated domains for universal links.
+</ParamField>
+
+```json
+"ios": {
+  "associatedDomains": ["applinks:example.com"]
+}
+```
+
+#### ios.usesAppleSignIn
+
+<ParamField path="ios.usesAppleSignIn" type="boolean" default="false">
+  Whether your app uses Apple Sign In.
+</ParamField>
+
+#### ios.config
+
+<ParamField path="ios.config" type="object">
+  Advanced iOS native configuration.
+</ParamField>
+
+```json
+"ios": {
+  "config": {
+    "usesNonExemptEncryption": false
+  }
+}
+```
+
+</Accordion>
+
+## Android-Specific Settings
+
+### android
+
+<ParamField path="android" type="object">
+  Android-specific configuration.
+</ParamField>
+
+<Accordion title="Android Properties">
+
+#### android.package
+
+<ParamField path="android.package" type="string" required>
+  Package name for your Android app. Must be unique on Google Play Store.
+</ParamField>
+
+```json
+"android": {
+  "package": "com.yourcompany.yourapp"
+}
+```
+
+#### android.versionCode
+
+<ParamField path="android.versionCode" type="number" default="1">
+  Version code for the Android app. Must be incremented for each release.
+</ParamField>
+
+#### android.icon
+
+<ParamField path="android.icon" type="string">
+  Android-specific icon. Overrides the root `icon` field.
+</ParamField>
+
+#### android.adaptiveIcon
+
+<ParamField path="android.adaptiveIcon" type="object">
+  Configuration for Android adaptive icons.
+</ParamField>
+
+```json
+"android": {
+  "adaptiveIcon": {
+    "foregroundImage": "./assets/adaptive-icon.png",
+    "backgroundColor": "#ffffff"
+  }
+}
+```
+
+#### android.permissions
+
+<ParamField path="android.permissions" type="array">
+  Android permissions your app requires.
+</ParamField>
+
+```json
+"android": {
+  "permissions": [
+    "CAMERA",
+    "RECORD_AUDIO",
+    "READ_EXTERNAL_STORAGE",
+    "WRITE_EXTERNAL_STORAGE"
+  ]
+}
+```
+
+#### android.intentFilters
+
+<ParamField path="android.intentFilters" type="array">
+  Intent filters for deep linking.
+</ParamField>
+
+```json
+"android": {
+  "intentFilters": [
+    {
+      "action": "VIEW",
+      "data": {
+        "scheme": "https",
+        "host": "example.com"
+      },
+      "category": ["BROWSABLE", "DEFAULT"]
+    }
+  ]
+}
+```
+
+#### android.config
+
+<ParamField path="android.config" type="object">
+  Advanced Android native configuration.
+</ParamField>
+
+```json
+"android": {
+  "config": {
+    "googleMaps": {
+      "apiKey": "YOUR_API_KEY"
+    }
+  }
+}
+```
+
+</Accordion>
+
+## Web-Specific Settings
+
+### web
+
+<ParamField path="web" type="object">
+  Web-specific configuration.
+</ParamField>
+
+<Accordion title="Web Properties">
+
+#### web.favicon
+
+<ParamField path="web.favicon" type="string">
+  Path to your web favicon.
+</ParamField>
+
+```json
+"web": {
+  "favicon": "./assets/favicon.ico"
+}
+```
+
+#### web.bundler
+
+<ParamField path="web.bundler" type="string" default="metro">
+  Bundler to use for web.
+  - `metro` - Use Metro bundler
+</ParamField>
+
+#### web.config
+
+<ParamField path="web.config" type="object">
+  Additional web configuration.
+</ParamField>
+
+</Accordion>
+
+## Plugin Configuration
+
+### plugins
+
+<ParamField path="plugins" type="array">
+  Config plugins to customize native projects. Plugins run during `npx expo prebuild`.
+</ParamField>
+
+```json
+"plugins": [
+  "expo-camera",
+  [
+    "expo-location",
+    {
+      "locationAlwaysAndWhenInUsePermission": "Allow app to use your location."
+    }
+  ]
+]
+```
+
+## Hooks
+
+### hooks
+
+<ParamField path="hooks" type="object">
+  Lifecycle hooks for build process.
+</ParamField>
+
+```json
+"hooks": {
+  "postPublish": [
+    {
+      "file": "./scripts/post-publish.js"
+    }
+  ]
+}
+```
+
+## Extra Configuration
+
+### extra
+
+<ParamField path="extra" type="object">
+  Additional configuration data accessible via `expo-constants`.
+</ParamField>
+
+```json
+"extra": {
+  "apiUrl": "https://api.example.com",
+  "analyticsId": "UA-000000-01"
+}
+```
+
+Access in code:
+
+```tsx
+import Constants from 'expo-constants';
+
+const apiUrl = Constants.expoConfig?.extra?.apiUrl;
+```
+
+## Environment Variables
+
+In `app.config.js`, access environment variables:
+
+```js
+export default ({ config }) => ({
+  ...config,
+  name: process.env.APP_NAME || 'My App',
+  extra: {
+    apiUrl: process.env.EXPO_PUBLIC_API_URL,
+    eas: {
+      projectId: process.env.EXPO_PROJECT_ID,
+    },
+  },
+});
+```
+
+<Note>
+  Variables prefixed with `EXPO_PUBLIC_` are available in your app code.
+</Note>
+
+## Validation
+
+Validate your configuration:
+
+```bash
+npx expo config --type public
+```
+
+View the introspected configuration:
+
+```bash
+npx expo config
+```
+
+## Examples
+
+### Complete Configuration Example
+
+```json
+{
+  "expo": {
+    "name": "My Awesome App",
+    "slug": "my-awesome-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.company.awesomeapp",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "com.company.awesomeapp",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}
+```
+
+## Related Documentation
+
+- [CLI Reference](/reference/cli-reference)
+- [Environment Variables](https://docs.expo.dev/guides/environment-variables/)
+- [Config Plugins](https://docs.expo.dev/config-plugins/introduction/)

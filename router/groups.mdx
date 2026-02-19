@@ -1,0 +1,643 @@
+---
+title: Route Groups
+description: Organize your routes with groups that don't affect the URL structure
+---
+
+# Route Groups
+
+Route groups allow you to organize your files and apply layouts without affecting the URL structure. They're created using parentheses `(group)` in folder names.
+
+## What Are Route Groups?
+
+Route groups are folders wrapped in parentheses that:
+- **Don't appear in URLs** - `(auth)/login.tsx` becomes `/login`, not `/(auth)/login`
+- **Organize files logically** - Group related routes together
+- **Apply different layouts** - Each group can have its own `_layout.tsx`
+- **Share settings** - Configure navigation per group
+
+## Creating Route Groups
+
+Wrap a folder name in parentheses:
+
+```
+app/
+  (auth)/
+    login.tsx        → /login
+    register.tsx     → /register
+  (app)/
+    index.tsx        → /
+    profile.tsx      → /profile
+```
+
+Both `(auth)` and `(app)` are invisible in URLs.
+
+## Basic Example
+
+### Without Route Groups
+
+```
+app/
+  auth/
+    login.tsx        → /auth/login
+    register.tsx     → /auth/register
+```
+
+URLs include `auth/` prefix.
+
+### With Route Groups
+
+```
+app/
+  (auth)/
+    login.tsx        → /login
+    register.tsx     → /register
+```
+
+URLs are clean, no `(auth)` prefix.
+
+## Multiple Layouts
+
+Use groups to apply different layouts to different sections:
+
+```
+app/
+  _layout.tsx              # Root layout
+  (auth)/
+    _layout.tsx            # Auth layout (no tabs)
+    login.tsx
+    register.tsx
+    forgot-password.tsx
+  (tabs)/
+    _layout.tsx            # Tabs layout
+    index.tsx
+    search.tsx
+    profile.tsx
+```
+
+### Root Layout
+
+```tsx app/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function RootLayout() {
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(tabs)" />
+    </Stack>
+  );
+}
+```
+
+### Auth Layout
+
+```tsx app/(auth)/_layout.tsx
+import { Stack } from 'expo-router';
+import { View, Image } from 'react-native';
+
+export default function AuthLayout() {
+  return (
+    <View style={{ flex: 1 }}>
+      <Image source={require('../assets/logo.png')} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: '#fff' },
+        }}
+      />
+    </View>
+  );
+}
+```
+
+### Tabs Layout
+
+```tsx app/(tabs)/_layout.tsx
+import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+
+export default function TabsLayout() {
+  return (
+    <Tabs>
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="home" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="search"
+        options={{
+          title: 'Search',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="search" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="person" size={24} color={color} />
+          ),
+        }}
+      />
+    </Tabs>
+  );
+}
+```
+
+## Array Syntax
+
+Share layouts across multiple groups using array syntax:
+
+```
+app/
+  (home,profile)/_layout.tsx    # Shared by both groups
+  (home)/index.tsx              → /
+  (profile)/index.tsx           → /profile
+```
+
+This is equivalent to:
+
+```
+app/
+  (home)/
+    _layout.tsx
+    index.tsx
+  (profile)/
+    _layout.tsx
+    index.tsx
+```
+
+From `CLAUDE.md:210-212`:
+
+```
+// Array syntax: (a,b,c) creates multiple routes
+matchArrayGroupName: /^\(([^/]+?)\)$/
+```
+
+### Array Syntax Example
+
+```tsx app/(shop,cart,checkout)/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function CommerceLayout() {
+  return (
+    <Stack
+      screenOptions={{
+        headerStyle: { backgroundColor: '#4CAF50' },
+        headerTintColor: '#fff',
+      }}
+    />
+  );
+}
+```
+
+Applies to:
+- `(shop)/` routes
+- `(cart)/` routes  
+- `(checkout)/` routes
+
+## Organizing by Feature
+
+Group routes by feature or domain:
+
+```
+app/
+  _layout.tsx
+  (marketing)/
+    _layout.tsx
+    index.tsx           → /
+    about.tsx           → /about
+    pricing.tsx         → /pricing
+  (dashboard)/
+    _layout.tsx
+    overview.tsx        → /overview
+    analytics.tsx       → /analytics
+    settings.tsx        → /settings
+  (admin)/
+    _layout.tsx
+    users.tsx           → /users
+    reports.tsx         → /reports
+```
+
+## Nested Route Groups
+
+Groups can be nested:
+
+```
+app/
+  (app)/
+    (tabs)/
+      _layout.tsx
+      index.tsx         → /
+      search.tsx        → /search
+    (modals)/
+      _layout.tsx
+      filter.tsx        → /filter
+      settings.tsx      → /settings
+```
+
+```tsx app/(app)/_layout.tsx
+import { Stack } from 'expo-router';
+
+export default function AppLayout() {
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen
+        name="(modals)"
+        options={{ presentation: 'modal' }}
+      />
+    </Stack>
+  );
+}
+```
+
+## Initial Route Configuration
+
+Set different initial routes per group:
+
+```tsx app/(tabs)/_layout.tsx
+import { Tabs } from 'expo-router';
+
+export const unstable_settings = {
+  initialRouteName: 'home',
+};
+
+export default function TabsLayout() {
+  return (
+    <Tabs>
+      <Tabs.Screen name="home" />
+      <Tabs.Screen name="explore" />
+      <Tabs.Screen name="profile" />
+    </Tabs>
+  );
+}
+```
+
+From test file (`navigation.test.ios.tsx:21-40`):
+
+```typescript
+renderRouter({
+  '(one,two)/_layout': {
+    unstable_settings: {
+      initialRouteName: 'apple',
+      two: {
+        initialRouteName: 'orange',
+      },
+    },
+    default: () => <Tabs />,
+  },
+  '(one,two)/apple': () => <Text testID="apple">Apple</Text>,
+});
+```
+
+## Common Patterns
+
+### Authentication Flow
+
+Separate authenticated and unauthenticated routes:
+
+```
+app/
+  _layout.tsx
+  (auth)/
+    _layout.tsx
+    login.tsx
+    register.tsx
+    forgot-password.tsx
+    verify-email.tsx
+  (app)/
+    _layout.tsx
+    (tabs)/
+      _layout.tsx
+      index.tsx
+      profile.tsx
+    settings/
+      index.tsx
+      account.tsx
+```
+
+```tsx app/_layout.tsx
+import { Stack, useSegments, useRouter } from 'expo-router';
+import { useEffect } from 'react';
+import { useAuth } from '../context/auth';
+
+export default function RootLayout() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (!isAuthenticated && !inAuthGroup) {
+      router.replace('/login');
+    } else if (isAuthenticated && inAuthGroup) {
+      router.replace('/');
+    }
+  }, [isAuthenticated, isLoading, segments]);
+
+  return <Stack screenOptions={{ headerShown: false }} />;
+}
+```
+
+### Platform-Specific Groups
+
+Different layouts for mobile and web:
+
+```
+app/
+  (mobile)/
+    _layout.tsx       # Mobile tabs
+    index.tsx
+  (web)/
+    _layout.tsx       # Web sidebar
+    index.tsx
+```
+
+```tsx app/(mobile)/_layout.tsx
+import { Tabs } from 'expo-router';
+import { Platform } from 'react-native';
+
+if (Platform.OS === 'web') {
+  // Redirect web users
+  throw new Error('Use web layout');
+}
+
+export default function MobileLayout() {
+  return <Tabs />;
+}
+```
+
+### Multi-Tenant Apps
+
+Different sections for different user types:
+
+```
+app/
+  (customer)/
+    _layout.tsx
+    products.tsx
+    cart.tsx
+    orders.tsx
+  (vendor)/
+    _layout.tsx
+    inventory.tsx
+    orders.tsx
+    analytics.tsx
+  (admin)/
+    _layout.tsx
+    users.tsx
+    vendors.tsx
+    settings.tsx
+```
+
+### E-commerce Flow
+
+```
+app/
+  _layout.tsx
+  (shop)/
+    _layout.tsx
+    index.tsx           → /
+    products/
+      [id].tsx          → /products/:id
+    categories/
+      [slug].tsx        → /categories/:slug
+  (checkout)/
+    _layout.tsx
+    cart.tsx            → /cart
+    shipping.tsx        → /shipping
+    payment.tsx         → /payment
+    confirmation.tsx    → /confirmation
+  (account)/
+    _layout.tsx
+    profile.tsx         → /profile
+    orders.tsx          → /orders
+    addresses.tsx       → /addresses
+```
+
+### Dashboard with Sections
+
+```
+app/
+  (dashboard)/
+    _layout.tsx
+    (overview)/
+      _layout.tsx
+      index.tsx
+      stats.tsx
+    (analytics)/
+      _layout.tsx
+      reports.tsx
+      charts.tsx
+    (settings)/
+      _layout.tsx
+      profile.tsx
+      team.tsx
+```
+
+## Best Practices
+
+### Use Descriptive Names
+
+```tsx
+// Good: Clear purpose
+(auth)/
+(dashboard)/
+(checkout)/
+
+// Less clear
+(a)/
+(group1)/
+(temp)/
+```
+
+### Keep Groups Focused
+
+```tsx
+// Good: Focused groups
+(auth)/          # Only auth screens
+(app)/           # Main app screens
+
+// Avoid: Mixed purposes
+(stuff)/         # What's in here?
+(misc)/          # Too broad
+```
+
+### Match Navigation Structure
+
+```tsx
+// Good: Groups match navigation
+(tabs)/          # All tab screens
+(stack)/         # All stack screens
+(modals)/        # All modals
+
+// Confusing: Groups don't match navigation
+(important)/     # Mix of tabs and modals
+(other)/         # Mix of stacks and tabs
+```
+
+### Use Array Syntax Carefully
+
+Only use array syntax when layouts are truly identical:
+
+```tsx
+// Good: Same layout needs
+(home,explore,trending)/_layout.tsx
+
+// Avoid: Different layout needs
+(auth,dashboard,admin)/_layout.tsx
+```
+
+## Debugging Route Groups
+
+### Check Segments
+
+Use `useSegments()` to see active groups:
+
+```tsx
+import { useSegments } from 'expo-router';
+
+export default function Screen() {
+  const segments = useSegments();
+  console.log(segments); // ['(auth)', 'login']
+  
+  return <View />;
+}
+```
+
+### View Route Structure
+
+Visit `/_sitemap` in development to see all routes:
+
+```
+http://localhost:8081/_sitemap
+```
+
+### Common Issues
+
+**URLs include group names:**
+```tsx
+// Wrong: Missing parentheses
+app/auth/login.tsx → /auth/login
+
+// Correct: With parentheses
+app/(auth)/login.tsx → /login
+```
+
+**Layout not applying:**
+```tsx
+// Wrong: Layout in wrong place
+app/_layout.tsx
+app/auth/_layout.tsx
+
+// Correct: Layout in group
+app/_layout.tsx
+app/(auth)/_layout.tsx
+```
+
+## Limitations
+
+### Cannot Have Same Route in Multiple Groups
+
+```tsx
+// This won't work - ambiguous routes
+app/
+  (one)/index.tsx → /
+  (two)/index.tsx → /
+```
+
+Expo Router will show a warning and use the first route.
+
+### Groups Don't Affect Deep Linking
+
+Deep links use the final URL:
+
+```tsx
+app/(auth)/login.tsx → /login
+
+// Deep link (group name not included)
+myapp://login
+```
+
+## Advanced Patterns
+
+### Conditional Group Rendering
+
+```tsx app/_layout.tsx
+import { Stack } from 'expo-router';
+import { useAuth } from '../context/auth';
+
+export default function RootLayout() {
+  const { userType } = useAuth();
+  
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      {userType === 'customer' && <Stack.Screen name="(customer)" />}
+      {userType === 'vendor' && <Stack.Screen name="(vendor)" />}
+      {userType === 'admin' && <Stack.Screen name="(admin)" />}
+    </Stack>
+  );
+}
+```
+
+### Group-Specific Context
+
+```tsx app/(dashboard)/_layout.tsx
+import { Stack } from 'expo-router';
+import { DashboardProvider } from '../../context/dashboard';
+
+export default function DashboardLayout() {
+  return (
+    <DashboardProvider>
+      <Stack>
+        <Stack.Screen name="overview" />
+        <Stack.Screen name="analytics" />
+      </Stack>
+    </DashboardProvider>
+  );
+}
+```
+
+### Shared Components Per Group
+
+```tsx app/(admin)/_layout.tsx
+import { Stack } from 'expo-router';
+import { AdminHeader } from '../../components/AdminHeader';
+
+export default function AdminLayout() {
+  return (
+    <>
+      <AdminHeader />
+      <Stack />
+    </>
+  );
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Layouts" icon="layer-group" href="/router/layouts">
+    Learn more about layouts
+  </Card>
+  <Card title="File-Based Routing" icon="folder" href="/router/file-based-routing">
+    Understand routing conventions
+  </Card>
+  <Card title="Stack Navigation" icon="bars" href="/router/stack-navigation">
+    Configure stack navigation
+  </Card>
+  <Card title="Tab Navigation" icon="table-cells" href="/router/tab-navigation">
+    Create tab navigation
+  </Card>
+</CardGroup>

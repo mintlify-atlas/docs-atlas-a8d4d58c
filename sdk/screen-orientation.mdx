@@ -1,0 +1,235 @@
+---
+title: expo-screen-orientation
+description: Lock and detect screen orientation changes
+---
+
+# expo-screen-orientation
+
+**Version:** 55.0.6
+
+Expo universal module for managing device's screen orientation.
+
+## Installation
+
+```bash
+npx expo install expo-screen-orientation
+```
+
+## Usage
+
+```typescript
+import * as ScreenOrientation from 'expo-screen-orientation';
+
+// Lock to portrait
+await ScreenOrientation.lockAsync(
+  ScreenOrientation.OrientationLock.PORTRAIT_UP
+);
+
+// Get current orientation
+const orientation = await ScreenOrientation.getOrientationAsync();
+
+// Listen for changes
+ScreenOrientation.addOrientationChangeListener(({ orientationInfo }) => {
+  console.log('Orientation:', orientationInfo.orientation);
+});
+```
+
+## API Reference
+
+### Methods
+
+<ParamField path="ScreenOrientation.lockAsync(orientation)" type="(orientation: OrientationLock) => Promise<void>">
+  Locks screen to specific orientation
+  
+  **Locks:**
+  - `OrientationLock.DEFAULT`
+  - `OrientationLock.ALL`
+  - `OrientationLock.PORTRAIT`
+  - `OrientationLock.PORTRAIT_UP`
+  - `OrientationLock.PORTRAIT_DOWN`
+  - `OrientationLock.LANDSCAPE`
+  - `OrientationLock.LANDSCAPE_LEFT`
+  - `OrientationLock.LANDSCAPE_RIGHT`
+  
+  ```typescript
+  await ScreenOrientation.lockAsync(
+    ScreenOrientation.OrientationLock.LANDSCAPE
+  );
+  ```
+</ParamField>
+
+<ParamField path="ScreenOrientation.unlockAsync()" type="() => Promise<void>">
+  Unlocks screen orientation
+  
+  ```typescript
+  await ScreenOrientation.unlockAsync();
+  ```
+</ParamField>
+
+<ParamField path="ScreenOrientation.getOrientationAsync()" type="() => Promise<Orientation>">
+  Gets current orientation
+  
+  Returns:
+  - `Orientation.UNKNOWN`
+  - `Orientation.PORTRAIT_UP`
+  - `Orientation.PORTRAIT_DOWN`
+  - `Orientation.LANDSCAPE_LEFT`
+  - `Orientation.LANDSCAPE_RIGHT`
+</ParamField>
+
+<ParamField path="ScreenOrientation.getOrientationLockAsync()" type="() => Promise<OrientationLock>">
+  Gets current orientation lock setting
+</ParamField>
+
+<ParamField path="ScreenOrientation.getPlatformOrientationLockAsync()" type="() => Promise<PlatformOrientationInfo>">
+  Gets platform-specific orientation info
+</ParamField>
+
+<ParamField path="ScreenOrientation.supportsOrientationLockAsync(lock)" type="(lock: OrientationLock) => Promise<boolean>">
+  Checks if device supports specific orientation lock
+</ParamField>
+
+### Event Listeners
+
+<ParamField path="ScreenOrientation.addOrientationChangeListener(listener)" type="(listener: (event: OrientationChangeEvent) => void) => EventSubscription">
+  Listens for orientation changes
+  
+  ```typescript
+  const subscription = ScreenOrientation.addOrientationChangeListener(
+    ({ orientationInfo }) => {
+      console.log('New orientation:', orientationInfo.orientation);
+    }
+  );
+  
+  // Clean up
+  subscription.remove();
+  ```
+</ParamField>
+
+<ParamField path="ScreenOrientation.removeOrientationChangeListeners()" type="() => void">
+  Removes all orientation change listeners
+</ParamField>
+
+## Examples
+
+### Video Player (Landscape)
+
+```tsx
+import * as ScreenOrientation from 'expo-screen-orientation';
+import { useEffect } from 'react';
+import { Video } from 'expo-av';
+
+function VideoPlayer() {
+  useEffect(() => {
+    // Lock to landscape when video player mounts
+    ScreenOrientation.lockAsync(
+      ScreenOrientation.OrientationLock.LANDSCAPE
+    );
+
+    // Unlock when component unmounts
+    return () => {
+      ScreenOrientation.unlockAsync();
+    };
+  }, []);
+
+  return (
+    <Video
+      source={require('./video.mp4')}
+      style={{ flex: 1 }}
+      resizeMode="contain"
+    />
+  );
+}
+```
+
+### Responsive Layout Based on Orientation
+
+```tsx
+import * as ScreenOrientation from 'expo-screen-orientation';
+import { useEffect, useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+
+function ResponsiveView() {
+  const [orientation, setOrientation] = useState(
+    ScreenOrientation.Orientation.PORTRAIT_UP
+  );
+
+  useEffect(() => {
+    const subscription = ScreenOrientation.addOrientationChangeListener(
+      ({ orientationInfo }) => {
+        setOrientation(orientationInfo.orientation);
+      }
+    );
+
+    return () => subscription.remove();
+  }, []);
+
+  const isLandscape = 
+    orientation === ScreenOrientation.Orientation.LANDSCAPE_LEFT ||
+    orientation === ScreenOrientation.Orientation.LANDSCAPE_RIGHT;
+
+  return (
+    <View style={[
+      styles.container,
+      isLandscape && styles.landscape
+    ]}>
+      <Text>Orientation: {isLandscape ? 'Landscape' : 'Portrait'}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 20 },
+  landscape: { flexDirection: 'row' }
+});
+```
+
+### Lock Orientation Toggle
+
+```tsx
+import * as ScreenOrientation from 'expo-screen-orientation';
+import { useState } from 'react';
+import { Button, View } from 'react-native';
+
+function OrientationControl() {
+  const [locked, setLocked] = useState(false);
+
+  const toggleLock = async () => {
+    if (locked) {
+      await ScreenOrientation.unlockAsync();
+      setLocked(false);
+    } else {
+      await ScreenOrientation.lockAsync(
+        ScreenOrientation.OrientationLock.PORTRAIT_UP
+      );
+      setLocked(true);
+    }
+  };
+
+  return (
+    <View>
+      <Button
+        title={locked ? 'Unlock Orientation' : 'Lock Portrait'}
+        onPress={toggleLock}
+      />
+    </View>
+  );
+}
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ✅ (Limited) |
+
+<Note>
+On web, orientation locking uses the Screen Orientation API, which has limited browser support.
+</Note>
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/screen-orientation/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-screen-orientation)

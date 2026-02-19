@@ -1,0 +1,253 @@
+---
+title: expo-camera
+description: Access device camera for photos, videos, barcode scanning, and face detection
+---
+
+# expo-camera
+
+**Version:** 55.0.6
+
+A React component that renders a camera preview with support for taking photos, recording videos, scanning barcodes, and detecting faces.
+
+## Installation
+
+```bash
+npx expo install expo-camera
+```
+
+## Usage
+
+```tsx
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useState } from 'react';
+import { Button, StyleSheet, View } from 'react-native';
+
+function App() {
+  const [permission, requestPermission] = useCameraPermissions();
+
+  if (!permission) return <View />;
+  if (!permission.granted) {
+    return (
+      <View style={styles.container}>
+        <Button title="Grant Permission" onPress={requestPermission} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <CameraView style={styles.camera} facing="back" />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  camera: { flex: 1 }
+});
+```
+
+## API Reference
+
+### CameraView Props
+
+<ParamField path="facing" type="'front' | 'back'" default="back">
+  Camera direction
+</ParamField>
+
+<ParamField path="flash" type="'off' | 'on' | 'auto'" default="off">
+  Flash mode for photos
+</ParamField>
+
+<ParamField path="zoom" type="number" default="0">
+  Zoom level (0 to 1)
+</ParamField>
+
+<ParamField path="mode" type="'picture' | 'video'" default="picture">
+  Camera mode
+</ParamField>
+
+<ParamField path="enableTorch" type="boolean">
+  Enable torch (flashlight)
+</ParamField>
+
+<ParamField path="barcodeScannerSettings" type="object">
+  Configure barcode scanning
+  
+  ```tsx
+  <CameraView
+    barcodeScannerSettings={{
+      barcodeTypes: ['qr', 'ean13']
+    }}
+    onBarcodeScanned={handleBarcodeScan}
+  />
+  ```
+</ParamField>
+
+### Methods
+
+<ParamField path="ref.takePictureAsync(options)" type="(options?: CameraPictureOptions) => Promise<Photo>">
+  Takes a photo
+  
+  ```tsx
+  const cameraRef = useRef<CameraView>(null);
+  
+  const takePhoto = async () => {
+    const photo = await cameraRef.current?.takePictureAsync({
+      quality: 0.8,
+      base64: true
+    });
+    console.log(photo.uri);
+  };
+  ```
+</ParamField>
+
+<ParamField path="ref.recordAsync(options)" type="(options?: CameraRecordingOptions) => Promise<Video>">
+  Starts video recording
+</ParamField>
+
+<ParamField path="ref.stopRecording()" type="() => void">
+  Stops video recording
+</ParamField>
+
+### Hooks
+
+<ParamField path="useCameraPermissions()" type="() => [PermissionResponse, () => Promise<PermissionResponse>]">
+  Manages camera permissions
+  
+  ```tsx
+  const [permission, requestPermission] = useCameraPermissions();
+  ```
+</ParamField>
+
+<ParamField path="useMicrophonePermissions()" type="() => [PermissionResponse, () => Promise<PermissionResponse>]">
+  Manages microphone permissions (for video recording)
+</ParamField>
+
+## Examples
+
+### Take Photo
+
+```tsx
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useRef, useState } from 'react';
+import { Button, Image, View } from 'react-native';
+
+function PhotoCapture() {
+  const [photo, setPhoto] = useState<string | null>(null);
+  const cameraRef = useRef<CameraView>(null);
+  const [permission, requestPermission] = useCameraPermissions();
+
+  const takePhoto = async () => {
+    const result = await cameraRef.current?.takePictureAsync();
+    if (result) setPhoto(result.uri);
+  };
+
+  if (!permission?.granted) {
+    return <Button title="Allow Camera" onPress={requestPermission} />;
+  }
+
+  if (photo) {
+    return (
+      <View style={{ flex: 1 }}>
+        <Image source={{ uri: photo }} style={{ flex: 1 }} />
+        <Button title="Retake" onPress={() => setPhoto(null)} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1 }}>
+      <CameraView ref={cameraRef} style={{ flex: 1 }} />
+      <Button title="Take Photo" onPress={takePhoto} />
+    </View>
+  );
+}
+```
+
+### Record Video
+
+```tsx
+import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import { useRef, useState } from 'react';
+import { Button, View } from 'react-native';
+
+function VideoRecorder() {
+  const [recording, setRecording] = useState(false);
+  const cameraRef = useRef<CameraView>(null);
+  const [cameraPermission] = useCameraPermissions();
+  const [micPermission] = useMicrophonePermissions();
+
+  const startRecording = async () => {
+    setRecording(true);
+    const video = await cameraRef.current?.recordAsync();
+    console.log('Video saved:', video?.uri);
+    setRecording(false);
+  };
+
+  const stopRecording = () => {
+    cameraRef.current?.stopRecording();
+  };
+
+  if (!cameraPermission?.granted || !micPermission?.granted) {
+    return <View />;
+  }
+
+  return (
+    <View style={{ flex: 1 }}>
+      <CameraView ref={cameraRef} mode="video" style={{ flex: 1 }} />
+      <Button 
+        title={recording ? 'Stop Recording' : 'Start Recording'}
+        onPress={recording ? stopRecording : startRecording}
+      />
+    </View>
+  );
+}
+```
+
+### Barcode Scanner
+
+```tsx
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useState } from 'react';
+import { Text, View } from 'react-native';
+
+function BarcodeScanner() {
+  const [scanned, setScanned] = useState<string | null>(null);
+  const [permission, requestPermission] = useCameraPermissions();
+
+  const handleBarcodeScan = ({ data }: { data: string }) => {
+    setScanned(data);
+  };
+
+  if (!permission?.granted) {
+    return <Button title="Allow Camera" onPress={requestPermission} />;
+  }
+
+  return (
+    <View style={{ flex: 1 }}>
+      <CameraView
+        style={{ flex: 1 }}
+        barcodeScannerSettings={{
+          barcodeTypes: ['qr', 'ean13', 'code128']
+        }}
+        onBarcodeScanned={handleBarcodeScan}
+      />
+      {scanned && <Text>Scanned: {scanned}</Text>}
+    </View>
+  );
+}
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ✅       |
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/camera/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-camera)

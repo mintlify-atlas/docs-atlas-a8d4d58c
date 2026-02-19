@@ -1,0 +1,675 @@
+---
+title: "Asset Management"
+description: "Optimize, bundle, and manage images, fonts, and other assets in your Expo app"
+---
+
+## Overview
+
+Efficient asset management improves app performance and reduces bundle size. This guide covers asset optimization, loading strategies, and best practices.
+
+## Asset Types
+
+### Images
+
+```typescript
+// Local images
+import logo from '../assets/logo.png';
+<Image source={logo} />
+
+// Or with require
+<Image source={require('../assets/logo.png')} />
+
+// Remote images
+<Image source={{ uri: 'https://example.com/image.jpg' }} />
+```
+
+### Fonts
+
+```typescript
+import { useFonts } from 'expo-font';
+
+const [fontsLoaded] = useFonts({
+  'Inter-Regular': require('../assets/fonts/Inter-Regular.ttf'),
+  'Inter-Bold': require('../assets/fonts/Inter-Bold.ttf'),
+});
+```
+
+### Videos
+
+```bash
+npx expo install expo-av
+```
+
+```typescript
+import { Video } from 'expo-av';
+
+<Video
+  source={require('../assets/video.mp4')}
+  style={{ width: 300, height: 300 }}
+  useNativeControls
+  resizeMode="contain"
+/>
+```
+
+### Audio
+
+```typescript
+import { Audio } from 'expo-av';
+
+const sound = new Audio.Sound();
+await sound.loadAsync(require('../assets/sound.mp3'));
+await sound.playAsync();
+```
+
+## Project Structure
+
+### Recommended layout
+
+```
+assets/
+├── images/
+│   ├── logo.png
+│   ├── logo@2x.png
+│   ├── logo@3x.png
+│   └── backgrounds/
+│       ├── home.webp
+│       └── profile.webp
+├── fonts/
+│   ├── Inter-Regular.ttf
+│   ├── Inter-Bold.ttf
+│   └── Inter-SemiBold.ttf
+├── videos/
+│   └── intro.mp4
+├── sounds/
+│   ├── notification.mp3
+│   └── click.mp3
+└── icon.png
+```
+
+## Image Optimization
+
+### Image formats
+
+<Tabs>
+  <Tab title="WebP">
+    Best for photos with transparency:
+    
+    ```bash
+    # Convert PNG to WebP
+    cwebp input.png -q 80 -o output.webp
+    ```
+    
+    Pros:
+    - 25-35% smaller than PNG/JPG
+    - Supports transparency
+    - Good quality
+    
+    Cons:
+    - Not supported in very old devices
+  </Tab>
+
+  <Tab title="PNG">
+    Best for icons, logos, and graphics:
+    
+    ```bash
+    # Optimize PNG
+    pngquant input.png --output output.png
+    ```
+    
+    Pros:
+    - Lossless compression
+    - Transparency support
+    - Wide compatibility
+    
+    Cons:
+    - Larger file size than WebP/JPG
+  </Tab>
+
+  <Tab title="JPG">
+    Best for photos without transparency:
+    
+    ```bash
+    # Optimize JPG
+    jpegoptim --max=85 input.jpg
+    ```
+    
+    Pros:
+    - Small file size
+    - Great for photos
+    
+    Cons:
+    - No transparency
+    - Lossy compression
+  </Tab>
+</Tabs>
+
+### Image dimensions
+
+```typescript
+// Bad: Large image for small display
+<Image
+  source={require('./photo-4000x3000.jpg')}
+  style={{ width: 100, height: 75 }}
+/>
+
+// Good: Appropriately sized
+<Image
+  source={require('./photo-200x150.jpg')}
+  style={{ width: 100, height: 75 }}
+/>
+```
+
+### Responsive images
+
+```typescript components/ResponsiveImage.tsx
+import { Image } from 'expo-image';
+import { PixelRatio } from 'react-native';
+
+type Props = {
+  source: {
+    uri: string;
+    width: number;
+    height: number;
+  };
+  style: any;
+};
+
+export function ResponsiveImage({ source, style }: Props) {
+  const pixelRatio = PixelRatio.get();
+  const size = pixelRatio > 2 ? '@3x' : pixelRatio > 1 ? '@2x' : '';
+  
+  const uri = source.uri.replace('.png', `${size}.png`);
+
+  return (
+    <Image
+      source={{ uri, width: source.width, height: source.height }}
+      style={style}
+      contentFit="cover"
+    />
+  );
+}
+```
+
+## expo-image
+
+Use `expo-image` for better performance:
+
+```bash
+npx expo install expo-image
+```
+
+```typescript
+import { Image } from 'expo-image';
+
+function Avatar({ uri }: { uri: string }) {
+  return (
+    <Image
+      source={{ uri }}
+      style={{ width: 100, height: 100, borderRadius: 50 }}
+      contentFit="cover"
+      transition={200}
+      placeholder={require('../assets/placeholder.png')}
+      placeholderContentFit="cover"
+      cachePolicy="memory-disk"
+    />
+  );
+}
+```
+
+Features:
+- Native caching
+- Smooth transitions
+- Blurhash placeholders
+- Better performance
+- WebP support
+
+## Image Caching
+
+### Preload images
+
+```typescript hooks/usePreloadImages.ts
+import { Image } from 'expo-image';
+import { useEffect, useState } from 'react';
+
+export function usePreloadImages(sources: string[]) {
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    async function preload() {
+      await Promise.all(
+        sources.map(source => Image.prefetch(source))
+      );
+      setLoaded(true);
+    }
+    
+    preload();
+  }, [sources]);
+
+  return loaded;
+}
+```
+
+Usage:
+
+```typescript
+function App() {
+  const imagesLoaded = usePreloadImages([
+    'https://example.com/image1.jpg',
+    'https://example.com/image2.jpg',
+  ]);
+
+  if (!imagesLoaded) {
+    return <SplashScreen />;
+  }
+
+  return <MainApp />;
+}
+```
+
+### Clear cache
+
+```typescript
+import { Image } from 'expo-image';
+
+// Clear entire cache
+await Image.clearDiskCache();
+
+// Clear memory cache
+await Image.clearMemoryCache();
+```
+
+## Blurhash Placeholders
+
+```typescript
+import { Image } from 'expo-image';
+
+<Image
+  source={{ uri: 'https://example.com/image.jpg' }}
+  placeholder="LGF5]+Yk^6#M@-5c,1J5@[or[Q6."
+  contentFit="cover"
+  transition={200}
+/>
+```
+
+Generate blurhash:
+
+```bash
+npm install blurhash
+```
+
+```typescript
+import { encode } from 'blurhash';
+import * as FileSystem from 'expo-file-system';
+import { manipulateAsync } from 'expo-image-manipulator';
+
+async function generateBlurhash(uri: string): Promise<string> {
+  // Resize to small size for blurhash
+  const resized = await manipulateAsync(
+    uri,
+    [{ resize: { width: 32, height: 32 } }],
+    { compress: 0, format: 'png' }
+  );
+
+  // Get image data
+  const imageData = await getImageData(resized.uri);
+  
+  // Generate blurhash
+  return encode(imageData.data, imageData.width, imageData.height, 4, 4);
+}
+```
+
+## Font Management
+
+### Load fonts
+
+```typescript app/_layout.tsx
+import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
+
+SplashScreen.preventAutoHideAsync();
+
+export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    'Inter-Regular': require('../assets/fonts/Inter-Regular.ttf'),
+    'Inter-Medium': require('../assets/fonts/Inter-Medium.ttf'),
+    'Inter-Bold': require('../assets/fonts/Inter-Bold.ttf'),
+  });
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
+
+  return <Slot />;
+}
+```
+
+### Use fonts
+
+```typescript
+import { Text, StyleSheet } from 'react-native';
+
+const styles = StyleSheet.create({
+  regular: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+  },
+  bold: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+  },
+});
+
+<Text style={styles.regular}>Regular text</Text>
+<Text style={styles.bold}>Bold text</Text>
+```
+
+### Font variants
+
+Instead of multiple font files:
+
+```typescript
+const styles = StyleSheet.create({
+  text: {
+    fontFamily: 'Inter',
+    fontWeight: 'normal', // or '400', '500', '600', '700'
+  },
+});
+```
+
+Configure in app.json:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/Inter-Regular.ttf",
+            "./assets/fonts/Inter-Bold.ttf"
+          ]
+        }
+      ]
+    ]
+  }
+}
+```
+
+## Asset Bundling
+
+### app.json configuration
+
+```json app.json
+{
+  "expo": {
+    "assetBundlePatterns": [
+      "assets/**/*"
+    ]
+  }
+}
+```
+
+This ensures all assets in `assets/` are bundled with your app.
+
+### Exclude assets
+
+```json
+{
+  "expo": {
+    "assetBundlePatterns": [
+      "assets/images/**/*",
+      "assets/fonts/**/*",
+      "!assets/dev/**/*"
+    ]
+  }
+}
+```
+
+## Remote Assets
+
+### CDN strategy
+
+```typescript utils/cdn.ts
+const CDN_URL = 'https://cdn.example.com';
+
+export function getCdnUrl(path: string): string {
+  return `${CDN_URL}/${path}`;
+}
+
+// Usage
+<Image source={{ uri: getCdnUrl('images/avatar.jpg') }} />
+```
+
+### Progressive loading
+
+```typescript components/ProgressiveImage.tsx
+import { useState } from 'react';
+import { View, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
+
+type Props = {
+  thumbnail: string;
+  full: string;
+  style: any;
+};
+
+export function ProgressiveImage({ thumbnail, full, style }: Props) {
+  const [loading, setLoading] = useState(true);
+
+  return (
+    <View style={style}>
+      {/* Thumbnail */}
+      <Image
+        source={{ uri: thumbnail }}
+        style={[style, { position: 'absolute' }]}
+        contentFit="cover"
+      />
+      
+      {/* Full resolution */}
+      <Image
+        source={{ uri: full }}
+        style={style}
+        contentFit="cover"
+        onLoadEnd={() => setLoading(false)}
+      />
+      
+      {loading && (
+        <ActivityIndicator
+          style={{ position: 'absolute', alignSelf: 'center' }}
+        />
+      )}
+    </View>
+  );
+}
+```
+
+## Asset Optimization Tools
+
+### ImageOptim (macOS)
+
+```bash
+# Install
+brew install imageoptim-cli
+
+# Optimize images
+imageoptim assets/images/*.png
+```
+
+### Sharp (Node.js)
+
+```bash
+npm install sharp
+```
+
+```javascript scripts/optimize-images.js
+const sharp = require('sharp');
+const fs = require('fs');
+const path = require('path');
+
+const inputDir = 'assets/images';
+const outputDir = 'assets/images/optimized';
+
+fs.readdirSync(inputDir).forEach(async (file) => {
+  if (file.match(/\.(jpg|png)$/)) {
+    await sharp(path.join(inputDir, file))
+      .resize(1000, 1000, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toFile(path.join(outputDir, file.replace(/\.(jpg|png)$/, '.webp')));
+  }
+});
+```
+
+### FFmpeg (Video)
+
+```bash
+# Compress video
+ffmpeg -i input.mp4 -vcodec h264 -acodec aac -b:v 1000k -b:a 128k output.mp4
+```
+
+## Vector Graphics
+
+### React Native SVG
+
+```bash
+npx expo install react-native-svg
+```
+
+```typescript components/Logo.tsx
+import Svg, { Path, Circle } from 'react-native-svg';
+
+export function Logo({ size = 100 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 100 100">
+      <Circle cx="50" cy="50" r="45" fill="#4630EB" />
+      <Path
+        d="M50 30 L70 70 L30 70 Z"
+        fill="white"
+      />
+    </Svg>
+  );
+}
+```
+
+Benefits:
+- Scales perfectly
+- Small file size
+- Customizable colors
+- No multiple resolution files needed
+
+## Asset Security
+
+### Protect sensitive assets
+
+```typescript
+// Don't store API keys in assets
+// Bad:
+const config = require('../assets/config.json');
+
+// Good: Use environment variables
+const API_KEY = process.env.EXPO_PUBLIC_API_KEY;
+```
+
+### Watermarking
+
+```typescript
+import { manipulateAsync, FlipType } from 'expo-image-manipulator';
+
+async function addWatermark(imageUri: string) {
+  return await manipulateAsync(
+    imageUri,
+    [
+      {
+        overlay: {
+          uri: 'data:image/png;base64,...', // Watermark image
+          position: { x: 10, y: 10 },
+        },
+      },
+    ],
+    { compress: 0.9 }
+  );
+}
+```
+
+## Best Practices
+
+### General
+
+- **Optimize before adding**: Compress images before committing
+- **Use appropriate formats**: WebP for photos, PNG for graphics, SVG for icons
+- **Lazy load**: Load assets when needed, not upfront
+- **Cache aggressively**: Use `expo-image` caching
+- **CDN for large assets**: Host videos and large images on CDN
+- **Version assets**: Add version/hash to remote asset URLs for cache busting
+
+### Images
+
+- **Multiple resolutions**: Provide @2x and @3x variants
+- **Responsive sizing**: Load appropriate size for display dimensions
+- **Compression**: Balance quality vs file size (80-85% quality is usually good)
+- **Dimensions**: Don't load 4K images for thumbnails
+
+### Fonts
+
+- **Load only what you use**: Don't load all font weights
+- **System fonts**: Consider using built-in system fonts
+- **Subset fonts**: Remove unused glyphs for smaller file size
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Images not loading">
+    - Check file path is correct
+    - Verify image is in assetBundlePatterns
+    - Clear Metro cache: `npx expo start --clear`
+    - For remote images, check URL is accessible
+  </Accordion>
+
+  <Accordion title="Fonts not applying">
+    - Ensure fonts are loaded before rendering
+    - Check font family name matches loaded font key
+    - Rebuild app after adding new fonts
+  </Accordion>
+
+  <Accordion title="Large bundle size">
+    - Analyze assets with `npx expo-atlas`
+    - Compress images with tools like ImageOptim
+    - Use WebP format
+    - Move large assets to CDN
+  </Accordion>
+
+  <Accordion title="Slow image loading">
+    - Preload critical images
+    - Use appropriate image sizes
+    - Enable caching with `expo-image`
+    - Consider using progressive loading
+  </Accordion>
+</AccordionGroup>
+
+## Asset Checklist
+
+- [ ] All images compressed and optimized
+- [ ] Using WebP format where appropriate
+- [ ] Multiple resolutions provided (@1x, @2x, @3x)
+- [ ] Images are appropriate size for display
+- [ ] Fonts loaded before app renders
+- [ ] Only necessary fonts included
+- [ ] Large assets hosted on CDN
+- [ ] Asset caching configured
+- [ ] Placeholders for images
+- [ ] SVG used for icons where possible
+
+## Related Resources
+
+- [expo-image documentation](https://docs.expo.dev/versions/latest/sdk/image/)
+- [expo-font documentation](https://docs.expo.dev/versions/latest/sdk/font/)
+- [React Native SVG](https://github.com/software-mansion/react-native-svg)
+- [ImageOptim](https://imageoptim.com/)
+- [Sharp](https://sharp.pixelplumbing.com/)

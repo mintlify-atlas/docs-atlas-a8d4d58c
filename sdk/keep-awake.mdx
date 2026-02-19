@@ -1,0 +1,317 @@
+---
+title: expo-keep-awake
+description: Prevent the screen from sleeping while your app is active
+---
+
+# expo-keep-awake
+
+**Version:** 55.0.3
+
+Provides a React component that prevents the screen from sleeping when rendered. It also exposes static methods to control the behavior imperatively.
+
+## Installation
+
+```bash
+npx expo install expo-keep-awake
+```
+
+## Usage
+
+### Component-Based
+
+```tsx
+import { KeepAwake } from 'expo-keep-awake';
+import { View, Text } from 'react-native';
+
+function VideoPlayer() {
+  return (
+    <View>
+      <KeepAwake />
+      <Text>Screen will stay awake while this component is mounted</Text>
+    </View>
+  );
+}
+```
+
+### Hook-Based
+
+```tsx
+import { useKeepAwake } from 'expo-keep-awake';
+import { View, Text } from 'react-native';
+
+function VideoPlayer() {
+  useKeepAwake();
+  
+  return <Text>Screen will stay awake</Text>;
+}
+```
+
+### Imperative API
+
+```typescript
+import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
+
+// Activate
+activateKeepAwake();
+
+// Deactivate
+deactivateKeepAwake();
+```
+
+## API Reference
+
+### Component
+
+<ParamField path="<KeepAwake />" type="React.Component">
+  Renders a component that prevents screen from sleeping
+  
+  ```tsx
+  <KeepAwake />
+  ```
+  
+  Automatically activates when mounted and deactivates when unmounted.
+</ParamField>
+
+### Hook
+
+<ParamField path="useKeepAwake(tag?)" type="(tag?: string) => void">
+  Hook that keeps screen awake while component is mounted
+  
+  ```typescript
+  useKeepAwake('video-player');
+  ```
+  
+  Optional `tag` parameter allows multiple independent keep-awake instances.
+</ParamField>
+
+### Methods
+
+<ParamField path="activateKeepAwake(tag?)" type="(tag?: string) => void">
+  Activates keep-awake mode
+  
+  ```typescript
+  import { activateKeepAwake } from 'expo-keep-awake';
+  
+  activateKeepAwake('my-tag');
+  ```
+</ParamField>
+
+<ParamField path="deactivateKeepAwake(tag?)" type="(tag?: string) => void">
+  Deactivates keep-awake mode
+  
+  ```typescript
+  import { deactivateKeepAwake } from 'expo-keep-awake';
+  
+  deactivateKeepAwake('my-tag');
+  ```
+</ParamField>
+
+## Examples
+
+### Video Player
+
+```tsx
+import { useKeepAwake } from 'expo-keep-awake';
+import { Video } from 'expo-av';
+import { useState } from 'react';
+
+function VideoPlayer({ source }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  
+  // Keep screen awake only while video is playing
+  if (isPlaying) {
+    useKeepAwake();
+  }
+  
+  return (
+    <Video
+      source={source}
+      onPlaybackStatusUpdate={(status) => {
+        setIsPlaying(status.isPlaying ?? false);
+      }}
+    />
+  );
+}
+```
+
+### Navigation Screen
+
+```tsx
+import { KeepAwake } from 'expo-keep-awake';
+import { View, Text } from 'react-native';
+import MapView from 'react-native-maps';
+
+function NavigationScreen() {
+  return (
+    <View style={{ flex: 1 }}>
+      <KeepAwake />
+      <MapView style={{ flex: 1 }} />
+      <Text>Screen stays on during navigation</Text>
+    </View>
+  );
+}
+```
+
+### Conditional Keep Awake
+
+```tsx
+import { useKeepAwake } from 'expo-keep-awake';
+import { View, Switch, Text } from 'react-native';
+import { useState } from 'react';
+
+function SettingsScreen() {
+  const [keepScreenOn, setKeepScreenOn] = useState(false);
+  
+  if (keepScreenOn) {
+    useKeepAwake();
+  }
+  
+  return (
+    <View>
+      <Text>Keep Screen On</Text>
+      <Switch value={keepScreenOn} onValueChange={setKeepScreenOn} />
+    </View>
+  );
+}
+```
+
+### Imperative Control
+
+```typescript
+import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
+
+class MediaPlayer {
+  play() {
+    activateKeepAwake('media-player');
+    // Start playback...
+  }
+  
+  pause() {
+    deactivateKeepAwake('media-player');
+    // Pause playback...
+  }
+  
+  stop() {
+    deactivateKeepAwake('media-player');
+    // Stop playback...
+  }
+}
+```
+
+### Multiple Instances with Tags
+
+```tsx
+import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
+import { useEffect } from 'react';
+
+function VideoPlayer() {
+  useEffect(() => {
+    activateKeepAwake('video');
+    return () => deactivateKeepAwake('video');
+  }, []);
+  
+  return <Video />;
+}
+
+function AudioPlayer() {
+  useEffect(() => {
+    activateKeepAwake('audio');
+    return () => deactivateKeepAwake('audio');
+  }, []);
+  
+  return <Audio />;
+}
+
+// Both can be active independently
+function App() {
+  return (
+    <>
+      <VideoPlayer />
+      <AudioPlayer />
+    </>
+  );
+}
+```
+
+### Reading Mode
+
+```tsx
+import { useKeepAwake } from 'expo-keep-awake';
+import { ScrollView, Text } from 'react-native';
+
+function Article({ content }) {
+  // Keep screen on while reading
+  useKeepAwake('reading');
+  
+  return (
+    <ScrollView>
+      <Text>{content}</Text>
+    </ScrollView>
+  );
+}
+```
+
+### Camera Preview
+
+```tsx
+import { KeepAwake } from 'expo-keep-awake';
+import { CameraView } from 'expo-camera';
+
+function CameraScreen() {
+  return (
+    <>
+      <KeepAwake />
+      <CameraView style={{ flex: 1 }} />
+    </>
+  );
+}
+```
+
+## TypeScript
+
+```typescript
+import {
+  KeepAwake,
+  useKeepAwake,
+  activateKeepAwake,
+  deactivateKeepAwake
+} from 'expo-keep-awake';
+
+// Hook with optional tag
+useKeepAwake('my-tag');
+
+// Imperative with tag
+activateKeepAwake('my-tag');
+deactivateKeepAwake('my-tag');
+```
+
+## Platform Support
+
+| Platform | Supported |
+|----------|----------|
+| iOS      | ✅       |
+| Android  | ✅       |
+| Web      | ✅       |
+
+## How It Works
+
+- **iOS**: Sets `UIApplication.shared.isIdleTimerDisabled = true`
+- **Android**: Adds `FLAG_KEEP_SCREEN_ON` to the window
+- **Web**: Uses Wake Lock API or NoSleep.js fallback
+
+## Best Practices
+
+1. **Use Component/Hook**: Prefer `<KeepAwake />` or `useKeepAwake()` for automatic cleanup
+2. **Clean Up**: Always deactivate when no longer needed to save battery
+3. **Use Tags**: Use unique tags for multiple independent instances
+4. **Conditional Usage**: Only activate when actually needed (e.g., during video playback)
+5. **User Control**: Consider letting users disable keep-awake in settings
+
+<Warning>
+Keeping the screen on drains battery faster. Only use when necessary for user experience.
+</Warning>
+
+## Resources
+
+- [Official Documentation](https://docs.expo.dev/versions/latest/sdk/keep-awake/)
+- [GitHub Repository](https://github.com/expo/expo/tree/main/packages/expo-keep-awake)

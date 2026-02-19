@@ -1,0 +1,642 @@
+---
+title: Testing Config Plugins
+description: Learn strategies for testing config plugins including unit tests and integration tests.
+---
+
+import { Terminal } from '~/ui/components/Snippet';
+
+Testing config plugins ensures they work correctly and helps prevent regressions. This guide covers testing strategies with examples from the Expo source.
+
+## Testing strategies
+
+Config plugins should be tested at multiple levels:
+
+1. **Unit tests**: Test plugin logic in isolation
+2. **Integration tests**: Test with actual native project files
+3. **End-to-end tests**: Test full prebuild workflow
+
+## Unit testing plugins
+
+Unit tests verify plugin logic without touching the filesystem.
+
+### Basic plugin test
+
+```ts
+import { withCustomPlugin } from '../withCustomPlugin';
+
+describe('withCustomPlugin', () => {
+  it('should add custom configuration', () => {
+    const config = {
+      name: 'TestApp',
+      slug: 'test-app',
+    };
+    
+    const result = withCustomPlugin(config, { apiKey: 'test123' });
+    
+    expect(result.name).toBe('TestApp');
+    expect(result.customProperty).toBe('test123');
+  });
+  
+  it('should throw error when props are missing', () => {
+    const config = { name: 'TestApp', slug: 'test-app' };
+    
+    expect(() => {
+      withCustomPlugin(config, null);
+    }).toThrow('Props are required');
+  });
+});
+```
+
+### Testing Info.plist modifications
+
+```ts
+import { withInfoPlist } from '@expo/config-plugins';
+
+const withCameraPermission = (config) => {
+  return withInfoPlist(config, (config) => {
+    config.modResults.NSCameraUsageDescription = 'Camera permission';
+    return config;
+  });
+};
+
+describe('withCameraPermission', () => {
+  it('should add camera permission to Info.plist', () => {
+    let config: any = {
+      name: 'TestApp',
+      slug: 'test-app',
+    };
+    
+    // Apply plugin
+    config = withCameraPermission(config);
+    
+    // Verify mod was added
+    expect(config.mods?.ios?.infoPlist).toBeDefined();
+    
+    // Execute mod with mock data
+    const modResult = config.mods.ios.infoPlist({
+      ...config,
+      modResults: {},
+      modRequest: {
+        projectRoot: '/test',
+        platformProjectRoot: '/test/ios',
+        platform: 'ios',
+        modName: 'infoPlist',
+        introspect: false,
+      },
+    });
+    
+    expect(modResult.modResults.NSCameraUsageDescription).toBe('Camera permission');
+  });
+});
+```
+
+### Testing Android Manifest modifications
+
+```ts
+import { withAndroidManifest } from '@expo/config-plugins';
+import { AndroidConfig } from '@expo/config-plugins';
+
+const withCameraFeature = (config) => {
+  return withAndroidManifest(config, (config) => {
+    const manifest = config.modResults.manifest;
+    
+    if (!manifest['uses-feature']) {
+      manifest['uses-feature'] = [];
+    }
+    
+    manifest['uses-feature'].push({
+      $: {
+        'android:name': 'android.hardware.camera',
+        'android:required': 'false',
+      },
+    });
+    
+    return config;
+  });
+};
+
+describe('withCameraFeature', () => {
+  it('should add camera feature to AndroidManifest', () => {
+    let config: any = {
+      name: 'TestApp',
+      slug: 'test-app',
+    };
+    
+    config = withCameraFeature(config);
+    
+    expect(config.mods?.android?.manifest).toBeDefined();
+    
+    // Mock manifest
+    const mockManifest = {
+      manifest: {
+        $: {
+          'xmlns:android': 'http://schemas.android.com/apk/res/android',
+        },
+        application: [],
+      },
+    };
+    
+    // Execute mod
+    const modResult = config.mods.android.manifest({
+      ...config,
+      modResults: mockManifest,
+      modRequest: {
+        projectRoot: '/test',
+        platformProjectRoot: '/test/android',
+        platform: 'android',
+        modName: 'manifest',
+        introspect: false,
+      },
+    });
+    
+    expect(modResult.modResults.manifest['uses-feature']).toHaveLength(1);
+    expect(modResult.modResults.manifest['uses-feature'][0].$['android:name'])
+      .toBe('android.hardware.camera');
+  });
+});
+```
+
+## Testing with real fixtures
+
+Use fixture files from actual projects for integration testing.
+
+### Setting up fixtures
+
+```
+__tests__/
+  fixtures/
+    ios/
+      Info.plist
+      TestApp.entitlements
+    android/
+      AndroidManifest.xml
+      strings.xml
+  withCustomPlugin.test.ts
+```
+
+### Loading and testing with fixtures
+
+```ts
+import fs from 'fs';
+import path from 'path';
+import { XMLParser, XMLBuilder } from 'fast-xml-parser';
+
+function loadFixture(name: string): string {
+  return fs.readFileSync(
+    path.join(__dirname, 'fixtures', name),
+    'utf-8'
+  );
+}
+
+function parseXML(xml: string) {
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: '',
+  });
+  return parser.parse(xml);
+}
+
+describe('withCameraFeature with fixtures', () => {
+  it('should add camera feature to real AndroidManifest', () => {
+    // Load fixture
+    const manifestXml = loadFixture('android/AndroidManifest.xml');
+    const manifest = parseXML(manifestXml);
+    
+    // Apply modifications
+    if (!manifest.manifest['uses-feature']) {
+      manifest.manifest['uses-feature'] = [];
+    }
+    manifest.manifest['uses-feature'].push({
+      $: {
+        'android:name': 'android.hardware.camera',
+        'android:required': 'false',
+      },
+    });
+    
+    // Verify
+    expect(manifest.manifest['uses-feature']).toContainEqual({
+      $: {
+        'android:name': 'android.hardware.camera',
+        'android:required': 'false',
+      },
+    });
+  });
+});
+```
+
+## Testing code generation
+
+Test that code injection is idempotent.
+
+```ts
+import { mergeContents } from '@expo/config-plugins/build/utils/generateCode';
+
+describe('code generation', () => {
+  const originalCode = `
+import React from 'react';
+
+function App() {
+  return <View />;
+}
+`;
+
+  const codeToInsert = `  console.log('Hello from plugin');`;
+  
+  it('should insert code once', () => {
+    const result = mergeContents({
+      src: originalCode,
+      newSrc: codeToInsert,
+      tag: 'my-plugin',
+      anchor: /function App\(\) {/,
+      offset: 1,
+      comment: '//',
+    });
+    
+    expect(result.didMerge).toBe(true);
+    expect(result.contents).toContain(codeToInsert);
+    expect(result.contents).toContain('// @generated begin my-plugin');
+    expect(result.contents).toContain('// @generated end my-plugin');
+  });
+  
+  it('should not duplicate code on second run', () => {
+    // First insertion
+    let result = mergeContents({
+      src: originalCode,
+      newSrc: codeToInsert,
+      tag: 'my-plugin',
+      anchor: /function App\(\) {/,
+      offset: 1,
+      comment: '//',
+    });
+    
+    const firstPass = result.contents;
+    
+    // Second insertion (should be idempotent)
+    result = mergeContents({
+      src: firstPass,
+      newSrc: codeToInsert,
+      tag: 'my-plugin',
+      anchor: /function App\(\) {/,
+      offset: 1,
+      comment: '//',
+    });
+    
+    expect(result.didMerge).toBe(false);
+    expect(result.contents).toBe(firstPass);
+    
+    // Should only appear once
+    const occurrences = (result.contents.match(/console\.log/g) || []).length;
+    expect(occurrences).toBe(1);
+  });
+});
+```
+
+## Testing with mock filesystem
+
+Use `memfs` to test filesystem operations without touching disk.
+
+<Terminal cmd={[
+  '$ npm install --save-dev memfs',
+]} />
+
+```ts
+import { vol } from 'memfs';
+import { withDangerousMod } from '@expo/config-plugins';
+import path from 'path';
+
+jest.mock('fs', () => require('memfs').fs);
+jest.mock('fs/promises', () => require('memfs').fs.promises);
+
+const withFileWriter = (config) => {
+  return withDangerousMod(config, ['ios', async (config) => {
+    const filePath = path.join(
+      config.modRequest.platformProjectRoot,
+      'custom-file.txt'
+    );
+    await require('fs/promises').writeFile(filePath, 'test content');
+    return config;
+  }]);
+};
+
+describe('withFileWriter', () => {
+  beforeEach(() => {
+    vol.reset();
+    // Set up mock filesystem
+    vol.fromJSON({
+      '/test/ios/': null,
+    });
+  });
+  
+  it('should write file to ios directory', async () => {
+    let config: any = {
+      name: 'TestApp',
+      slug: 'test-app',
+    };
+    
+    config = withFileWriter(config);
+    
+    // Execute dangerous mod
+    await config.mods.ios.dangerous({
+      ...config,
+      modResults: null,
+      modRequest: {
+        projectRoot: '/test',
+        platformProjectRoot: '/test/ios',
+        platform: 'ios',
+        modName: 'dangerous',
+        introspect: false,
+      },
+    });
+    
+    // Verify file was written
+    const fs = require('fs');
+    expect(fs.existsSync('/test/ios/custom-file.txt')).toBe(true);
+    expect(fs.readFileSync('/test/ios/custom-file.txt', 'utf-8')).toBe('test content');
+  });
+});
+```
+
+## Example tests from Expo source
+
+Here are patterns from Expo's test suite:
+
+### Testing permission helpers
+
+```ts Permissions-test.ts
+import * as Permissions from '../Permissions';
+
+describe('Android Permissions', () => {
+  it('should prefix permission names', () => {
+    const permissions = ['CAMERA', 'LOCATION'];
+    const result = Permissions.prefixAndroidPermissionsIfNecessary(permissions);
+    
+    expect(result).toEqual([
+      'android.permission.CAMERA',
+      'android.permission.LOCATION',
+    ]);
+  });
+  
+  it('should not duplicate prefixes', () => {
+    const permissions = ['android.permission.CAMERA'];
+    const result = Permissions.prefixAndroidPermissionsIfNecessary(permissions);
+    
+    expect(result).toEqual(['android.permission.CAMERA']);
+  });
+  
+  it('should add permission to manifest', () => {
+    const manifest = {
+      manifest: {
+        $: {},
+        'uses-permission': [],
+      },
+    };
+    
+    Permissions.addPermission(manifest, 'android.permission.CAMERA');
+    
+    expect(manifest.manifest['uses-permission']).toContainEqual({
+      $: { 'android:name': 'android.permission.CAMERA' },
+    });
+  });
+  
+  it('should ensure permissions are unique', () => {
+    const manifest = {
+      manifest: {
+        $: {},
+        'uses-permission': [
+          { $: { 'android:name': 'android.permission.CAMERA' } },
+        ],
+      },
+    };
+    
+    const added = Permissions.ensurePermission(manifest, 'android.permission.CAMERA');
+    
+    expect(added).toBe(false);
+    expect(manifest.manifest['uses-permission']).toHaveLength(1);
+  });
+});
+```
+
+### Testing entitlements
+
+```ts Entitlements-test.ts
+import { setAssociatedDomains } from '../Entitlements';
+
+describe('iOS Entitlements', () => {
+  it('should set associated domains', () => {
+    const config = {
+      ios: {
+        associatedDomains: ['applinks:example.com', 'applinks:www.example.com'],
+      },
+    };
+    
+    const entitlements = {};
+    const result = setAssociatedDomains(config, entitlements);
+    
+    expect(result['com.apple.developer.associated-domains']).toEqual([
+      'applinks:example.com',
+      'applinks:www.example.com',
+    ]);
+  });
+  
+  it('should not modify entitlements when config is empty', () => {
+    const config = {};
+    const entitlements = { existingKey: 'value' };
+    
+    const result = setAssociatedDomains(config, entitlements);
+    
+    expect(result).toEqual(entitlements);
+    expect(result['com.apple.developer.associated-domains']).toBeUndefined();
+  });
+});
+```
+
+## Integration testing with prebuild
+
+Test the full prebuild process in a temporary directory.
+
+```ts
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+
+describe('prebuild integration', () => {
+  let tempDir: string;
+  
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'expo-test-'));
+  });
+  
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+  
+  it('should apply plugin during prebuild', () => {
+    // Create minimal app.json
+    const appJson = {
+      expo: {
+        name: 'TestApp',
+        slug: 'test-app',
+        version: '1.0.0',
+        plugins: ['./custom-plugin.js'],
+      },
+    };
+    
+    fs.writeFileSync(
+      path.join(tempDir, 'app.json'),
+      JSON.stringify(appJson, null, 2)
+    );
+    
+    // Create plugin
+    const pluginCode = `
+module.exports = function withCustomPlugin(config) {
+  config.ios = config.ios || {};
+  config.ios.bundleIdentifier = 'com.test.custom';
+  return config;
+};
+`;
+    
+    fs.writeFileSync(
+      path.join(tempDir, 'custom-plugin.js'),
+      pluginCode
+    );
+    
+    // Run prebuild
+    execSync('npx expo prebuild --no-install', {
+      cwd: tempDir,
+      stdio: 'pipe',
+    });
+    
+    // Verify modifications
+    expect(fs.existsSync(path.join(tempDir, 'ios'))).toBe(true);
+    expect(fs.existsSync(path.join(tempDir, 'android'))).toBe(true);
+    
+    // Could parse Info.plist or other files to verify changes
+  }, 60000); // 60s timeout for slow CI
+});
+```
+
+## Continuous integration
+
+Add plugin tests to your CI pipeline.
+
+**GitHub Actions example:**
+
+```yaml .github/workflows/test.yml
+name: Test Config Plugins
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run tests
+        run: npm test -- --coverage
+        
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+```
+
+## Best practices
+
+### 1. Test edge cases
+
+```ts
+describe('withCustomPlugin edge cases', () => {
+  it('should handle missing config properties', () => {
+    const config = {};
+    expect(() => withCustomPlugin(config)).not.toThrow();
+  });
+  
+  it('should handle invalid props', () => {
+    const config = { name: 'Test' };
+    expect(() => withCustomPlugin(config, { invalid: true })).toThrow();
+  });
+  
+  it('should handle empty arrays', () => {
+    const config = { name: 'Test', plugins: [] };
+    const result = withCustomPlugin(config);
+    expect(result.plugins).toEqual([]);
+  });
+});
+```
+
+### 2. Test idempotency
+
+```ts
+it('should be idempotent', () => {
+  let config = { name: 'Test' };
+  
+  // Apply plugin multiple times
+  config = withCustomPlugin(config);
+  const firstResult = JSON.stringify(config);
+  
+  config = withCustomPlugin(config);
+  const secondResult = JSON.stringify(config);
+  
+  expect(firstResult).toBe(secondResult);
+});
+```
+
+### 3. Use snapshots for complex output
+
+```ts
+it('should match snapshot', () => {
+  const config = { name: 'Test' };
+  const result = withCustomPlugin(config);
+  
+  expect(result).toMatchSnapshot();
+});
+```
+
+### 4. Mock external dependencies
+
+```ts
+jest.mock('@expo/config-plugins', () => ({
+  ...jest.requireActual('@expo/config-plugins'),
+  WarningAggregator: {
+    addWarningIOS: jest.fn(),
+  },
+}));
+
+it('should log warnings', () => {
+  const { WarningAggregator } = require('@expo/config-plugins');
+  
+  withCustomPlugin(config);
+  
+  expect(WarningAggregator.addWarningIOS).toHaveBeenCalledWith(
+    'custom-plugin',
+    'Some warning message'
+  );
+});
+```
+
+## Debugging tests
+
+Enable debug output in tests:
+
+```ts
+process.env.EXPO_DEBUG = '1';
+
+it('should log debug info', () => {
+  const config = withCustomPlugin(baseConfig);
+  // Check console output
+});
+```
+
+## Next steps
+
+- [Creating plugins](/config-plugins/creating-plugins) - Build testable plugins
+- [Modifying native projects](/config-plugins/modifying-native-projects) - Test complex modifications
+- [Plugin API reference](/config-plugins/plugin-api) - API documentation

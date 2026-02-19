@@ -1,0 +1,395 @@
+---
+title: expo prebuild
+description: Generate native iOS and Android project files for building natively.
+---
+
+The `expo prebuild` command generates native `ios/` and `android/` directories from your app configuration, enabling you to use native code, libraries, and build tools directly.
+
+## Usage
+
+```bash
+npx expo prebuild [directory] [options]
+```
+
+## Arguments
+
+<ParamField path="directory" type="string">
+  Directory of the Expo project. Defaults to the current working directory.
+</ParamField>
+
+## Options
+
+<ParamField path="--platform" type="string">
+  Platforms to generate: `ios`, `android`, or `all`. Default: `all`. Alias: `-p`
+</ParamField>
+
+<ParamField path="--clean" type="boolean">
+  Delete the native folders and regenerate them before applying changes. Ensures a fresh state.
+</ParamField>
+
+<ParamField path="--no-install" type="boolean">
+  Skip installing npm packages and CocoaPods.
+</ParamField>
+
+### Package Manager Options
+
+<ParamField path="--npm" type="boolean">
+  Use npm to install dependencies. Default when `package-lock.json` exists.
+</ParamField>
+
+<ParamField path="--yarn" type="boolean">
+  Use Yarn to install dependencies. Default when `yarn.lock` exists.
+</ParamField>
+
+<ParamField path="--pnpm" type="boolean">
+  Use pnpm to install dependencies. Default when `pnpm-lock.yaml` exists.
+</ParamField>
+
+<ParamField path="--bun" type="boolean">
+  Use bun to install dependencies. Default when `bun.lock` or `bun.lockb` exists.
+</ParamField>
+
+<ParamField path="--template" type="string">
+  Project template to clone from. Can be:
+  - File path to a local tar file
+  - npm package name
+  - GitHub repository URL
+</ParamField>
+
+<ParamField path="--skip-dependency-update" type="string">
+  Comma-separated list of packages to preserve versions in package.json. Useful for testing specific versions.
+</ParamField>
+
+## What is Prebuild?
+
+Prebuilding is the process of generating native iOS and Android projects from your Expo app configuration. This is necessary when you need to:
+
+- Use native modules that require custom native code
+- Modify native build configuration
+- Add native dependencies not available in Expo Go
+- Prepare for building with Xcode or Android Studio
+- Use EAS Build or build locally with `expo run`
+
+## When to Use Prebuild
+
+### You Need Prebuild When:
+
+- Installing a library that requires native code changes
+- Adding custom native modules
+- Modifying native build settings
+- Setting up custom URL schemes or app extensions
+- Configuring native permissions or capabilities
+- Building for production
+
+### You Don't Need Prebuild When:
+
+- Working with Expo Go
+- All your dependencies are supported by Expo Go
+- Doing JavaScript-only development
+- Using managed workflow exclusively
+
+## Examples
+
+### Basic Prebuild
+
+Generate both iOS and Android projects:
+
+```bash
+npx expo prebuild
+```
+
+This creates:
+- `ios/` directory with Xcode project
+- `android/` directory with Gradle project
+- Installs native dependencies (CocoaPods for iOS)
+
+### Generate Specific Platform
+
+iOS only:
+
+```bash
+npx expo prebuild --platform ios
+```
+
+Android only:
+
+```bash
+npx expo prebuild --platform android
+```
+
+### Clean Prebuild
+
+Delete existing native folders and regenerate:
+
+```bash
+npx expo prebuild --clean
+```
+
+This is useful when:
+- You've made manual changes you want to discard
+- You want to ensure configuration is correctly applied
+- You're troubleshooting build issues
+
+### Skip Installation
+
+Generate native projects without installing dependencies:
+
+```bash
+npx expo prebuild --no-install
+```
+
+### Specify Package Manager
+
+Use a specific package manager:
+
+<CodeGroup>
+
+```bash npm
+npx expo prebuild --npm
+```
+
+```bash yarn
+npx expo prebuild --yarn
+```
+
+```bash pnpm
+npx expo prebuild --pnpm
+```
+
+```bash bun
+npx expo prebuild --bun
+```
+
+</CodeGroup>
+
+### Custom Template
+
+Use a custom template:
+
+```bash
+npx expo prebuild --template ./my-custom-template.tar.gz
+```
+
+Or from npm:
+
+```bash
+npx expo prebuild --template expo-template-bare-minimum
+```
+
+### Preserve Package Versions
+
+Keep specific package versions during prebuild:
+
+```bash
+npx expo prebuild --skip-dependency-update react-native,expo
+```
+
+## How It Works
+
+When you run `expo prebuild`, the CLI:
+
+1. **Reads Configuration** - Loads app.json or app.config.js
+2. **Validates Dependencies** - Checks for native module compatibility
+3. **Generates Native Projects** - Creates ios/ and android/ directories
+4. **Applies Config Plugins** - Runs config plugins to modify native files
+5. **Installs Dependencies** - Runs `pod install` for iOS
+6. **Syncs Configuration** - Applies settings from app config to native projects
+
+## Generated Files
+
+### iOS Directory Structure
+
+```
+ios/
+├── Podfile                 # CocoaPods dependencies
+├── MyApp.xcworkspace/      # Xcode workspace
+├── MyApp.xcodeproj/        # Xcode project
+└── MyApp/                  # App source
+    ├── AppDelegate.mm      # App lifecycle
+    ├── Info.plist          # App configuration
+    └── Images.xcassets/    # App icons and assets
+```
+
+### Android Directory Structure
+
+```
+android/
+├── app/
+│   ├── build.gradle        # App-level build config
+│   └── src/main/
+│       ├── AndroidManifest.xml  # App manifest
+│       ├── java/           # Java/Kotlin source
+│       └── res/            # Android resources
+├── build.gradle            # Project-level build config
+├── settings.gradle         # Project settings
+└── gradle.properties       # Gradle properties
+```
+
+## Config Plugins
+
+Prebuild uses Config Plugins to modify native projects. These plugins run during prebuild to configure native code based on your app.json.
+
+### Common Config Plugins
+
+- **expo-camera** - Adds camera permissions
+- **expo-location** - Configures location services
+- **expo-notifications** - Sets up push notifications
+- **expo-splash-screen** - Generates splash screens
+- **expo-updates** - Configures OTA updates
+
+### Example Configuration
+
+```json app.json
+{
+  "expo": {
+    "name": "My App",
+    "ios": {
+      "bundleIdentifier": "com.mycompany.myapp"
+    },
+    "android": {
+      "package": "com.mycompany.myapp"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera."
+        }
+      ]
+    ]
+  }
+}
+```
+
+## Continuous Prebuilding
+
+You can safely run `expo prebuild` multiple times. The command is idempotent, meaning:
+
+- Running it again with the same config produces the same result
+- Changes in app.json are applied to native projects
+- Manual native changes are preserved if not in conflict
+
+### Best Practice
+
+Use `--clean` flag when you want to ensure a pristine state:
+
+```bash
+npx expo prebuild --clean
+```
+
+## Manual Native Changes
+
+After prebuilding, you can make manual changes to native code:
+
+1. Open `ios/*.xcworkspace` in Xcode
+2. Open `android/` in Android Studio
+3. Modify native code, add files, configure settings
+
+### Important Notes
+
+- Manual changes may be overwritten by future prebuilds
+- Use Config Plugins for reproducible native configuration
+- Version control your native directories to track changes
+- Document manual changes for team members
+
+## Gitignore Native Directories
+
+You can choose to either commit or ignore native directories:
+
+### Option 1: Ignore Native Directories (Recommended for Teams)
+
+Add to `.gitignore`:
+
+```
+# Native
+ios/
+android/
+```
+
+Benefits:
+- Smaller repository size
+- No merge conflicts in native files
+- Easy to regenerate with `expo prebuild`
+- Enforces declarative configuration
+
+### Option 2: Commit Native Directories
+
+Benefits:
+- Full control over native code
+- Can make manual native changes
+- Easier to see what changed
+- No need to rebuild for reviewers
+
+## Troubleshooting
+
+### CocoaPods Installation Fails (iOS)
+
+Update CocoaPods:
+
+```bash
+sudo gem install cocoapods
+```
+
+Clean CocoaPods cache:
+
+```bash
+cd ios
+pod deintegrate
+pod install
+```
+
+### Gradle Build Fails (Android)
+
+Check Java version:
+
+```bash
+java -version
+```
+
+Ensure you have JDK 17 or newer.
+
+Clear Gradle cache:
+
+```bash
+cd android
+./gradlew clean
+```
+
+### Config Plugin Errors
+
+Ensure all packages with config plugins are installed:
+
+```bash
+npx expo install --check
+```
+
+### Prebuild Keeps Failing
+
+Try a clean prebuild:
+
+```bash
+rm -rf ios android node_modules
+npm install
+npx expo prebuild --clean
+```
+
+### Platform Not Supported
+
+iOS prebuild is not supported on Windows. Use:
+- macOS for iOS development
+- EAS Build for cloud building
+- `--platform android` flag to skip iOS
+
+```bash
+npx expo prebuild --platform android
+```
+
+## Comparing Workflows
+
+| Workflow | Native Directories | Expo Go | Custom Native Code |
+|----------|-------------------|---------|-------------------|
+| **Managed** | Not generated | ✓ | ✗ |
+| **Prebuild** | Generated | ✗ | ✓ |
+| **Bare** | Committed | ✗ | ✓ |
+
+Prebuild enables a hybrid approach: use Expo tooling with custom native code.

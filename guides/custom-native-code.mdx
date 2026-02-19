@@ -1,0 +1,590 @@
+---
+title: "Custom Native Code"
+description: "Add custom native modules, link native libraries, and use the prebuild workflow in Expo"
+---
+
+## Overview
+
+While Expo provides a comprehensive SDK, sometimes you need custom native code or third-party libraries with native dependencies. Expo's prebuild workflow makes this possible while maintaining a great developer experience.
+
+## Understanding Prebuild
+
+Expo's prebuild workflow generates the `ios` and `android` directories from your `app.json` configuration:
+
+```bash
+npx expo prebuild
+```
+
+This creates:
+- `ios/` - Xcode project
+- `android/` - Android Studio project
+
+Both are gitignored by default and regenerated as needed.
+
+<Note>
+  Prebuild is similar to `eject` but reversible. You can delete the native directories and regenerate them anytime.
+</Note>
+
+## When to Use Custom Native Code
+
+- Adding third-party libraries with native dependencies
+- Implementing features not available in Expo SDK
+- Integrating platform-specific SDKs (payment processors, analytics, etc.)
+- Building custom native modules
+- Modifying native build configuration
+
+## Adding Native Libraries
+
+<Steps>
+  <Step title="Install the library">
+    ```bash
+    npm install react-native-example-library
+    ```
+  </Step>
+
+  <Step title="Run prebuild">
+    ```bash
+    npx expo prebuild
+    ```
+    
+    This automatically:
+    - Links the native module
+    - Updates CocoaPods (iOS)
+    - Updates Gradle dependencies (Android)
+  </Step>
+
+  <Step title="Rebuild the app">
+    ```bash
+    npx expo run:ios
+    npx expo run:android
+    ```
+  </Step>
+</Steps>
+
+### Example: Adding react-native-maps
+
+```bash
+npm install react-native-maps
+npx expo prebuild
+npx expo run:ios
+```
+
+Then use it:
+
+```typescript app/map.tsx
+import MapView, { Marker } from 'react-native-maps';
+
+export default function MapScreen() {
+  return (
+    <MapView
+      style={{ flex: 1 }}
+      initialRegion={{
+        latitude: 37.78825,
+        longitude: -122.4324,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+      }}
+    >
+      <Marker
+        coordinate={{ latitude: 37.78825, longitude: -122.4324 }}
+        title="San Francisco"
+      />
+    </MapView>
+  );
+}
+```
+
+## Config Plugins
+
+Config plugins modify the native projects during prebuild without manual editing:
+
+```json app.json
+{
+  "expo": {
+    "plugins": [
+      [
+        "react-native-maps",
+        {
+          "googleMapsApiKey": "YOUR_API_KEY"
+        }
+      ]
+    ]
+  }
+}
+```
+
+### Common plugins
+
+<Tabs>
+  <Tab title="Maps">
+    ```json app.json
+    {
+      "expo": {
+        "plugins": [
+          [
+            "react-native-maps",
+            {
+              "googleMapsApiKey": "AIza...",
+              "useGoogleMaps": true
+            }
+          ]
+        ]
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="Firebase">
+    ```json app.json
+    {
+      "expo": {
+        "plugins": [
+          "@react-native-firebase/app",
+          "@react-native-firebase/messaging",
+          [
+            "@react-native-firebase/crashlytics",
+            {
+              "isCrashlyticsCollectionEnabled": true
+            }
+          ]
+        ]
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab title="IAP">
+    ```json app.json
+    {
+      "expo": {
+        "plugins": [
+          [
+            "react-native-iap",
+            {
+              "android": {
+                "minSdkVersion": 24
+              }
+            }
+          ]
+        ]
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Creating Custom Native Modules
+
+### Using Expo Modules API
+
+The modern way to create native modules:
+
+<Steps>
+  <Step title="Create a local Expo module">
+    ```bash
+    npx create-expo-module@latest --local my-module
+    ```
+    
+    This creates:
+    ```
+    modules/
+    └── my-module/
+        ├── android/
+        ├── ios/
+        ├── src/
+        └── index.ts
+    ```
+  </Step>
+
+  <Step title="Implement iOS module">
+    ```swift modules/my-module/ios/MyModule.swift
+    import ExpoModulesCore
+
+    public class MyModule: Module {
+      public func definition() -> ModuleDefinition {
+        Name("MyModule")
+
+        Function("hello") { (name: String) -> String in
+          return "Hello, \(name)!"
+        }
+
+        AsyncFunction("fetchData") { (url: String, promise: Promise) in
+          URLSession.shared.dataTask(with: URL(string: url)!) { data, response, error in
+            if let error = error {
+              promise.reject(error)
+              return
+            }
+            if let data = data {
+              let text = String(data: data, encoding: .utf8)
+              promise.resolve(text)
+            }
+          }.resume()
+        }
+
+        Events("onChange")
+
+        OnCreate {
+          // Module initialization
+        }
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Implement Android module">
+    ```kotlin modules/my-module/android/src/main/java/expo/modules/mymodule/MyModule.kt
+    package expo.modules.mymodule
+
+    import expo.modules.kotlin.modules.Module
+    import expo.modules.kotlin.modules.ModuleDefinition
+
+    class MyModule : Module() {
+      override fun definition() = ModuleDefinition {
+        Name("MyModule")
+
+        Function("hello") { name: String ->
+          "Hello, $name!"
+        }
+
+        AsyncFunction("fetchData") { url: String ->
+          // Fetch data from URL
+          val result = fetchDataFromUrl(url)
+          result
+        }
+
+        Events("onChange")
+
+        OnCreate {
+          // Module initialization
+        }
+      }
+
+      private fun fetchDataFromUrl(url: String): String {
+        // Implementation
+        return "data"
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Use the module">
+    ```typescript app/index.tsx
+    import MyModule from '../modules/my-module';
+
+    export default function App() {
+      const [data, setData] = useState('');
+
+      useEffect(() => {
+        const greeting = MyModule.hello('World');
+        console.log(greeting); // "Hello, World!"
+
+        MyModule.fetchData('https://api.example.com/data')
+          .then(result => setData(result));
+
+        const subscription = MyModule.addListener('onChange', (event) => {
+          console.log('Changed:', event);
+        });
+
+        return () => subscription.remove();
+      }, []);
+
+      return <Text>{data}</Text>;
+    }
+    ```
+  </Step>
+</Steps>
+
+### Module capabilities
+
+<Tabs>
+  <Tab title="Functions">
+    ```swift
+    Function("multiply") { (a: Int, b: Int) -> Int in
+      return a * b
+    }
+
+    AsyncFunction("download") { (url: String, promise: Promise) in
+      // Async work
+      promise.resolve(result)
+    }
+    ```
+  </Tab>
+
+  <Tab title="Events">
+    ```swift
+    Events("onLocationChange", "onError")
+
+    // Send event from Swift
+    sendEvent("onLocationChange", [
+      "latitude": 37.78825,
+      "longitude": -122.4324
+    ])
+    ```
+    
+    Listen in JS:
+    ```typescript
+    MyModule.addListener('onLocationChange', (event) => {
+      console.log(event.latitude, event.longitude);
+    });
+    ```
+  </Tab>
+
+  <Tab title="Constants">
+    ```swift
+    Constants([
+      "PI": Double.pi,
+      "APP_NAME": "MyApp"
+    ])
+    ```
+    
+    Access in JS:
+    ```typescript
+    console.log(MyModule.PI); // 3.14159...
+    ```
+  </Tab>
+
+  <Tab title="Views">
+    ```swift
+    View(MyCustomView.self) {
+      Prop("color") { view, color in
+        view.backgroundColor = color
+      }
+
+      Events("onPress")
+    }
+    ```
+    
+    Use in JS:
+    ```typescript
+    <MyCustomView 
+      color="#FF0000" 
+      onPress={(event) => console.log(event)}
+    />
+    ```
+  </Tab>
+</Tabs>
+
+## Creating Config Plugins
+
+Config plugins automate native configuration:
+
+```typescript plugins/withCustom.js
+const { withDangerousMod } = require('@expo/config-plugins');
+const fs = require('fs');
+const path = require('path');
+
+function withCustomAndroidPlugin(config) {
+  return withDangerousMod(config, [
+    'android',
+    async (config) => {
+      const filePath = path.join(
+        config.modRequest.platformProjectRoot,
+        'app/src/main/AndroidManifest.xml'
+      );
+
+      let contents = fs.readFileSync(filePath, 'utf-8');
+      
+      // Modify AndroidManifest.xml
+      contents = contents.replace(
+        '<application',
+        '<application\n        android:usesCleartextTraffic="true"'
+      );
+
+      fs.writeFileSync(filePath, contents);
+
+      return config;
+    },
+  ]);
+}
+
+module.exports = withCustomAndroidPlugin;
+```
+
+Use it:
+
+```json app.json
+{
+  "expo": {
+    "plugins": ["./plugins/withCustom.js"]
+  }
+}
+```
+
+## Modifying Native Code Directly
+
+If you need full control:
+
+<Steps>
+  <Step title="Run prebuild without gitignore">
+    ```json app.json
+    {
+      "expo": {
+        "experiments": {
+          "noExpoManifestInBuildDir": true
+        }
+      }
+    }
+    ```
+    
+    ```bash
+    npx expo prebuild
+    # Remove ios/ and android/ from .gitignore
+    git add ios/ android/
+    ```
+  </Step>
+
+  <Step title="Modify native files">
+    Edit `ios/` and `android/` directories directly in Xcode or Android Studio.
+  </Step>
+
+  <Step title="Commit changes">
+    ```bash
+    git commit -m "Add custom native modifications"
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  Once you commit native directories, `npx expo prebuild` will warn you before overwriting changes. You lose some benefits of the managed workflow.
+</Warning>
+
+## Development Workflow
+
+### With prebuild (recommended)
+
+```bash
+# Make changes to JS/config
+npx expo prebuild --clean
+npx expo run:ios
+```
+
+### With native directories
+
+```bash
+# Make changes to native code
+npx expo run:ios
+# Or open in Xcode/Android Studio
+```
+
+## EAS Build with Custom Native Code
+
+Custom native code works seamlessly with EAS Build:
+
+```json eas.json
+{
+  "build": {
+    "development": {
+      "developmentClient": true
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {}
+  }
+}
+```
+
+Build:
+```bash
+eas build --platform ios --profile production
+```
+
+EAS Build runs `npx expo prebuild` automatically.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Native module not found after installation">
+    ```bash
+    # Clean and rebuild
+    npx expo prebuild --clean
+    npx expo run:ios
+    ```
+    
+    For iOS specifically:
+    ```bash
+    cd ios && pod install && cd ..
+    npx expo run:ios
+    ```
+  </Accordion>
+
+  <Accordion title="Build fails after adding native dependency">
+    - Check minimum iOS/Android version requirements
+    - Verify the library is compatible with React Native version
+    - Look for config plugin in library documentation
+    - Check for peer dependency warnings
+  </Accordion>
+
+  <Accordion title="Changes to app.json not reflected">
+    ```bash
+    npx expo prebuild --clean
+    ```
+    
+    The `--clean` flag removes and regenerates native directories.
+  </Accordion>
+
+  <Accordion title="Custom module not updating">
+    ```bash
+    # Clear Metro cache
+    npx expo start --clear
+    
+    # Clear native build cache
+    cd ios && rm -rf build && cd ..
+    cd android && ./gradlew clean && cd ..
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+- **Use config plugins**: Automate native configuration instead of manual editing
+- **Stay in managed workflow**: Keep native directories gitignored when possible
+- **Document native dependencies**: List libraries with native code in README
+- **Test on both platforms**: Native code behavior can differ
+- **Use Expo Modules API**: Prefer it over React Native's legacy bridge
+- **Version lock native dependencies**: Specify exact versions to avoid breaking changes
+- **Clean rebuilds**: Run `npx expo prebuild --clean` when in doubt
+- **Check compatibility**: Verify libraries work with your Expo SDK version
+
+## Migration from Bare Workflow
+
+If you have existing native directories:
+
+<Steps>
+  <Step title="Backup native changes">
+    ```bash
+    git commit -m "Backup before migration"
+    ```
+  </Step>
+
+  <Step title="Remove native directories">
+    ```bash
+    rm -rf ios/ android/
+    ```
+  </Step>
+
+  <Step title="Add plugins for native changes">
+    Convert manual native modifications to config plugins in `app.json`.
+  </Step>
+
+  <Step title="Regenerate with prebuild">
+    ```bash
+    npx expo prebuild
+    ```
+  </Step>
+
+  <Step title="Test thoroughly">
+    ```bash
+    npx expo run:ios
+    npx expo run:android
+    ```
+  </Step>
+</Steps>
+
+## Related Resources
+
+- [Expo Modules API documentation](https://docs.expo.dev/modules/overview/)
+- [Config Plugins](https://docs.expo.dev/guides/config-plugins/)
+- [Prebuild documentation](https://docs.expo.dev/workflow/prebuild/)
+- [React Native Native Modules](https://reactnative.dev/docs/native-modules-intro)
+- [EAS Build](https://docs.expo.dev/build/introduction/)

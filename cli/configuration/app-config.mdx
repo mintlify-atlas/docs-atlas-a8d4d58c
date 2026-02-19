@@ -1,0 +1,565 @@
+---
+title: App Configuration
+description: Learn how to configure your Expo app with app.json and app.config.js.
+---
+
+App configuration is the core of how Expo understands and builds your project. You can define your app's name, icon, splash screen, platform-specific settings, and much more using configuration files.
+
+## Configuration Files
+
+Expo supports three types of configuration files:
+
+- **app.json** - Static JSON configuration
+- **app.config.js** - Dynamic JavaScript configuration
+- **app.config.ts** - TypeScript configuration with type safety
+
+Expo looks for these files in order and uses the first one found.
+
+## app.json
+
+The simplest configuration format using static JSON.
+
+### Basic Example
+
+```json app.json
+{
+  "expo": {
+    "name": "My App",
+    "slug": "my-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mycompany.myapp"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.mycompany.myapp"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
+```
+
+### When to Use app.json
+
+Use app.json when:
+- Your configuration is entirely static
+- You don't need environment variables
+- You want simple, straightforward configuration
+- You're new to Expo
+
+## app.config.js
+
+JavaScript configuration enables dynamic values and environment variables.
+
+### Basic Example
+
+```javascript app.config.js
+export default {
+  name: "My App",
+  slug: "my-app",
+  version: "1.0.0",
+  orientation: "portrait",
+  icon: "./assets/icon.png",
+  userInterfaceStyle: "automatic",
+  splash: {
+    image: "./assets/splash.png",
+    resizeMode: "contain",
+    backgroundColor: "#ffffff"
+  },
+  ios: {
+    supportsTablet: true,
+    bundleIdentifier: "com.mycompany.myapp"
+  },
+  android: {
+    adaptiveIcon: {
+      foregroundImage: "./assets/adaptive-icon.png",
+      backgroundColor: "#ffffff"
+    },
+    package: "com.mycompany.myapp"
+  },
+  web: {
+    favicon: "./assets/favicon.png"
+  }
+};
+```
+
+### With Environment Variables
+
+```javascript app.config.js
+const IS_PROD = process.env.ENV === 'production';
+
+export default {
+  name: IS_PROD ? 'My App' : 'My App (Dev)',
+  slug: 'my-app',
+  version: process.env.APP_VERSION || '1.0.0',
+  extra: {
+    apiUrl: process.env.API_URL,
+    environment: IS_PROD ? 'production' : 'development'
+  },
+  ios: {
+    bundleIdentifier: IS_PROD 
+      ? 'com.mycompany.myapp'
+      : 'com.mycompany.myapp.dev'
+  },
+  android: {
+    package: IS_PROD 
+      ? 'com.mycompany.myapp'
+      : 'com.mycompany.myapp.dev'
+  }
+};
+```
+
+### Dynamic Configuration
+
+```javascript app.config.js
+export default ({ config }) => {
+  return {
+    ...config,
+    name: 'My App',
+    slug: 'my-app',
+    version: '1.0.0',
+    // Add plugins conditionally
+    plugins: [
+      'expo-router',
+      ...(process.env.ENABLE_CAMERA === 'true' 
+        ? ['expo-camera'] 
+        : []
+      )
+    ],
+    // Compute values
+    extra: {
+      buildNumber: Date.now(),
+      commitHash: process.env.GITHUB_SHA?.substring(0, 7)
+    }
+  };
+};
+```
+
+### When to Use app.config.js
+
+Use app.config.js when:
+- You need environment-specific configuration
+- You want to compute dynamic values
+- You need conditional configuration
+- You want to reuse configuration values
+
+## app.config.ts
+
+TypeScript configuration provides type checking and IntelliSense.
+
+### Basic Example
+
+```typescript app.config.ts
+import { ExpoConfig, ConfigContext } from 'expo/config';
+
+export default ({ config }: ConfigContext): ExpoConfig => ({
+  ...config,
+  name: 'My App',
+  slug: 'my-app',
+  version: '1.0.0',
+  orientation: 'portrait',
+  icon: './assets/icon.png',
+  userInterfaceStyle: 'automatic',
+  splash: {
+    image: './assets/splash.png',
+    resizeMode: 'contain',
+    backgroundColor: '#ffffff'
+  },
+  ios: {
+    supportsTablet: true,
+    bundleIdentifier: 'com.mycompany.myapp'
+  },
+  android: {
+    adaptiveIcon: {
+      foregroundImage: './assets/adaptive-icon.png',
+      backgroundColor: '#ffffff'
+    },
+    package: 'com.mycompany.myapp'
+  },
+  web: {
+    favicon: './assets/favicon.png'
+  }
+});
+```
+
+### With Type Safety
+
+```typescript app.config.ts
+import { ExpoConfig } from 'expo/config';
+
+const IS_PROD = process.env.ENV === 'production';
+
+const config: ExpoConfig = {
+  name: IS_PROD ? 'My App' : 'My App (Dev)',
+  slug: 'my-app',
+  version: process.env.APP_VERSION || '1.0.0',
+  orientation: 'portrait', // TypeScript validates this value
+  icon: './assets/icon.png',
+  ios: {
+    bundleIdentifier: 'com.mycompany.myapp',
+    // TypeScript catches typos
+    buildNumber: '1'
+  },
+  android: {
+    package: 'com.mycompany.myapp',
+    versionCode: 1
+  }
+};
+
+export default config;
+```
+
+### When to Use app.config.ts
+
+Use app.config.ts when:
+- You want type safety
+- You use TypeScript in your project
+- You want IDE autocomplete
+- You want to catch configuration errors early
+
+## Essential Configuration Fields
+
+### Required Fields
+
+<ParamField path="name" type="string" required>
+  The name of your app as it appears on the home screen.
+</ParamField>
+
+<ParamField path="slug" type="string" required>
+  A URL-friendly name for your app. Used in Expo Go and URLs.
+</ParamField>
+
+### Common Fields
+
+<ParamField path="version" type="string">
+  Your app's version visible to users. Example: `"1.0.0"`
+</ParamField>
+
+<ParamField path="orientation" type="string">
+  Lock screen orientation. Options: `"default"`, `"portrait"`, `"landscape"`
+</ParamField>
+
+<ParamField path="icon" type="string">
+  Path to app icon image. Should be 1024x1024 px.
+</ParamField>
+
+<ParamField path="userInterfaceStyle" type="string">
+  Color scheme preference. Options: `"light"`, `"dark"`, `"automatic"`
+</ParamField>
+
+<ParamField path="backgroundColor" type="string">
+  Background color before app loads. Hex color code.
+</ParamField>
+
+### Splash Screen
+
+<ParamField path="splash.image" type="string">
+  Path to splash screen image.
+</ParamField>
+
+<ParamField path="splash.resizeMode" type="string">
+  How to resize splash image. Options: `"contain"`, `"cover"`
+</ParamField>
+
+<ParamField path="splash.backgroundColor" type="string">
+  Splash screen background color.
+</ParamField>
+
+### iOS Configuration
+
+<ParamField path="ios.bundleIdentifier" type="string">
+  Unique identifier for iOS app. Example: `"com.mycompany.myapp"`
+</ParamField>
+
+<ParamField path="ios.buildNumber" type="string">
+  Build number for iOS. Increments with each build.
+</ParamField>
+
+<ParamField path="ios.supportsTablet" type="boolean">
+  Whether the app supports iPad.
+</ParamField>
+
+<ParamField path="ios.infoPlist" type="object">
+  Additional entries for Info.plist.
+</ParamField>
+
+### Android Configuration
+
+<ParamField path="android.package" type="string">
+  Unique identifier for Android app. Example: `"com.mycompany.myapp"`
+</ParamField>
+
+<ParamField path="android.versionCode" type="number">
+  Internal version number for Android. Increment with each release.
+</ParamField>
+
+<ParamField path="android.adaptiveIcon" type="object">
+  Adaptive icon configuration for Android 8.0+.
+</ParamField>
+
+<ParamField path="android.permissions" type="string[]">
+  Android permissions to request. Example: `["CAMERA", "LOCATION"]`
+</ParamField>
+
+## Config Plugins
+
+Config plugins modify native project configuration during prebuild.
+
+### Using Plugins
+
+```json app.json
+{
+  "expo": {
+    "plugins": [
+      "expo-camera",
+      "expo-location",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#ffffff"
+        }
+      ]
+    ]
+  }
+}
+```
+
+### Popular Plugins
+
+- **expo-camera** - Camera permissions
+- **expo-location** - Location services
+- **expo-notifications** - Push notifications
+- **expo-splash-screen** - Custom splash screens
+- **expo-font** - Custom fonts
+- **expo-updates** - OTA updates
+
+### Custom Plugins
+
+Create your own config plugin:
+
+```javascript my-plugin.js
+const { withAndroidManifest } = require('@expo/config-plugins');
+
+const withMyPlugin = (config) => {
+  return withAndroidManifest(config, (config) => {
+    // Modify Android manifest
+    config.modResults.manifest.application[0].$['android:largeHeap'] = 'true';
+    return config;
+  });
+};
+
+module.exports = withMyPlugin;
+```
+
+Use in app.config.js:
+
+```javascript app.config.js
+export default {
+  name: 'My App',
+  plugins: ['./my-plugin.js']
+};
+```
+
+## Extra Configuration
+
+Store custom values accessible at runtime:
+
+```javascript app.config.js
+export default {
+  name: 'My App',
+  extra: {
+    apiUrl: process.env.API_URL,
+    analyticsKey: process.env.ANALYTICS_KEY,
+    featureFlags: {
+      newFeature: true
+    }
+  }
+};
+```
+
+Access in your app:
+
+```javascript
+import Constants from 'expo-constants';
+
+const apiUrl = Constants.expoConfig.extra.apiUrl;
+const featureFlags = Constants.expoConfig.extra.featureFlags;
+```
+
+## Environment Variables
+
+### EXPO_PUBLIC Variables
+
+Variables prefixed with `EXPO_PUBLIC_` are embedded in your app:
+
+```javascript app.config.js
+export default {
+  name: 'My App',
+  extra: {
+    apiUrl: process.env.EXPO_PUBLIC_API_URL
+  }
+};
+```
+
+Access at runtime:
+
+```javascript
+const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+```
+
+### Build-Time Variables
+
+Other environment variables are available during configuration:
+
+```javascript app.config.js
+export default {
+  name: process.env.APP_NAME || 'My App',
+  version: process.env.APP_VERSION || '1.0.0'
+};
+```
+
+## Viewing Configuration
+
+Check your resolved configuration:
+
+```bash
+npx expo config
+```
+
+With full details:
+
+```bash
+npx expo config --full
+```
+
+As JSON:
+
+```bash
+npx expo config --json
+```
+
+## Best Practices
+
+### Use Version Control
+
+Always commit your configuration:
+
+```bash
+git add app.json
+git commit -m "Update app configuration"
+```
+
+### Separate Environments
+
+Use environment variables for environment-specific values:
+
+```javascript
+const IS_PROD = process.env.ENV === 'production';
+
+export default {
+  name: IS_PROD ? 'My App' : 'My App (Dev)',
+  slug: 'my-app',
+  extra: {
+    apiUrl: IS_PROD 
+      ? 'https://api.example.com'
+      : 'https://dev.api.example.com'
+  }
+};
+```
+
+### Don't Commit Secrets
+
+Never put secrets in configuration files:
+
+```javascript
+// Bad - secrets in code
+export default {
+  extra: {
+    apiKey: 'secret-key-123'
+  }
+};
+
+// Good - secrets from environment
+export default {
+  extra: {
+    apiKey: process.env.API_KEY
+  }
+};
+```
+
+### Document Custom Fields
+
+Add comments explaining custom configuration:
+
+```javascript
+export default {
+  name: 'My App',
+  extra: {
+    // Internal feature flags
+    features: {
+      newUI: false,
+      betaFeature: true
+    },
+    // Analytics configuration
+    analytics: {
+      enabled: true,
+      sampleRate: 0.1
+    }
+  }
+};
+```
+
+## Troubleshooting
+
+### Configuration Not Updating
+
+Clear cache and restart:
+
+```bash
+npx expo start --clear
+```
+
+### Invalid Configuration
+
+Validate with expo config:
+
+```bash
+npx expo config
+```
+
+### TypeScript Errors
+
+Ensure types are installed:
+
+```bash
+npm install --save-dev @types/expo
+```
+
+### Plugin Errors
+
+Verify plugin is installed:
+
+```bash
+npx expo install expo-camera
+```
+
+Check plugin compatibility:
+
+```bash
+npx expo install --check
+```

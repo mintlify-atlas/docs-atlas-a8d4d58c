@@ -1,0 +1,130 @@
+---
+title: Overview
+description: Learn about Expo CLI, the command-line tool for developing Expo applications.
+---
+
+Expo CLI is the official command-line interface for Expo projects. It provides a comprehensive set of tools for developing, building, and deploying React Native applications with Expo.
+
+## What is Expo CLI?
+
+Expo CLI is distributed as the `@expo/cli` npm package and serves as the primary interface for:
+
+- Starting development servers with Metro bundler
+- Building and running native applications locally
+- Generating native iOS and Android projects
+- Managing dependencies compatible with your Expo SDK version
+- Exporting production-ready bundles
+- Authenticating with your Expo account
+
+The CLI is designed with a lean, intentional public interface where all commands and arguments are carefully considered.
+
+## Main Features
+
+### Development Server
+
+The CLI provides a powerful development server with Metro bundler integration that supports:
+
+- Multi-platform bundling (iOS, Android, and Web)
+- Hot Module Replacement (HMR)
+- Fast Refresh for instant updates
+- Chrome DevTools Protocol for debugging
+- TypeScript support with automatic type generation
+- Server-side rendering and API routes
+
+### Native Development
+
+Build and run your app on iOS simulators, Android emulators, and physical devices:
+
+- Automatic device detection and selection
+- Xcode and Gradle build integration
+- Code signing management for iOS
+- Variant and configuration support
+
+### Project Management
+
+- Generate native projects with `expo prebuild`
+- Install compatible dependencies with `expo install`
+- View resolved configuration with `expo config`
+- Customize Metro bundler and native projects
+
+## Common Workflows
+
+### Starting Development
+
+```bash
+npx expo start
+```
+
+Opens an interactive terminal UI where you can:
+- Press `i` to open iOS simulator
+- Press `a` to open Android emulator
+- Press `w` to open in web browser
+- Scan QR code with Expo Go or development build
+
+### Building Locally
+
+```bash
+# Build and run on iOS
+npx expo run:ios
+
+# Build and run on Android
+npx expo run:android
+```
+
+These commands compile your native code and launch the app on a simulator/emulator or physical device.
+
+### Generating Native Projects
+
+```bash
+npx expo prebuild
+```
+
+Creates `ios/` and `android/` directories with native code that you can open in Xcode or Android Studio.
+
+### Installing Dependencies
+
+```bash
+npx expo install react-native-maps
+```
+
+Installs packages with versions compatible with your Expo SDK version.
+
+### Exporting for Production
+
+```bash
+npx expo export
+```
+
+Creates optimized production bundles for deployment, including:
+- Minified JavaScript
+- Compressed assets
+- Platform-specific bundles
+- Static HTML for web
+
+## Requirements
+
+- Node.js 20.19.4 or newer (LTS version recommended)
+- npm, yarn, pnpm, or bun package manager
+- For iOS development: macOS with Xcode (not supported on Windows)
+- For Android development: Android Studio or Android SDK
+
+## Getting Help
+
+Run any command with the `--help` flag to see detailed usage information:
+
+```bash
+npx expo start --help
+npx expo run:ios --help
+npx expo prebuild --help
+```
+
+## Environment Variables
+
+Expo CLI supports various environment variables for customization:
+
+- `EXPO_DEBUG=1` - Enable debug logging
+- `EXPO_OFFLINE=1` - Skip network requests
+- `CI=1` - Run in non-interactive CI mode
+- `EXPO_NO_TELEMETRY=1` - Disable analytics
+
+See the [Environment Variables](/cli/configuration/environment-variables) page for a complete list.
